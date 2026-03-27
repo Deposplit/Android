@@ -19,10 +19,6 @@ Consequences:
 - Gradle wrapper version: see `gradle/wrapper/gradle-wrapper.properties`
 - AGP version: see `gradle/libs.versions.toml` (`agp`)
 
-### matrix-rust-sdk
-
-`org.matrix.rustcomponents:sdk-android` ships pre-compiled native `.so` files via UniFFI. No Rust toolchain is needed on the development machine — it is a regular Gradle dependency. After syncing, the generated Kotlin bindings are visible in the IDE under the `org.matrix.rustcomponents.sdk` package. If any constructor parameter names or method signatures in `MatrixAuthAdapter.kt` don't resolve, check the generated bindings — the UniFFI API surface can shift between SDK releases.
-
 ## Module structure
 
 The project currently has a **single `:app` module**. The `deposplit.com/CLAUDE.md` architecture calls for extracting the domain into a pure Kotlin Gradle module; that extraction is deferred until there is enough domain logic to justify the overhead. Do not introduce that split prematurely.
@@ -33,18 +29,19 @@ All packages currently live under `com.deposplit` inside `app/src/main/kotlin/`.
 
 ```
 com.deposplit/
-├── DeposplitApp.kt          Application subclass; owns the auth adapter and OIDC callback relay
-├── MainActivity.kt          Single activity; NavHost root; forwards OIDC deep-link intents
+├── DeposplitApp.kt              Application subclass; owns the auth adapter
+├── MainActivity.kt              Single activity; NavHost root
 ├── auth/
-│   ├── AuthPort.kt          Domain port interface + LoginFlow sealed type
-│   ├── MatrixAuthAdapter.kt Infrastructure adapter (matrix-rust-sdk)
-│   └── SignInViewModel.kt   UI logic for the sign-in flow
+│   ├── AuthPort.kt              Domain port interface + RegistrationFlow sealed type
+│   ├── MatrixAuthAdapter.kt     OBSOLETE — being replaced by DeposplitAuthAdapter
+│   ├── DeposplitAuthAdapter.kt  Infrastructure adapter (deposplit.com API + libsodium keypair)
+│   └── SignInViewModel.kt       UI logic for the registration flow
 └── ui/
     ├── signin/
-    │   └── SignInScreen.kt  Compose screen — homeserver input + Continue button
+    │   └── SignInScreen.kt      Compose screen — pseudonym input + Register button
     ├── home/
-    │   └── HomeScreen.kt    Placeholder post-login screen
-    └── theme/               Material 3 colour, type, and theme definitions
+    │   └── HomeScreen.kt        Placeholder post-registration screen
+    └── theme/                   Material 3 colour, type, and theme definitions
 ```
 
 ## Build & test commands
@@ -63,7 +60,7 @@ Deploying to a device or emulator requires Android Studio (or `adb install`).
 
 - `minSdk = 29` — do not lower; see `deposplit.com/CLAUDE.md` for rationale.
 - All UI in Jetpack Compose (no XML layouts).
-- `singleTask` launch mode on `MainActivity` — required so the OIDC browser redirect returns to the existing instance rather than creating a new one.
-- OIDC redirect URI is an **Android App Link** (`https://` scheme, `android:autoVerify="true"`). Currently `https://www.squeng.com/deposplit/auth/callback` (temporary); final production URI will be `https://deposplit.com/auth/callback`. Changing the URI requires updating the manifest intent filter, `OIDC_REDIRECT_URI` in `MatrixAuthAdapter.kt`, and the `assetlinks.json` at the target domain.
-- **Open issue:** matrix.org's MAS may not support open DCR for arbitrary clients at all (Element X supplies a pre-registered client ID via `OidcConfiguration.staticRegistrations`, bypassing DCR). Deposplit may need the same treatment for matrix.org accounts.
-- Session persistence uses plain `SharedPreferences` (just an "is logged in" flag). The sensitive data — access tokens, E2EE keys — lives in the matrix-rust-sdk's own encrypted SQLite store under `context.filesDir/matrix/session`. Do not add `EncryptedSharedPreferences` back without a concrete reason; `security-crypto` is not a dependency.
+- Registration is keypair-first (libsodium X25519) — no OIDC, no password, no email. See `deposplit.com/CLAUDE.md` for rationale.
+- The X25519 private key is stored in the Android Keystore and never handled as raw key material by app code.
+- Session persistence uses plain `SharedPreferences` (just an "is registered" flag). Do not add `EncryptedSharedPreferences` without a concrete reason; `security-crypto` is not a dependency.
+- `MatrixAuthAdapter.kt` is obsolete and will be deleted once `DeposplitAuthAdapter` is complete. Do not extend or fix it.

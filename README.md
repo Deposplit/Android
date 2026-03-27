@@ -91,9 +91,10 @@ Android/
 │   │   │   │   ├── DeposplitApp.kt          Application subclass
 │   │   │   │   ├── MainActivity.kt          Single activity; NavHost root
 │   │   │   │   ├── auth/
-│   │   │   │   │   ├── AuthPort.kt          Domain port interface
-│   │   │   │   │   ├── MatrixAuthAdapter.kt Matrix SDK adapter
-│   │   │   │   │   └── SignInViewModel.kt   Sign-in UI logic
+│   │   │   │   │   ├── AuthPort.kt              Domain port interface
+│   │   │   │   │   ├── MatrixAuthAdapter.kt     OBSOLETE — being replaced
+│   │   │   │   │   ├── DeposplitAuthAdapter.kt  deposplit.com API + libsodium keypair
+│   │   │   │   │   └── SignInViewModel.kt       Registration UI logic
 │   │   │   │   ├── shamir/
 │   │   │   │   │   └── Shamir.kt            SSS library (split / combine)
 │   │   │   │   └── ui/
@@ -150,50 +151,30 @@ Deposplit follows **Ports & Adapters (Hexagonal Architecture)** for the domain a
 
 ---
 
-## The sign-in flow
+## The registration flow
 
-Matrix authentication on modern homeservers (including matrix.org) uses **OIDC** — the same standard as "Sign in with Google". Deposplit does not handle credentials directly; the homeserver's own login page does.
+Deposplit does not use OIDC, passwords, or email. Registration is keypair-first.
 
 ```
-1. User enters homeserver URL or Matrix ID (@alice:matrix.org)
+1. User enters a pseudonym (display name only — no personal information required)
         │
-2. App calls AuthPort.discoverLoginFlow(homeserverUrl)
-        │  → MatrixAuthAdapter queries the homeserver
+2. App generates an X25519 keypair via libsodium
+        │  → Private key stored in Android Keystore (never leaves the device)
+        │  → Public key held in memory for registration
         │
-3a. Homeserver supports OIDC
-        │  → Adapter returns LoginFlow.Oidc(authorizationUrl)
-        │  → ViewModel emits Effect.OpenBrowser(url)
-        │  → SignInScreen opens a Chrome Custom Tab
+3. App calls AuthPort.register(pseudonym)
+        │  → DeposplitAuthAdapter sends pseudonym + public key to deposplit.com
+        │  → Backend stores the pseudonym/public key mapping
         │
-4. User logs in inside the browser (homeserver's page)
+4. Adapter persists the "is registered" flag via SharedPreferences
         │
-5. Browser redirects to https://www.squeng.com/deposplit/auth/callback?code=...&state=...
-        │  → Android routes this back to MainActivity (singleTask)
-        │  → MainActivity calls DeposplitApp.onOidcCallback(url)
-        │  → SharedFlow delivers url to SignInViewModel
-        │
-6. ViewModel calls AuthPort.completeOidcLogin(callbackUrl)
-        │  → Adapter exchanges the code for a Matrix session
-        │  → Session persisted via SharedPreferences (flag) + SDK's encrypted SQLite store
-        │
-7. ViewModel emits Effect.NavigateToHome
+5. ViewModel emits Effect.NavigateToHome
         │  → NavController pops sign-in, pushes home
-
-3b. Homeserver supports only password login
-        └─ Not yet implemented (shows an informational error)
 ```
 
-### Why Chrome Custom Tab instead of a WebView?
+Identity *is* the keypair. If Alice loses her device, she generates a new keypair on a new device and initiates a k-of-n social recovery request that her existing contacts approve.
 
-Custom Tabs share the user's existing browser session (cookies, saved passwords, passkeys). A WebView is isolated — the user would have to re-enter credentials and would lose any second-factor sessions. Custom Tabs are also auditable: the URL bar is visible, so the user can verify they are on their homeserver's page and not a phishing screen.
-
-### OIDC redirect URI
-
-The redirect URI is an **Android App Link** declared in `AndroidManifest.xml` as an intent filter on `MainActivity` with `android:autoVerify="true"`. Using an `https://` URI (rather than a custom `deposplit://` scheme) is required because matrix.org's Matrix Authentication Service rejects custom-scheme redirect URIs during OIDC Dynamic Client Registration.
-
-Current URI: `https://www.squeng.com/deposplit/auth/callback` (temporary — will move to `https://deposplit.com/auth/callback`).
-
-The `singleTask` launch mode ensures the running instance receives the callback rather than a new instance being created.
+> **Note:** `MatrixAuthAdapter.kt` (the previous OIDC-based adapter) is present in the codebase but obsolete. It will be deleted once `DeposplitAuthAdapter` is complete. Do not extend or fix it.
 
 ---
 
@@ -246,10 +227,10 @@ On first launch the app shows the sign-in screen. Enter `matrix.org` (or your ow
 
 In rough priority order:
 
-1. **Matrix session management** — start the sync loop after sign-in so the app receives messages
+1. **Replace auth layer** — implement `DeposplitAuthAdapter` (libsodium keypair generation + pseudonym registration against deposplit.com API); remove `matrix-rust-sdk` dependency
 2. **Home screen** — list of secrets the user has distributed; list of shares held for others
-3. **Matrix message types** — implement the four protocol messages (deposit, list, retrieve, delete)
+3. **Backend protocol message types** — implement the four messages (deposit, list, retrieve, delete)
 4. **Shamir integration** — wire `Shamir.split()` / `Shamir.combine()` into the secret distribution flow
-5. **Contact management** — add/list contacts backed by `com.deposplit.contacts` account data
+5. **Contact management** — add/list contacts backed by the deposplit.com contacts API
 6. **Domain module extraction** — split `:app` into a pure Kotlin `:domain` module and an `:app` module that depends on it
 7. **Biometric unlock** — gate secret reconstruction behind `BiometricPrompt`
