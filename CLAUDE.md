@@ -64,5 +64,6 @@ Deploying to a device or emulator requires Android Studio (or `adb install`).
 - `minSdk = 29` — do not lower; see `deposplit.com/CLAUDE.md` for rationale.
 - All UI in Jetpack Compose (no XML layouts).
 - `singleTask` launch mode on `MainActivity` — required so the OIDC browser redirect returns to the existing instance rather than creating a new one.
-- OIDC redirect URI is `deposplit://auth/callback` — changing it requires updating both the manifest intent filter and any registered OIDC client metadata on homeservers.
+- OIDC redirect URI is an **Android App Link** (`https://` scheme, `android:autoVerify="true"`). Currently `https://www.squeng.com/deposplit/auth/callback` (temporary); final production URI will be `https://deposplit.com/auth/callback`. Changing the URI requires updating the manifest intent filter, `OIDC_REDIRECT_URI` in `MatrixAuthAdapter.kt`, and the `assetlinks.json` at the target domain.
+- **Open issue:** matrix.org's MAS may not support open DCR for arbitrary clients at all (Element X supplies a pre-registered client ID via `OidcConfiguration.staticRegistrations`, bypassing DCR). Deposplit may need the same treatment for matrix.org accounts.
 - Session persistence uses plain `SharedPreferences` (just an "is logged in" flag). The sensitive data — access tokens, E2EE keys — lives in the matrix-rust-sdk's own encrypted SQLite store under `context.filesDir/matrix/session`. Do not add `EncryptedSharedPreferences` back without a concrete reason; `security-crypto` is not a dependency.

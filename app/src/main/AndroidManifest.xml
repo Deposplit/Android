@@ -24,12 +24,12 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- OIDC callback deep link -->
-            <intent-filter>
+            <!-- OIDC callback deep link (Android App Link) -->
+            <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="deposplit" android:host="auth" android:path="/callback" />
+                <data android:scheme="https" android:host="www.squeng.com" android:path="/deposplit/auth/callback" />
             </intent-filter>
         </activity>
     </application>

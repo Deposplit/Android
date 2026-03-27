@@ -76,7 +76,7 @@ Navigation between screens is handled by `NavHost` in `MainActivity`. Each scree
 - Each `Activity`, its launch mode, and any intent filters
 - Permissions the app requires (e.g., `INTERNET`)
 
-Deposplit's manifest registers a deep-link intent filter for `deposplit://auth/callback` — the URI the OIDC browser flow redirects to after login.
+Deposplit's manifest registers an **Android App Link** intent filter (`android:autoVerify="true"`, `https://` scheme) — the URI the OIDC browser flow redirects to after login. The current URI is `https://www.squeng.com/deposplit/auth/callback` (a temporary stand-in); the production URI will be `https://deposplit.com/auth/callback`.
 
 ---
 
@@ -167,7 +167,7 @@ Matrix authentication on modern homeservers (including matrix.org) uses **OIDC**
         │
 4. User logs in inside the browser (homeserver's page)
         │
-5. Browser redirects to deposplit://auth/callback?code=...&state=...
+5. Browser redirects to https://www.squeng.com/deposplit/auth/callback?code=...&state=...
         │  → Android routes this back to MainActivity (singleTask)
         │  → MainActivity calls DeposplitApp.onOidcCallback(url)
         │  → SharedFlow delivers url to SignInViewModel
@@ -189,7 +189,11 @@ Custom Tabs share the user's existing browser session (cookies, saved passwords,
 
 ### OIDC redirect URI
 
-The registered redirect URI is `deposplit://auth/callback`. It is declared in `AndroidManifest.xml` as an intent filter on `MainActivity`. The `singleTask` launch mode ensures the running instance receives the callback rather than a new instance being created.
+The redirect URI is an **Android App Link** declared in `AndroidManifest.xml` as an intent filter on `MainActivity` with `android:autoVerify="true"`. Using an `https://` URI (rather than a custom `deposplit://` scheme) is required because matrix.org's Matrix Authentication Service rejects custom-scheme redirect URIs during OIDC Dynamic Client Registration.
+
+Current URI: `https://www.squeng.com/deposplit/auth/callback` (temporary — will move to `https://deposplit.com/auth/callback`).
+
+The `singleTask` launch mode ensures the running instance receives the callback rather than a new instance being created.
 
 ---
 
@@ -208,7 +212,7 @@ The emulator is sufficient for developing and testing the sign-in flow, with one
 With a Google Play AVD:
 - The emulator routes internet traffic through your host machine's network, so it can reach matrix.org and other homeservers normally
 - Chrome Custom Tabs open the homeserver's OIDC login page as expected
-- The deep-link redirect (`deposplit://auth/callback`) is routed back to the app exactly as it would be on a real device
+- The App Link redirect (`https://www.squeng.com/deposplit/auth/callback`) is routed back to the app once App Links verification completes (the AVD must be able to reach squeng.com at install time)
 
 The only cosmetic difference: Chrome may prompt you to sign in to a Google account the first time it opens — you can skip that.
 

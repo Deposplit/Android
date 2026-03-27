@@ -16,7 +16,7 @@ import uniffi.matrix_sdk.OAuthAuthorizationData
 // a Gradle sync, check the generated bindings at org.matrix.rustcomponents.sdk in the
 // External Libraries section of the Android Studio project view.
 
-private const val OIDC_REDIRECT_URI = "deposplit://auth/callback"
+private const val OIDC_REDIRECT_URI = "https://www.squeng.com/deposplit/auth/callback"
 private const val PREFS_NAME = "deposplit_prefs"
 private const val KEY_LOGGED_IN = "is_logged_in"
 
