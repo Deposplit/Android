@@ -1,8 +1,0 @@
-# Normalise to LF in the repository; check out LF on all platforms
-* text=auto eol=lf
-
-# Explicitly binary — no line-ending conversion
-*.jar binary
-*.webp binary
-*.png binary
-*.keystore binary
