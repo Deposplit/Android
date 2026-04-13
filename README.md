@@ -147,7 +147,7 @@ Deposplit follows **Ports & Adapters (Hexagonal Architecture)** for the domain a
 
 **Application (`DeposplitApp`)** — creates the adapter and holds a `SharedFlow` that relays OIDC callbacks from `MainActivity` to whichever ViewModel is currently listening.
 
-> **Current simplification:** everything lives in a single `:app` Gradle module. The architecture calls for the domain to move to a separate pure Kotlin module once there is enough logic to justify it.
+> **Current simplification:** everything lives in a single `:app` Gradle module. The architecture calls for the hexagon to move to a separate pure Kotlin module (`:hexagon`) once there is enough logic to justify it.
 
 ---
 
@@ -232,5 +232,5 @@ In rough priority order:
 3. **Backend protocol message types** — implement the four messages (deposit, list, retrieve, delete)
 4. **Shamir integration** — wire `Shamir.split()` / `Shamir.combine()` into the secret distribution flow
 5. **Contact management** — add/list contacts backed by the deposplit.com contacts API
-6. **Domain module extraction** — split `:app` into a pure Kotlin `:domain` module and an `:app` module that depends on it
+6. **Hexagon module extraction** — split `:app` into a pure Kotlin `:hexagon` module and an `:app` module that depends on it
 7. **Biometric unlock** — gate secret reconstruction behind `BiometricPrompt`

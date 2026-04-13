@@ -21,7 +21,7 @@ Consequences:
 
 ## Module structure
 
-The project currently has a **single `:app` module**. The `deposplit.com/CLAUDE.md` architecture calls for extracting the domain into a pure Kotlin Gradle module; that extraction is deferred until there is enough domain logic to justify the overhead. Do not introduce that split prematurely.
+The project currently has a **single `:app` module**. The `deposplit.com/CLAUDE.md` architecture calls for extracting the hexagon into a pure Kotlin Gradle module (`:hexagon`); that extraction is deferred until there is enough domain logic to justify the overhead. Do not introduce that split prematurely.
 
 All packages currently live under `com.deposplit` inside `app/src/main/kotlin/`.
 
