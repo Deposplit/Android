@@ -1,6 +1,6 @@
 # Deposplit — Android
 
-Kotlin Android app for [Deposplit](https://github.com/Deposplit/deposplit.com): a secret-sharing app built on Shamir's Secret Sharing (SSS) and Matrix. Secrets are split into *n* shares and distributed to contacts via Matrix; reconstruction requires at least *k* holders to cooperate.
+Kotlin Android app for [Deposplit](https://github.com/Deposplit/deposplit.com): a secret-sharing app built on Shamir's Secret Sharing (SSS). Secrets are split into *n* shares and distributed to contacts via the deposplit.com backend; reconstruction requires at least *k* holders to cooperate.
 
 This document is written for a developer who knows Kotlin well but has limited Android experience.
 
@@ -11,7 +11,7 @@ This document is written for a developer who knows Kotlin well but has limited A
 1. [Android concepts you need](#android-concepts-you-need)
 2. [Project structure](#project-structure)
 3. [Architecture](#architecture)
-4. [The sign-in flow](#the-sign-in-flow)
+4. [The registration flow](#the-registration-flow)
 5. [Building and running](#building-and-running)
 6. [What is next](#what-is-next)
 
@@ -128,24 +128,24 @@ Gradle version catalogs centralise dependency coordinates and versions. Instead 
 Deposplit follows **Ports & Adapters (Hexagonal Architecture)** for the domain and infrastructure layers. The UI layer uses standard Android MVVM.
 
 ```
-┌─────────────────────────────────────────────────┐
-│  UI Layer (Compose)                             │
-│  SignInScreen ──► SignInViewModel               │
-└──────────────────────┬──────────────────────────┘
-                       │ calls port interface
-┌──────────────────────▼──────────────────────────┐
-│  Domain (Port)                                  │
-│  AuthPort  ◄──── MatrixAuthAdapter (Adapter)    │
-└──────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│  UI Layer (Compose)                                  │
+│  SignInScreen ──► SignInViewModel                    │
+└─────────────────────────┬────────────────────────────┘
+                          │ calls port interface
+┌─────────────────────────▼────────────────────────────┐
+│  Domain (Port)                                       │
+│  AuthPort  ◄──── DeposplitAuthAdapter (Adapter)      │
+└──────────────────────────────────────────────────────┘
 ```
 
-**Port (`AuthPort`)** — a Kotlin interface defined by the domain. It expresses what the app needs ("discover the login flow for this homeserver", "complete an OIDC login") without knowing anything about Matrix SDKs.
+**Port (`AuthPort`)** — a Kotlin interface defined by the domain. It expresses what the app needs ("register with a pseudonym") without knowing anything about keypair generation or key storage.
 
-**Adapter (`MatrixAuthAdapter`)** — implements the port using a specific technology (here, `matrix-rust-sdk`). Swapping the Matrix SDK only requires changing this class.
+**Adapter (`DeposplitAuthAdapter`)** — implements the port using libsodium keypair generation and the Android Keystore. Changing the storage strategy only requires changing this class.
 
-**ViewModel (`SignInViewModel`)** — sits at the UI/domain boundary. It calls the port, holds `UiState`, and emits one-shot `Effect`s (open browser, navigate). It does not know anything about Compose.
+**ViewModel (`SignInViewModel`)** — sits at the UI/domain boundary. It calls the port, holds `UiState`, and emits one-shot `Effect`s (navigate). It does not know anything about Compose.
 
-**Application (`DeposplitApp`)** — creates the adapter and holds a `SharedFlow` that relays OIDC callbacks from `MainActivity` to whichever ViewModel is currently listening.
+**Application (`DeposplitApp`)** — creates the adapter and exposes it to ViewModels.
 
 > **Current simplification:** everything lives in a single `:app` Gradle module. The architecture calls for the hexagon to move to a separate pure Kotlin module (`:hexagon`) once there is enough logic to justify it.
 
@@ -158,21 +158,19 @@ Deposplit does not use OIDC, passwords, or email. Registration is keypair-first.
 ```
 1. User enters a pseudonym (display name only — no personal information required)
         │
-2. App generates an X25519 keypair via libsodium
-        │  → Private key stored in Android Keystore (never leaves the device)
-        │  → Public key held in memory for registration
+2. App generates an Ed25519 keypair (API auth) and an X25519 keypair (share encryption)
+        │  → Both private keys stored in Android Keystore (never leave the device)
+        │  → Pseudonym stored in SharedPreferences (local only, never sent to the backend)
         │
 3. App calls AuthPort.register(pseudonym)
-        │  → DeposplitAuthAdapter sends pseudonym + public key to deposplit.com
-        │  → Backend stores the pseudonym/public key mapping
+        │  → DeposplitAuthAdapter persists the "is registered" flag
+        │  → No server call — the keypair IS the identity; no registration endpoint exists
         │
-4. Adapter persists the "is registered" flag via SharedPreferences
-        │
-5. ViewModel emits Effect.NavigateToHome
+4. ViewModel emits Effect.NavigateToHome
         │  → NavController pops sign-in, pushes home
 ```
 
-Identity *is* the keypair. If Alice loses her device, she generates a new keypair on a new device and initiates a k-of-n social recovery request that her existing contacts approve.
+Identity *is* the keypair pair. If Alice loses her device, she generates new keypairs on a new device and initiates a k-of-n social recovery request that her existing contacts approve.
 
 > **Note:** `MatrixAuthAdapter.kt` (the previous OIDC-based adapter) is present in the codebase but obsolete. It will be deleted once `DeposplitAuthAdapter` is complete. Do not extend or fix it.
 
@@ -188,14 +186,7 @@ Identity *is* the keypair. If Alice loses her device, she generates a new keypai
 
 ### Emulator vs real device
 
-The emulator is sufficient for developing and testing the sign-in flow, with one requirement: use an AVD that includes **Google Play** (look for the Play Store icon next to the device name in AVD Manager). Google Play AVDs ship with Chrome, which is required for Chrome Custom Tabs. Plain AOSP images (no Play Store icon) don't have Chrome pre-installed and the Custom Tab won't open.
-
-With a Google Play AVD:
-- The emulator routes internet traffic through your host machine's network, so it can reach matrix.org and other homeservers normally
-- Chrome Custom Tabs open the homeserver's OIDC login page as expected
-- The App Link redirect (`https://www.squeng.com/deposplit/auth/callback`) is routed back to the app once App Links verification completes (the AVD must be able to reach squeng.com at install time)
-
-The only cosmetic difference: Chrome may prompt you to sign in to a Google account the first time it opens — you can skip that.
+Any AVD running API 29+ is sufficient. The registration flow is purely local (keypair generation + SharedPreferences) — no browser, no network call, no Google Play requirement.
 
 ### Common commands
 
@@ -219,7 +210,7 @@ The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`. Install
 
 ### First run
 
-On first launch the app shows the sign-in screen. Enter `matrix.org` (or your own homeserver URL, or your full Matrix ID like `@alice:matrix.org`). Tapping **Continue** opens a Chrome Custom Tab to the homeserver's login page. After logging in, the browser redirects back to the app and you land on the (currently placeholder) home screen.
+On first launch the app shows the sign-in screen. Enter a pseudonym (display name only — stored locally, never sent to the backend). Tapping **Register** generates Ed25519 and X25519 keypairs, stores the private keys in the Android Keystore, and navigates to the (currently placeholder) home screen.
 
 ---
 
@@ -231,6 +222,6 @@ In rough priority order:
 2. **Home screen** — list of secrets the user has distributed; list of shares held for others
 3. **Backend protocol message types** — implement the four messages (deposit, list, retrieve, delete)
 4. **Shamir integration** — wire `Shamir.split()` / `Shamir.combine()` into the secret distribution flow
-5. **Contact management** — add/list contacts backed by the deposplit.com contacts API
+5. **Contact management** — local contact list with QR-scan/share-link onboarding and contact verification UI
 6. **Hexagon module extraction** — split `:app` into a pure Kotlin `:hexagon` module and an `:app` module that depends on it
 7. **Biometric unlock** — gate secret reconstruction behind `BiometricPrompt`
