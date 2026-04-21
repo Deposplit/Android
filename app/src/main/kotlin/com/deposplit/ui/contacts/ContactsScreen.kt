@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -42,7 +43,7 @@ import com.deposplit.contacts.VerificationLevel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ContactsScreen(onNavigateToAddContact: () -> Unit) {
+fun ContactsScreen(onNavigateToAddContact: () -> Unit, onNavigateToScanQr: () -> Unit) {
     val app = LocalContext.current.applicationContext as DeposplitApp
     val viewModel: ContactsViewModel = viewModel(
         factory = viewModelFactory {
@@ -53,7 +54,14 @@ fun ContactsScreen(onNavigateToAddContact: () -> Unit) {
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Contacts") })
+            TopAppBar(
+                title = { Text("Contacts") },
+                actions = {
+                    IconButton(onClick = onNavigateToScanQr) {
+                        Icon(Icons.Default.QrCodeScanner, contentDescription = "Scan QR code")
+                    }
+                },
+            )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onNavigateToAddContact) {

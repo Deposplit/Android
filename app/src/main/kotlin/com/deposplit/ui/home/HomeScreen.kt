@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -56,6 +57,7 @@ fun HomeScreen(
     onNavigateToContacts: () -> Unit,
     onNavigateToDeposit: () -> Unit,
     onNavigateToShareDetail: (UUID) -> Unit,
+    onNavigateToQrDisplay: () -> Unit,
 ) {
     val app = LocalContext.current.applicationContext as DeposplitApp
     val viewModel: HomeViewModel = viewModel(
@@ -77,6 +79,9 @@ fun HomeScreen(
             TopAppBar(
                 title = { Text("Deposplit") },
                 actions = {
+                    IconButton(onClick = onNavigateToQrDisplay) {
+                        Icon(Icons.Default.QrCode, contentDescription = "My QR code")
+                    }
                     IconButton(onClick = onNavigateToContacts) {
                         Icon(Icons.Default.Person, contentDescription = "Contacts")
                     }

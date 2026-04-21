@@ -1,0 +1,51 @@
+package com.deposplit.ui.qr
+
+import android.graphics.Bitmap
+import android.graphics.Color
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.deposplit.auth.AuthPort
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+
+class QrDisplayViewModel(private val auth: AuthPort) : ViewModel() {
+
+    data class UiState(
+        val bitmap: Bitmap? = null,
+        val error: String? = null,
+    )
+
+    private val _uiState = MutableStateFlow(UiState())
+    val uiState: StateFlow<UiState> = _uiState.asStateFlow()
+
+    init {
+        generate()
+    }
+
+    private fun generate() {
+        viewModelScope.launch(Dispatchers.Default) {
+            runCatching {
+                val payload = encodeQrPayload(auth.pseudonym(), auth.edPublicKey(), auth.xPublicKey())
+                val bitMatrix = QRCodeWriter().encode(payload, BarcodeFormat.QR_CODE, 512, 512)
+                val w = bitMatrix.width
+                val h = bitMatrix.height
+                val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+                for (x in 0 until w) {
+                    for (y in 0 until h) {
+                        bitmap.setPixel(x, y, if (bitMatrix[x, y]) Color.BLACK else Color.WHITE)
+                    }
+                }
+                bitmap
+            }.onSuccess { bitmap ->
+                _uiState.value = UiState(bitmap = bitmap)
+            }.onFailure { e ->
+                _uiState.value = UiState(error = e.message ?: "Failed to generate QR code")
+            }
+        }
+    }
+}

@@ -61,6 +61,12 @@ com.deposplit/
     ├── sharedetail/
     │   ├── ShareDetailViewModel.kt Loads share + all SENDER requests; opens RETRIEVE/DELETE requests; reconstructs secret via Shamir.combine + auth.decrypt
     │   └── ShareDetailScreen.kt    Recipient info, request state per type, Reconstruct button + secret display
+    ├── qr/
+    │   ├── QrPayload.kt              JSON encode/decode; payload {"v":1,"pseudonym":"...","ed":"...","x":"..."}
+    │   ├── QrDisplayViewModel.kt     Generates QR bitmap via ZXing QRCodeWriter (Dispatchers.Default)
+    │   ├── QrDisplayScreen.kt        Shows own QR code; QR icon in HomeScreen TopAppBar
+    │   ├── QrScanViewModel.kt        AtomicBoolean deduplication; parses payload; saves VERIFIED contact
+    │   └── QrScanScreen.kt           CameraX PreviewView + ZXing PlanarYUVLuminanceSource per YUV frame; CAMERA permission handling
     └── theme/                   Material 3 colour, type, and theme definitions
 ```
 

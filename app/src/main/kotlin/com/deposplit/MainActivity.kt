@@ -11,6 +11,8 @@ import com.deposplit.ui.contacts.AddContactScreen
 import com.deposplit.ui.contacts.ContactsScreen
 import com.deposplit.ui.deposit.DepositScreen
 import com.deposplit.ui.home.HomeScreen
+import com.deposplit.ui.qr.QrDisplayScreen
+import com.deposplit.ui.qr.QrScanScreen
 import com.deposplit.ui.sharedetail.ShareDetailScreen
 import com.deposplit.ui.signin.SignInScreen
 import com.deposplit.ui.theme.DeposplitTheme
@@ -22,6 +24,8 @@ private const val ROUTE_CONTACTS = "contacts"
 private const val ROUTE_ADD_CONTACT = "add_contact"
 private const val ROUTE_DEPOSIT = "deposit"
 private const val ROUTE_SHARE_DETAIL = "share_detail/{shareId}"
+private const val ROUTE_QR_DISPLAY = "qr_display"
+private const val ROUTE_QR_SCAN = "qr_scan"
 
 class MainActivity : ComponentActivity() {
 
@@ -52,6 +56,7 @@ class MainActivity : ComponentActivity() {
                             onNavigateToShareDetail = { shareId ->
                                 navController.navigate("share_detail/$shareId")
                             },
+                            onNavigateToQrDisplay = { navController.navigate(ROUTE_QR_DISPLAY) },
                         )
                     }
                     composable(ROUTE_DEPOSIT) {
@@ -59,13 +64,20 @@ class MainActivity : ComponentActivity() {
                     }
                     composable(ROUTE_CONTACTS) {
                         ContactsScreen(
-                            onNavigateToAddContact = { navController.navigate(ROUTE_ADD_CONTACT) }
+                            onNavigateToAddContact = { navController.navigate(ROUTE_ADD_CONTACT) },
+                            onNavigateToScanQr = { navController.navigate(ROUTE_QR_SCAN) },
                         )
                     }
                     composable(ROUTE_ADD_CONTACT) {
                         AddContactScreen(
                             onNavigateBack = { navController.popBackStack() }
                         )
+                    }
+                    composable(ROUTE_QR_DISPLAY) {
+                        QrDisplayScreen(onNavigateBack = { navController.popBackStack() })
+                    }
+                    composable(ROUTE_QR_SCAN) {
+                        QrScanScreen(onNavigateBack = { navController.popBackStack() })
                     }
                     composable(ROUTE_SHARE_DETAIL) { backStackEntry ->
                         val shareId = UUID.fromString(
