@@ -29,18 +29,32 @@ All packages currently live under `com.deposplit` inside `app/src/main/kotlin/`.
 
 ```
 com.deposplit/
-├── DeposplitApp.kt              Application subclass; owns the auth adapter
-├── MainActivity.kt              Single activity; NavHost root
+├── DeposplitApp.kt              Application subclass; owns authAdapter + shareTransport + contactRepository
+├── MainActivity.kt              Single activity; NavHost root (sign_in / home / contacts / add_contact)
 ├── auth/
-│   ├── AuthPort.kt              Domain port interface + RegistrationFlow sealed type
-│   ├── MatrixAuthAdapter.kt     OBSOLETE — being replaced by DeposplitAuthAdapter
-│   ├── DeposplitAuthAdapter.kt  Infrastructure adapter (deposplit.com API + libsodium keypair)
+│   ├── AuthPort.kt              Domain port interface (isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign)
+│   ├── DeposplitAuthAdapter.kt  Infrastructure adapter: libsodium keypair generation, Android Keystore AES-GCM wrapping
 │   └── SignInViewModel.kt       UI logic for the registration flow
+├── api/
+│   ├── ShareTransport.kt        Port interface + domain model (ShareMetadata, ShareRequest, enums)
+│   └── DeposplitApiAdapter.kt   HTTP adapter: HttpURLConnection, Ed25519 request signing, JSON via kotlinx.serialization
+├── contacts/
+│   ├── Contact.kt               Domain model (Contact, VerificationLevel) + ContactRepository port interface
+│   └── LocalContactRepository.kt  JSON file in filesDir; @Synchronized; kotlinx.serialization wire types
 └── ui/
     ├── signin/
     │   └── SignInScreen.kt      Compose screen — pseudonym input + Register button
     ├── home/
-    │   └── HomeScreen.kt        Placeholder post-registration screen
+    │   ├── HomeViewModel.kt     Loads distributed + held shares via ShareTransport
+    │   └── HomeScreen.kt        Two-tab screen (Distributed / Held) with contacts icon in TopAppBar
+    ├── contacts/
+    │   ├── ContactsViewModel.kt Load + delete contacts via ContactRepository
+    │   ├── ContactsScreen.kt    List with FAB (add) and delete per item; loading/empty/error states
+    │   ├── AddContactViewModel.kt Pseudonym + two base64url key fields, validation, save
+    │   └── AddContactScreen.kt  Manual-entry form for adding a contact
+    ├── deposit/
+    │   ├── DepositViewModel.kt  Label/secret/contact-selection/threshold; calls Shamir.split + auth.encrypt + transport.depositShare
+    │   └── DepositScreen.kt     Label + secret fields, contact checkboxes, threshold stepper, Split & Share button
     └── theme/                   Material 3 colour, type, and theme definitions
 ```
 
@@ -63,4 +77,4 @@ Deploying to a device or emulator requires Android Studio (or `adb install`).
 - Registration is keypair-first (libsodium X25519) — no OIDC, no password, no email. See `deposplit.com/CLAUDE.md` for rationale.
 - The X25519 private key is stored in the Android Keystore and never handled as raw key material by app code.
 - Session persistence uses plain `SharedPreferences` (just an "is registered" flag). Do not add `EncryptedSharedPreferences` without a concrete reason; `security-crypto` is not a dependency.
-- `MatrixAuthAdapter.kt` is obsolete and will be deleted once `DeposplitAuthAdapter` is complete. Do not extend or fix it.
+- Private keys are wrapped by an AES-256-GCM master key in the Android Keystore (`deposplit_master` alias); only the ciphertext and IV are stored in `SharedPreferences`.

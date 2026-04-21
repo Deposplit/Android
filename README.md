@@ -76,7 +76,7 @@ Navigation between screens is handled by `NavHost` in `MainActivity`. Each scree
 - Each `Activity`, its launch mode, and any intent filters
 - Permissions the app requires (e.g., `INTERNET`)
 
-Deposplit's manifest registers an **Android App Link** intent filter (`android:autoVerify="true"`, `https://` scheme) — the URI the OIDC browser flow redirects to after login. The current URI is `https://www.squeng.com/deposplit/auth/callback` (a temporary stand-in); the production URI will be `https://deposplit.com/auth/callback`.
+Deposplit's manifest currently has only the launcher intent filter. Deep-link intent filters will be added when the app needs to handle incoming URIs (e.g., share links for key exchange).
 
 ---
 
@@ -92,16 +92,30 @@ Android/
 │   │   │   │   ├── MainActivity.kt          Single activity; NavHost root
 │   │   │   │   ├── auth/
 │   │   │   │   │   ├── AuthPort.kt              Domain port interface
-│   │   │   │   │   ├── MatrixAuthAdapter.kt     OBSOLETE — being replaced
-│   │   │   │   │   ├── DeposplitAuthAdapter.kt  deposplit.com API + libsodium keypair
+│   │   │   │   │   ├── DeposplitAuthAdapter.kt  libsodium keypair generation + Android Keystore
 │   │   │   │   │   └── SignInViewModel.kt       Registration UI logic
+│   │   │   │   ├── api/
+│   │   │   │   │   ├── ShareTransport.kt        Port interface + domain model
+│   │   │   │   │   └── DeposplitApiAdapter.kt   HTTP adapter — all 7 API operations + request signing
+│   │   │   │   ├── contacts/
+│   │   │   │   │   ├── Contact.kt               Domain model + ContactRepository port interface
+│   │   │   │   │   └── LocalContactRepository.kt JSON file in filesDir
 │   │   │   │   ├── shamir/
 │   │   │   │   │   └── Shamir.kt            SSS library (split / combine)
 │   │   │   │   └── ui/
 │   │   │   │       ├── signin/
 │   │   │   │       │   └── SignInScreen.kt  Sign-in composable
 │   │   │   │       ├── home/
-│   │   │   │       │   └── HomeScreen.kt    Placeholder post-login screen
+│   │   │   │       │   ├── HomeViewModel.kt Loads distributed + held shares via ShareTransport
+│   │   │   │       │   └── HomeScreen.kt    Two-tab screen (Distributed / Held)
+│   │   │   │       ├── contacts/
+│   │   │   │       │   ├── ContactsViewModel.kt Load + delete contacts
+│   │   │   │       │   ├── ContactsScreen.kt    List with FAB + delete
+│   │   │   │       │   ├── AddContactViewModel.kt Validation + save
+│   │   │   │       │   └── AddContactScreen.kt  Manual key-entry form
+│   │   │   │       ├── deposit/
+│   │   │   │       │   ├── DepositViewModel.kt  Shamir.split + encrypt + depositShare
+│   │   │   │       │   └── DepositScreen.kt     Label/secret/contacts/threshold form
 │   │   │   │       └── theme/               Material 3 colour/type/theme
 │   │   │   ├── res/                         App icons, string resources
 │   │   │   └── AndroidManifest.xml
@@ -172,8 +186,6 @@ Deposplit does not use OIDC, passwords, or email. Registration is keypair-first.
 
 Identity *is* the keypair pair. If Alice loses her device, she generates new keypairs on a new device and initiates a k-of-n social recovery request that her existing contacts approve.
 
-> **Note:** `MatrixAuthAdapter.kt` (the previous OIDC-based adapter) is present in the codebase but obsolete. It will be deleted once `DeposplitAuthAdapter` is complete. Do not extend or fix it.
-
 ---
 
 ## Building and running
@@ -218,10 +230,7 @@ On first launch the app shows the sign-in screen. Enter a pseudonym (display nam
 
 In rough priority order:
 
-1. **Replace auth layer** — implement `DeposplitAuthAdapter` (libsodium keypair generation + pseudonym registration against deposplit.com API); remove `matrix-rust-sdk` dependency
-2. **Home screen** — list of secrets the user has distributed; list of shares held for others
-3. **Backend protocol message types** — implement the four messages (deposit, list, retrieve, delete)
-4. **Shamir integration** — wire `Shamir.split()` / `Shamir.combine()` into the secret distribution flow
-5. **Contact management** — local contact list with QR-scan/share-link onboarding and contact verification UI
-6. **Hexagon module extraction** — split `:app` into a pure Kotlin `:hexagon` module and an `:app` module that depends on it
-7. **Biometric unlock** — gate secret reconstruction behind `BiometricPrompt`
+1. **Retrieve / delete consent flows** — `listShareRequests`, `respondToShareRequest`, `openShareRequest`
+2. **QR contact onboarding** — scan a contact's QR code to exchange Ed25519 + X25519 public keys in person
+3. **Hexagon module extraction** — split `:app` into a pure Kotlin `:hexagon` module and an `:app` module that depends on it
+4. **Biometric unlock** — gate secret reconstruction behind `BiometricPrompt`

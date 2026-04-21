@@ -1,25 +1,25 @@
 package com.deposplit
 
 import android.app.Application
-import com.deposplit.auth.MatrixAuthAdapter
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
+import com.deposplit.api.DeposplitApiAdapter
+import com.deposplit.auth.DeposplitAuthAdapter
+import com.deposplit.contacts.LocalContactRepository
 
 class DeposplitApp : Application() {
 
-    lateinit var authAdapter: MatrixAuthAdapter
+    lateinit var authAdapter: DeposplitAuthAdapter
         private set
 
-    private val _oidcCallbackFlow = MutableSharedFlow<String>(extraBufferCapacity = 1)
-    val oidcCallbackFlow: SharedFlow<String> = _oidcCallbackFlow.asSharedFlow()
+    lateinit var shareTransport: DeposplitApiAdapter
+        private set
+
+    lateinit var contactRepository: LocalContactRepository
+        private set
 
     override fun onCreate() {
         super.onCreate()
-        authAdapter = MatrixAuthAdapter(this)
-    }
-
-    fun onOidcCallback(callbackUrl: String) {
-        _oidcCallbackFlow.tryEmit(callbackUrl)
+        authAdapter = DeposplitAuthAdapter(this)
+        shareTransport = DeposplitApiAdapter(authAdapter)
+        contactRepository = LocalContactRepository(this)
     }
 }
