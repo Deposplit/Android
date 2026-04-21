@@ -11,14 +11,17 @@ import com.deposplit.ui.contacts.AddContactScreen
 import com.deposplit.ui.contacts.ContactsScreen
 import com.deposplit.ui.deposit.DepositScreen
 import com.deposplit.ui.home.HomeScreen
+import com.deposplit.ui.sharedetail.ShareDetailScreen
 import com.deposplit.ui.signin.SignInScreen
 import com.deposplit.ui.theme.DeposplitTheme
+import java.util.UUID
 
 private const val ROUTE_SIGN_IN = "sign_in"
 private const val ROUTE_HOME = "home"
 private const val ROUTE_CONTACTS = "contacts"
 private const val ROUTE_ADD_CONTACT = "add_contact"
 private const val ROUTE_DEPOSIT = "deposit"
+private const val ROUTE_SHARE_DETAIL = "share_detail/{shareId}"
 
 class MainActivity : ComponentActivity() {
 
@@ -46,6 +49,9 @@ class MainActivity : ComponentActivity() {
                         HomeScreen(
                             onNavigateToContacts = { navController.navigate(ROUTE_CONTACTS) },
                             onNavigateToDeposit = { navController.navigate(ROUTE_DEPOSIT) },
+                            onNavigateToShareDetail = { shareId ->
+                                navController.navigate("share_detail/$shareId")
+                            },
                         )
                     }
                     composable(ROUTE_DEPOSIT) {
@@ -59,6 +65,15 @@ class MainActivity : ComponentActivity() {
                     composable(ROUTE_ADD_CONTACT) {
                         AddContactScreen(
                             onNavigateBack = { navController.popBackStack() }
+                        )
+                    }
+                    composable(ROUTE_SHARE_DETAIL) { backStackEntry ->
+                        val shareId = UUID.fromString(
+                            backStackEntry.arguments?.getString("shareId")
+                        )
+                        ShareDetailScreen(
+                            shareId = shareId,
+                            onNavigateBack = { navController.popBackStack() },
                         )
                     }
                 }

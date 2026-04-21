@@ -55,6 +55,12 @@ com.deposplit/
     ├── deposit/
     │   ├── DepositViewModel.kt  Label/secret/contact-selection/threshold; calls Shamir.split + auth.encrypt + transport.depositShare
     │   └── DepositScreen.kt     Label + secret fields, contact checkboxes, threshold stepper, Split & Share button
+    ├── requests/
+    │   ├── RequestsViewModel.kt Loads pending RECIPIENT requests + contacts; handles approve/deny via respondToShareRequest
+    │   └── RecipientRequestsTab.kt Per-request card with type badge, sender name, Deny/Approve buttons
+    ├── sharedetail/
+    │   ├── ShareDetailViewModel.kt Loads share + all SENDER requests; opens RETRIEVE/DELETE requests; reconstructs secret via Shamir.combine + auth.decrypt
+    │   └── ShareDetailScreen.kt    Recipient info, request state per type, Reconstruct button + secret display
     └── theme/                   Material 3 colour, type, and theme definitions
 ```
 

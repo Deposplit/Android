@@ -68,6 +68,17 @@ class DeposplitAuthAdapter(context: Context) : AuthPort {
         return nonce + ciphertext
     }
 
+    override fun decrypt(noncePlusCiphertext: ByteArray, recipientXPublicKey: ByteArray): ByteArray {
+        val sk = prefs.getDecrypted(loadOrCreateMasterKey(), "x_sk")
+        val nonce = noncePlusCiphertext.copyOfRange(0, Box.NONCEBYTES)
+        val ciphertext = noncePlusCiphertext.copyOfRange(Box.NONCEBYTES, noncePlusCiphertext.size)
+        val plaintext = ByteArray(ciphertext.size - Box.MACBYTES)
+        check((sodium as Box.Native).cryptoBoxOpenEasy(plaintext, ciphertext, ciphertext.size.toLong(), nonce, recipientXPublicKey, sk)) {
+            "Decryption failed"
+        }
+        return plaintext
+    }
+
     private fun requirePref(key: String): String =
         prefs.getString(key, null) ?: error("Not registered — '$key' missing")
 

@@ -15,11 +15,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -43,20 +43,33 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.deposplit.DeposplitApp
 import com.deposplit.api.ShareMetadata
+import com.deposplit.ui.requests.RecipientRequestsTab
+import java.util.UUID
+import com.deposplit.ui.requests.RequestsViewModel
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(onNavigateToContacts: () -> Unit, onNavigateToDeposit: () -> Unit) {
+fun HomeScreen(
+    onNavigateToContacts: () -> Unit,
+    onNavigateToDeposit: () -> Unit,
+    onNavigateToShareDetail: (UUID) -> Unit,
+) {
     val app = LocalContext.current.applicationContext as DeposplitApp
     val viewModel: HomeViewModel = viewModel(
         factory = viewModelFactory {
             initializer { HomeViewModel(app.shareTransport) }
         }
     )
+    val requestsViewModel: RequestsViewModel = viewModel(
+        factory = viewModelFactory {
+            initializer { RequestsViewModel(app.shareTransport, app.contactRepository) }
+        }
+    )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val requestsUiState by requestsViewModel.uiState.collectAsStateWithLifecycle()
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
     Scaffold(
@@ -67,7 +80,9 @@ fun HomeScreen(onNavigateToContacts: () -> Unit, onNavigateToDeposit: () -> Unit
                     IconButton(onClick = onNavigateToContacts) {
                         Icon(Icons.Default.Person, contentDescription = "Contacts")
                     }
-                    IconButton(onClick = viewModel::load) {
+                    IconButton(onClick = {
+                        if (selectedTab == 2) requestsViewModel.load() else viewModel.load()
+                    }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }
                 },
@@ -95,49 +110,67 @@ fun HomeScreen(onNavigateToContacts: () -> Unit, onNavigateToDeposit: () -> Unit
                     onClick = { selectedTab = 1 },
                     text = { Text("Held") },
                 )
+                Tab(
+                    selected = selectedTab == 2,
+                    onClick = { selectedTab = 2 },
+                    text = { Text("Requests") },
+                )
             }
 
-            when {
-                uiState.isLoading -> Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) { CircularProgressIndicator() }
+            if (selectedTab == 2) {
+                RecipientRequestsTab(
+                    uiState = requestsUiState,
+                    onRetry = requestsViewModel::load,
+                    onRespond = requestsViewModel::respond,
+                )
+            } else {
+                when {
+                    uiState.isLoading -> Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) { CircularProgressIndicator() }
 
-                uiState.error != null -> Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = uiState.error!!,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        Button(onClick = viewModel::load) { Text("Retry") }
-                    }
-                }
-
-                else -> {
-                    val shares = if (selectedTab == 0) uiState.distributedShares else uiState.heldShares
-                    if (shares.isEmpty()) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center,
-                        ) {
+                    uiState.error != null -> Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = if (selectedTab == 0) "No secrets distributed yet" else "No shares held",
+                                text = uiState.error!!,
+                                color = MaterialTheme.colorScheme.error,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+                            Spacer(Modifier.height(12.dp))
+                            Button(onClick = viewModel::load) { Text("Retry") }
                         }
-                    } else {
-                        LazyColumn(
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            items(shares, key = { it.id }) { share ->
-                                ShareItem(share)
+                    }
+
+                    else -> {
+                        val shares = if (selectedTab == 0) uiState.distributedShares else uiState.heldShares
+                        if (shares.isEmpty()) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = if (selectedTab == 0) "No secrets distributed yet" else "No shares held",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        } else {
+                            LazyColumn(
+                                contentPadding = PaddingValues(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                items(shares, key = { it.id }) { share ->
+                                    ShareItem(
+                                        share = share,
+                                        onClick = if (selectedTab == 0) {
+                                            { onNavigateToShareDetail(share.id) }
+                                        } else null,
+                                    )
+                                }
                             }
                         }
                     }
@@ -148,8 +181,8 @@ fun HomeScreen(onNavigateToContacts: () -> Unit, onNavigateToDeposit: () -> Unit
 }
 
 @Composable
-private fun ShareItem(share: ShareMetadata) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+private fun ShareItem(share: ShareMetadata, onClick: (() -> Unit)? = null) {
+    Card(modifier = Modifier.fillMaxWidth(), onClick = onClick ?: {}, enabled = onClick != null) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(share.label, style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(4.dp))

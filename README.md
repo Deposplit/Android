@@ -116,6 +116,12 @@ Android/
 │   │   │   │       ├── deposit/
 │   │   │   │       │   ├── DepositViewModel.kt  Shamir.split + encrypt + depositShare
 │   │   │   │       │   └── DepositScreen.kt     Label/secret/contacts/threshold form
+│   │   │   │       ├── requests/
+│   │   │   │       │   ├── RequestsViewModel.kt Pending requests + approve/deny
+│   │   │   │       │   └── RecipientRequestsTab.kt Requests tab content
+│   │   │   │       ├── sharedetail/
+│   │   │   │       │   ├── ShareDetailViewModel.kt Open requests + reconstruct
+│   │   │   │       │   └── ShareDetailScreen.kt    Share detail + secret display
 │   │   │   │       └── theme/               Material 3 colour/type/theme
 │   │   │   ├── res/                         App icons, string resources
 │   │   │   └── AndroidManifest.xml
@@ -230,7 +236,8 @@ On first launch the app shows the sign-in screen. Enter a pseudonym (display nam
 
 In rough priority order:
 
-1. **Retrieve / delete consent flows** — `listShareRequests`, `respondToShareRequest`, `openShareRequest`
-2. **QR contact onboarding** — scan a contact's QR code to exchange Ed25519 + X25519 public keys in person
+1. **QR contact onboarding** — scan a contact's QR code to exchange Ed25519 + X25519 public keys in person
+2. **Hexagon module extraction** — split `:app` into a pure Kotlin `:hexagon` module and an `:app` module that depends on it
+3. **Biometric unlock** — gate secret reconstruction behind `BiometricPrompt`
 3. **Hexagon module extraction** — split `:app` into a pure Kotlin `:hexagon` module and an `:app` module that depends on it
 4. **Biometric unlock** — gate secret reconstruction behind `BiometricPrompt`

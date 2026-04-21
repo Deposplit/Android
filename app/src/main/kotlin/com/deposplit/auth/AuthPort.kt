@@ -9,4 +9,7 @@ interface AuthPort {
     fun sign(message: ByteArray): ByteArray
     /** Encrypts [plaintext] to [recipientXPublicKey] using crypto_box_easy. Returns nonce || ciphertext. */
     fun encrypt(plaintext: ByteArray, recipientXPublicKey: ByteArray): ByteArray
+
+    /** Decrypts [noncePlusCiphertext] (nonce || ciphertext) from [recipientXPublicKey] using crypto_box_open_easy. */
+    fun decrypt(noncePlusCiphertext: ByteArray, recipientXPublicKey: ByteArray): ByteArray
 }
