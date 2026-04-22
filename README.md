@@ -82,58 +82,56 @@ Deposplit's manifest currently has only the launcher intent filter. Deep-link in
 
 ## Project structure
 
+The project has two Gradle modules, enforcing the Ports & Adapters boundary at the build level:
+
+| Module | Role | Plugins |
+|---|---|---|
+| `:hexagon` | Pure Kotlin/JVM — domain model, value types, ports, framework-free tests. No Android or infrastructure imports. | `org.jetbrains.kotlin.jvm` |
+| `:app` | Android application — adapters (HTTP, Android Keystore, local JSON) + UI (Compose + navigation). Depends on `:hexagon`. | AGP (registers `kotlin` itself) + `kotlin.plugin.compose` + `kotlin.plugin.serialization` |
+
+`:hexagon` must not depend on `:app`, AGP, or any Android library. This mirrors the sbt `hexagon` subproject / root Play app split in `deposplit.com`.
+
 ```
 Android/
+├── hexagon/
+│   ├── src/
+│   │   ├── main/kotlin/com/deposplit/
+│   │   │   ├── shamir/
+│   │   │   │   └── Shamir.kt            SSS library (split / combine)
+│   │   │   ├── auth/
+│   │   │   │   └── AuthPort.kt          Port: isRegistered, register, pseudonym, keys, sign, encrypt, decrypt
+│   │   │   ├── api/
+│   │   │   │   └── ShareTransport.kt    Port + value types (Role, ShareRequest{Type,State}, ShareMetadata, ShareRequest)
+│   │   │   └── contacts/
+│   │   │       └── Contact.kt           Contact + VerificationLevel + ContactRepository port
+│   │   └── test/kotlin/com/deposplit/shamir/
+│   │       └── ShamirTest.kt            SSS unit tests
+│   └── build.gradle.kts
 ├── app/
 │   ├── src/
 │   │   ├── main/
 │   │   │   ├── kotlin/com/deposplit/
 │   │   │   │   ├── DeposplitApp.kt          Application subclass
-│   │   │   │   ├── MainActivity.kt          Single activity; NavHost root
+│   │   │   │   ├── MainActivity.kt          Single FragmentActivity; NavHost root
 │   │   │   │   ├── auth/
-│   │   │   │   │   ├── AuthPort.kt              Domain port interface
 │   │   │   │   │   ├── DeposplitAuthAdapter.kt  libsodium keypair generation + Android Keystore
 │   │   │   │   │   └── SignInViewModel.kt       Registration UI logic
 │   │   │   │   ├── api/
-│   │   │   │   │   ├── ShareTransport.kt        Port interface + domain model
 │   │   │   │   │   └── DeposplitApiAdapter.kt   HTTP adapter — all 7 API operations + request signing
 │   │   │   │   ├── contacts/
-│   │   │   │   │   ├── Contact.kt               Domain model + ContactRepository port interface
 │   │   │   │   │   └── LocalContactRepository.kt JSON file in filesDir
-│   │   │   │   ├── shamir/
-│   │   │   │   │   └── Shamir.kt            SSS library (split / combine)
 │   │   │   │   └── ui/
-│   │   │   │       ├── signin/
-│   │   │   │       │   └── SignInScreen.kt  Sign-in composable
-│   │   │   │       ├── home/
-│   │   │   │       │   ├── HomeViewModel.kt Loads distributed + held shares via ShareTransport
-│   │   │   │       │   └── HomeScreen.kt    Two-tab screen (Distributed / Held)
-│   │   │   │       ├── contacts/
-│   │   │   │       │   ├── ContactsViewModel.kt Load + delete contacts
-│   │   │   │       │   ├── ContactsScreen.kt    List with FAB + delete
-│   │   │   │       │   ├── AddContactViewModel.kt Validation + save
-│   │   │   │       │   └── AddContactScreen.kt  Manual key-entry form
-│   │   │   │       ├── deposit/
-│   │   │   │       │   ├── DepositViewModel.kt  Shamir.split + encrypt + depositShare
-│   │   │   │       │   └── DepositScreen.kt     Label/secret/contacts/threshold form
-│   │   │   │       ├── requests/
-│   │   │   │       │   ├── RequestsViewModel.kt Pending requests + approve/deny
-│   │   │   │       │   └── RecipientRequestsTab.kt Requests tab content
-│   │   │   │       ├── sharedetail/
-│   │   │   │       │   ├── ShareDetailViewModel.kt Open requests + reconstruct
-│   │   │   │       │   └── ShareDetailScreen.kt    Share detail + secret display
-│   │   │   │       ├── qr/
-│   │   │   │       │   ├── QrPayload.kt         QR JSON encode/decode
-│   │   │   │       │   ├── QrDisplayViewModel.kt ZXing bitmap generation
-│   │   │   │       │   ├── QrDisplayScreen.kt   Show own QR code
-│   │   │   │       │   ├── QrScanViewModel.kt   Parse + save VERIFIED contact
-│   │   │   │       │   └── QrScanScreen.kt      CameraX + ZXing scanner
-│   │   │   │       └── theme/               Material 3 colour/type/theme
+│   │   │   │       ├── signin/       SignInScreen
+│   │   │   │       ├── home/         HomeViewModel + HomeScreen (Distributed / Held / Requests tabs)
+│   │   │   │       ├── contacts/     Contacts{ViewModel,Screen}, AddContact{ViewModel,Screen}
+│   │   │   │       ├── deposit/      Deposit{ViewModel,Screen} — split + encrypt + depositShare
+│   │   │   │       ├── requests/     RequestsViewModel + RecipientRequestsTab
+│   │   │   │       ├── sharedetail/  ShareDetail{ViewModel,Screen} — open requests + reconstruct
+│   │   │   │       ├── qr/           QrPayload, QrDisplay{ViewModel,Screen}, QrScan{ViewModel,Screen}
+│   │   │   │       ├── biometric/    BiometricGate — availability probe + suspend authenticate(...)
+│   │   │   │       └── theme/        Material 3 colour/type/theme
 │   │   │   ├── res/                         App icons, string resources
 │   │   │   └── AndroidManifest.xml
-│   │   └── test/
-│   │       └── kotlin/com/deposplit/shamir/
-│   │           └── ShamirTest.kt            SSS unit tests
 │   └── build.gradle.kts
 ├── gradle/
 │   └── libs.versions.toml                   Dependency version catalog
@@ -173,7 +171,7 @@ Deposplit follows **Ports & Adapters (Hexagonal Architecture)** for the domain a
 
 **Application (`DeposplitApp`)** — creates the adapter and exposes it to ViewModels.
 
-> **Current simplification:** everything lives in a single `:app` Gradle module. The architecture calls for the hexagon to move to a separate pure Kotlin module (`:hexagon`) once there is enough logic to justify it.
+The domain hexagon lives in its own pure Kotlin module (`:hexagon`) that `:app` depends on. Gradle enforces the boundary: `:hexagon` has no Android or infrastructure dependencies and cannot accidentally import adapter code.
 
 ---
 
@@ -205,7 +203,7 @@ Identity *is* the keypair pair. If Alice loses her device, she generates new key
 ### Prerequisites
 
 - **Android Studio** (latest stable) — required for the Android emulator and device deployment
-- **JDK 17+** on `JAVA_HOME` (the Gradle wrapper handles the rest)
+- **JDK 21+** on `JAVA_HOME` (the Gradle wrapper handles the rest)
 - An Android device or AVD (Android Virtual Device) running API 29+
 
 ### Emulator vs real device
@@ -223,8 +221,11 @@ Any AVD running API 29+ is sufficient. The registration flow is purely local (ke
 # Run JVM unit tests (no device needed)
 ./gradlew test
 
+# Run only the hexagon (domain) tests
+./gradlew :hexagon:test
+
 # Run a single test class
-./gradlew test --tests "com.deposplit.shamir.ShamirTest"
+./gradlew :hexagon:test --tests "com.deposplit.shamir.ShamirTest"
 
 # Run instrumented tests (requires a connected device or running emulator)
 ./gradlew connectedAndroidTest
@@ -240,7 +241,4 @@ On first launch the app shows the sign-in screen. Enter a pseudonym (display nam
 
 ## What is next
 
-In rough priority order:
-
-1. **Hexagon module extraction** — split `:app` into a pure Kotlin `:hexagon` module and an `:app` module that depends on it
-2. **Biometric unlock** — gate secret reconstruction behind `BiometricPrompt`
+The Android app is feature-complete for v0.1. Next Android-specific work depends on cross-platform priorities — see `deposplit.com/CLAUDE.md` for the current roadmap.

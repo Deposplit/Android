@@ -26,12 +26,16 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -41,6 +45,11 @@ import com.deposplit.api.ShareRequest
 import com.deposplit.api.ShareRequestState
 import com.deposplit.api.ShareRequestType
 import com.deposplit.contacts.Contact
+import com.deposplit.ui.biometric.AuthAvailability
+import com.deposplit.ui.biometric.AuthResult
+import com.deposplit.ui.biometric.authenticate
+import com.deposplit.ui.biometric.biometricAvailability
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -49,7 +58,11 @@ import java.util.UUID
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShareDetailScreen(shareId: UUID, onNavigateBack: () -> Unit) {
-    val app = LocalContext.current.applicationContext as DeposplitApp
+    val context = LocalContext.current
+    val app = context.applicationContext as DeposplitApp
+    val activity = LocalActivity.current as? FragmentActivity
+    val scope = rememberCoroutineScope()
+    val availability = remember(context) { biometricAvailability(context) }
     val viewModel: ShareDetailViewModel = viewModel(
         factory = viewModelFactory {
             initializer {
@@ -164,16 +177,43 @@ fun ShareDetailScreen(shareId: UUID, onNavigateBack: () -> Unit) {
                         }
                     } else {
                         Spacer(Modifier.height(8.dp))
-                        OutlinedButton(
-                            onClick = viewModel::reconstruct,
-                            enabled = !uiState.isReconstructing,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            if (uiState.isReconstructing) CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp,
+                        val unavailableMessage = when (availability) {
+                            AuthAvailability.Available -> null
+                            AuthAvailability.NoneEnrolled ->
+                                "Enrol a biometric (fingerprint or face) in device settings to reconstruct the secret."
+                            AuthAvailability.NoHardware ->
+                                "This device has no biometric sensor — reconstruction is disabled."
+                            is AuthAvailability.Unavailable ->
+                                "Biometric authentication is currently unavailable."
+                        }
+                        if (unavailableMessage != null) {
+                            Text(
+                                text = unavailableMessage,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            else Text("Reconstruct")
+                        } else {
+                            OutlinedButton(
+                                onClick = {
+                                    val act = activity ?: return@OutlinedButton
+                                    scope.launch {
+                                        val result = authenticate(
+                                            activity = act,
+                                            title = "Unlock to reconstruct",
+                                            subtitle = "Confirm it's you before the secret is shown.",
+                                        )
+                                        if (result is AuthResult.Succeeded) viewModel.reconstruct()
+                                    }
+                                },
+                                enabled = !uiState.isReconstructing && activity != null,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                if (uiState.isReconstructing) CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp,
+                                )
+                                else Text("Reconstruct")
+                            }
                         }
                     }
                 }

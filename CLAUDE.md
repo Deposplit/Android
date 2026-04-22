@@ -14,61 +14,67 @@ Consequences:
 
 ### Java / Kotlin versions
 
-- Kotlin 2.2.10, JVM 17 bytecode target
-- The host JDK is Java 25 (Temurin). Use `compileOptions` for the target — `jvmToolchain(N)` requires an installed JDK of version N and will fail if only 25 is present.
+- Kotlin 2.3.20, JVM 21 bytecode target
+- The host JDK is Java 25 (Temurin). Use `compileOptions` / `java { sourceCompatibility / targetCompatibility }` for the target — `jvmToolchain(N)` requires an installed JDK of version N and will fail if only 25 is present.
 - Gradle wrapper version: see `gradle/wrapper/gradle-wrapper.properties`
 - AGP version: see `gradle/libs.versions.toml` (`agp`)
 
 ## Module structure
 
-The project currently has a **single `:app` module**. The `deposplit.com/CLAUDE.md` architecture calls for extracting the hexagon into a pure Kotlin Gradle module (`:hexagon`); that extraction is deferred until there is enough domain logic to justify the overhead. Do not introduce that split prematurely.
+The project has two Gradle modules, enforcing the Ports & Adapters boundary at the build level:
 
-All packages currently live under `com.deposplit` inside `app/src/main/kotlin/`.
+| Module | Role | Plugins |
+|---|---|---|
+| `:hexagon` | Pure Kotlin/JVM — domain model, value types, ports, framework-free tests. No Android or infrastructure imports. | `org.jetbrains.kotlin.jvm` |
+| `:app` | Android application — adapters (HTTP, Android Keystore, local JSON) + UI (Compose + navigation). Depends on `:hexagon`. | AGP (registers `kotlin` itself) + `kotlin.plugin.compose` + `kotlin.plugin.serialization` |
+
+`:hexagon` must not depend on `:app`, AGP, or any Android library. This mirrors the sbt `hexagon` subproject / root Play app split in `deposplit.com`.
+
+When adding a new pure domain type (value object, port interface, domain service, framework-free test), place it under `hexagon/src/{main,test}/kotlin/com/deposplit/...`. Infrastructure adapters and everything UI-related live under `app/src/main/kotlin/com/deposplit/...`.
+
+The top-level `build.gradle.kts` declares all plugins `apply false` so subprojects share a single resolved version. Do not declare plugin versions inside `:hexagon/build.gradle.kts` or `:app/build.gradle.kts`.
 
 ## Package layout
 
+### `:hexagon/src/main/kotlin/com/deposplit/`
+
 ```
-com.deposplit/
-├── DeposplitApp.kt              Application subclass; owns authAdapter + shareTransport + contactRepository
-├── MainActivity.kt              Single activity; NavHost root (sign_in / home / contacts / add_contact)
-├── auth/
-│   ├── AuthPort.kt              Domain port interface (isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign)
-│   ├── DeposplitAuthAdapter.kt  Infrastructure adapter: libsodium keypair generation, Android Keystore AES-GCM wrapping
-│   └── SignInViewModel.kt       UI logic for the registration flow
-├── api/
-│   ├── ShareTransport.kt        Port interface + domain model (ShareMetadata, ShareRequest, enums)
-│   └── DeposplitApiAdapter.kt   HTTP adapter: HttpURLConnection, Ed25519 request signing, JSON via kotlinx.serialization
-├── contacts/
-│   ├── Contact.kt               Domain model (Contact, VerificationLevel) + ContactRepository port interface
-│   └── LocalContactRepository.kt  JSON file in filesDir; @Synchronized; kotlinx.serialization wire types
-└── ui/
-    ├── signin/
-    │   └── SignInScreen.kt      Compose screen — pseudonym input + Register button
-    ├── home/
-    │   ├── HomeViewModel.kt     Loads distributed + held shares via ShareTransport
-    │   └── HomeScreen.kt        Two-tab screen (Distributed / Held) with contacts icon in TopAppBar
-    ├── contacts/
-    │   ├── ContactsViewModel.kt Load + delete contacts via ContactRepository
-    │   ├── ContactsScreen.kt    List with FAB (add) and delete per item; loading/empty/error states
-    │   ├── AddContactViewModel.kt Pseudonym + two base64url key fields, validation, save
-    │   └── AddContactScreen.kt  Manual-entry form for adding a contact
-    ├── deposit/
-    │   ├── DepositViewModel.kt  Label/secret/contact-selection/threshold; calls Shamir.split + auth.encrypt + transport.depositShare
-    │   └── DepositScreen.kt     Label + secret fields, contact checkboxes, threshold stepper, Split & Share button
-    ├── requests/
-    │   ├── RequestsViewModel.kt Loads pending RECIPIENT requests + contacts; handles approve/deny via respondToShareRequest
-    │   └── RecipientRequestsTab.kt Per-request card with type badge, sender name, Deny/Approve buttons
-    ├── sharedetail/
-    │   ├── ShareDetailViewModel.kt Loads share + all SENDER requests; opens RETRIEVE/DELETE requests; reconstructs secret via Shamir.combine + auth.decrypt
-    │   └── ShareDetailScreen.kt    Recipient info, request state per type, Reconstruct button + secret display
-    ├── qr/
-    │   ├── QrPayload.kt              JSON encode/decode; payload {"v":1,"pseudonym":"...","ed":"...","x":"..."}
-    │   ├── QrDisplayViewModel.kt     Generates QR bitmap via ZXing QRCodeWriter (Dispatchers.Default)
-    │   ├── QrDisplayScreen.kt        Shows own QR code; QR icon in HomeScreen TopAppBar
-    │   ├── QrScanViewModel.kt        AtomicBoolean deduplication; parses payload; saves VERIFIED contact
-    │   └── QrScanScreen.kt           CameraX PreviewView + ZXing PlanarYUVLuminanceSource per YUV frame; CAMERA permission handling
-    └── theme/                   Material 3 colour, type, and theme definitions
+shamir/
+└── Shamir.kt                    split(...) / combine(...) — SSS implementation
+auth/
+└── AuthPort.kt                  Port: isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign, encrypt, decrypt
+api/
+└── ShareTransport.kt            Port + value types (Role, ShareRequestType, ShareRequestState, ShareMetadata, ShareRequest)
+contacts/
+└── Contact.kt                   Contact + VerificationLevel + ContactRepository port
 ```
+
+Tests: `:hexagon/src/test/kotlin/com/deposplit/shamir/ShamirTest.kt` — round-trip, cross-platform vectors, input validation. Uses `kotlin.test` (JUnit 4 backend via `kotlin-test-junit`).
+
+### `:app/src/main/kotlin/com/deposplit/`
+
+```
+DeposplitApp.kt              Application subclass; owns authAdapter + shareTransport + contactRepository
+MainActivity.kt              Single activity; NavHost root (sign_in / home / contacts / add_contact / deposit / share_detail / qr_display / qr_scan)
+auth/
+├── DeposplitAuthAdapter.kt  Adapter: libsodium keypair generation, Android Keystore AES-GCM wrapping
+└── SignInViewModel.kt       UI logic for the registration flow
+api/
+└── DeposplitApiAdapter.kt   HTTP adapter: HttpURLConnection, Ed25519 request signing, JSON via kotlinx.serialization
+contacts/
+└── LocalContactRepository.kt  JSON file in filesDir; @Synchronized; kotlinx.serialization wire types
+ui/
+├── signin/       SignInScreen                               — pseudonym input + Register button
+├── home/         HomeViewModel + HomeScreen                 — Distributed / Held / Requests tabs
+├── contacts/     ContactsViewModel + ContactsScreen, AddContactViewModel + AddContactScreen
+├── deposit/      DepositViewModel + DepositScreen           — Shamir.split + auth.encrypt + transport.depositShare
+├── requests/     RequestsViewModel + RecipientRequestsTab   — approve/deny incoming requests
+├── sharedetail/  ShareDetailViewModel + ShareDetailScreen   — open RETRIEVE/DELETE + reconstruct via Shamir.combine + auth.decrypt
+├── qr/           QrPayload, QrDisplay{ViewModel,Screen}, QrScan{ViewModel,Screen}
+└── theme/        Material 3 colour, type, theme
+```
+
+Adapters may only depend on `:hexagon` ports and Android/infrastructure libraries. They must never depend on UI code.
 
 ## Build & test commands
 
@@ -77,7 +83,8 @@ com.deposplit/
 ./gradlew assembleDebug          # build debug APK
 ./gradlew test                   # JVM unit tests
 ./gradlew connectedAndroidTest   # instrumented tests (requires a device or emulator)
-./gradlew test --tests "com.deposplit.shamir.ShamirTest"  # single test class
+./gradlew :hexagon:test          # hexagon (domain) tests only
+./gradlew :hexagon:test --tests "com.deposplit.shamir.ShamirTest"  # single test class
 ```
 
 Deploying to a device or emulator requires Android Studio (or `adb install`).

@@ -24,3 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Deposplit"
 include(":app")
+include(":hexagon")
