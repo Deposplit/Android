@@ -19,7 +19,10 @@ class DeposplitApp : Application() {
     override fun onCreate() {
         super.onCreate()
         authAdapter = DeposplitAuthAdapter(this)
-        shareTransport = DeposplitApiAdapter(authAdapter)
+        shareTransport = DeposplitApiAdapter(
+            auth = authAdapter,
+            baseUrl = if (BuildConfig.DEBUG) "http://10.0.2.2:9000/v1" else "https://api.deposplit.com/v1",
+        )
         contactRepository = LocalContactRepository(this)
     }
 }
