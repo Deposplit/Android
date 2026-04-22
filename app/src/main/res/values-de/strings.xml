@@ -1,0 +1,116 @@
+<resources>
+    <!-- App -->
+    <string name="app_name">Deposplit</string>
+
+    <!-- Common actions and labels -->
+    <string name="action_back">Zurück</string>
+    <string name="action_retry">Erneut versuchen</string>
+    <string name="action_save">Speichern</string>
+    <string name="action_refresh">Aktualisieren</string>
+    <string name="action_cancel">Abbrechen</string>
+
+    <!-- Sign in -->
+    <string name="signin_subtitle">Wähle einen Namen für dich</string>
+    <string name="signin_name_label">Dein Name</string>
+    <string name="signin_name_placeholder">z. B. Alice</string>
+    <string name="signin_button">Los geht\'s</string>
+    <string name="signin_error_empty_name">Bitte gib einen Namen ein.</string>
+    <string name="signin_error_fallback">Einrichtung fehlgeschlagen</string>
+
+    <!-- Home -->
+    <string name="home_action_qr_code">Mein QR-Code</string>
+    <string name="home_action_new_secret">Neues Geheimnis</string>
+    <string name="home_tab_distributed">Verteilt</string>
+    <string name="home_tab_held">Verwahrt</string>
+    <string name="home_tab_requests">Anfragen</string>
+    <string name="home_empty_distributed">Noch keine Geheimnisse verteilt</string>
+    <string name="home_empty_held">Keine Teile verwahrt</string>
+    <string name="home_error_fallback">Laden fehlgeschlagen</string>
+
+    <!-- Contacts -->
+    <string name="contacts_title">Kontakte</string>
+    <string name="contacts_action_scan_qr">QR-Code scannen</string>
+    <string name="contacts_action_add">Kontakt hinzufügen</string>
+    <string name="contacts_empty">Noch keine Kontakte</string>
+    <string name="contacts_verified">Verifiziert</string>
+    <string name="contacts_unverified">Nicht verifiziert</string>
+    <string name="contacts_delete_description">%1$s löschen</string>
+    <string name="contacts_error_load">Laden fehlgeschlagen</string>
+    <string name="contacts_error_delete">Löschen fehlgeschlagen</string>
+
+    <!-- Add contact -->
+    <string name="add_contact_title">Kontakt hinzufügen</string>
+    <string name="add_contact_name_label">Name</string>
+    <string name="add_contact_ed_label">Öffentlicher Ed25519-Schlüssel (base64url)</string>
+    <string name="add_contact_x_label">Öffentlicher X25519-Schlüssel (base64url)</string>
+    <string name="add_contact_error_required">Pflichtfeld</string>
+    <string name="add_contact_error_invalid_base64url">Ungültiges base64url</string>
+    <string name="add_contact_error_ed_length">Muss 32 Bytes lang sein (öffentlicher Ed25519-Schlüssel)</string>
+    <string name="add_contact_error_x_length">Muss 32 Bytes lang sein (öffentlicher X25519-Schlüssel)</string>
+    <string name="add_contact_error_save">Speichern fehlgeschlagen</string>
+
+    <!-- Deposit -->
+    <string name="deposit_title">Neues Geheimnis</string>
+    <string name="deposit_label_label">Bezeichnung</string>
+    <string name="deposit_label_placeholder">z. B. BitLocker-Schlüssel</string>
+    <string name="deposit_secret_label">Geheimnis</string>
+    <string name="deposit_recipients_title">Empfänger</string>
+    <string name="deposit_no_contacts">Noch keine Kontakte — zuerst Kontakte hinzufügen</string>
+    <string name="deposit_threshold_title">Zum Rekonstruieren benötigt</string>
+    <string name="deposit_threshold_format">%1$d von %2$d</string>
+    <string name="deposit_button">Aufteilen &amp; Verteilen</string>
+    <string name="deposit_error_required">Pflichtfeld</string>
+    <string name="deposit_error_select_at_least_2">Mindestens 2 Empfänger auswählen</string>
+    <string name="deposit_error_load_contacts">Kontakte konnten nicht geladen werden</string>
+    <string name="deposit_error_fallback">Hinterlegen fehlgeschlagen</string>
+
+    <!-- Requests -->
+    <string name="requests_empty">Keine offenen Anfragen</string>
+    <string name="requests_from">Von: %1$s</string>
+    <string name="requests_action_deny">Ablehnen</string>
+    <string name="requests_action_approve">Annehmen</string>
+    <string name="requests_error_load">Laden fehlgeschlagen</string>
+    <string name="requests_error_respond">Antwort fehlgeschlagen</string>
+
+    <!-- Share request types and states -->
+    <string name="share_request_retrieve">Abrufen</string>
+    <string name="share_request_delete">Löschen</string>
+    <string name="share_request_state_pending">Offen</string>
+    <string name="share_request_state_approved">Angenommen</string>
+    <string name="share_request_state_denied">Abgelehnt</string>
+
+    <!-- Share detail -->
+    <string name="share_detail_title_fallback">Teil</string>
+    <string name="share_detail_recipient_label">Empfänger</string>
+    <string name="share_detail_deposited_label">Hinterlegt</string>
+    <string name="share_detail_retrieve_button">Abruf anfragen</string>
+    <string name="share_detail_delete_button">Löschung anfragen</string>
+    <string name="share_detail_reconstruct_title">Geheimnis rekonstruieren</string>
+    <string name="share_detail_biometric_none_enrolled">Hinterlege eine biometrische Methode (Fingerabdruck oder Gesicht) in den Geräteeinstellungen, um das Geheimnis zu rekonstruieren.</string>
+    <string name="share_detail_biometric_no_hardware">Dieses Gerät hat keinen biometrischen Sensor — Rekonstruktion nicht möglich.</string>
+    <string name="share_detail_biometric_unavailable">Biometrische Authentifizierung derzeit nicht verfügbar.</string>
+    <string name="share_detail_biometric_prompt_title">Zum Rekonstruieren entsperren</string>
+    <string name="share_detail_biometric_prompt_subtitle">Bestätige, dass du es bist, bevor das Geheimnis angezeigt wird.</string>
+    <string name="share_detail_reconstruct_button">Rekonstruieren</string>
+    <string name="share_detail_no_request">Keine Anfrage</string>
+    <string name="share_detail_error_load">Laden fehlgeschlagen</string>
+    <string name="share_detail_error_open_request">Anfrage konnte nicht geöffnet werden</string>
+    <string name="share_detail_error_reconstruct">Rekonstruktion fehlgeschlagen</string>
+
+    <!-- QR display -->
+    <string name="qr_display_title">Mein QR-Code</string>
+    <string name="qr_display_content_description">Mein Deposplit-QR-Code</string>
+    <string name="qr_display_error_fallback">QR-Code konnte nicht erstellt werden</string>
+
+    <!-- QR scan -->
+    <string name="qr_scan_title">QR-Code scannen</string>
+    <string name="qr_scan_try_again">Erneut versuchen</string>
+    <string name="qr_scan_permission_required">Die Kamerafreigabe wird zum Scannen von QR-Codes benötigt.</string>
+    <string name="qr_scan_grant_permission">Freigabe erteilen</string>
+    <string name="qr_scan_error_fallback">QR-Code konnte nicht gelesen werden</string>
+
+    <plurals name="share_detail_approved_shares">
+        <item quantity="one">%d angenommener Teil verfügbar</item>
+        <item quantity="other">%d angenommene Teile verfügbar</item>
+    </plurals>
+</resources>

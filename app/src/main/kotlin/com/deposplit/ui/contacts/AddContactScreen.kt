@@ -25,12 +25,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.deposplit.DeposplitApp
+import com.deposplit.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,10 +56,10 @@ fun AddContactScreen(onNavigateBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Add Contact") },
+                title = { Text(stringResource(R.string.add_contact_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
             )
@@ -75,9 +77,9 @@ fun AddContactScreen(onNavigateBack: () -> Unit) {
             OutlinedTextField(
                 value = uiState.pseudonym,
                 onValueChange = viewModel::onPseudonymChange,
-                label = { Text("Name") },
+                label = { Text(stringResource(R.string.add_contact_name_label)) },
                 isError = uiState.pseudonymError != null,
-                supportingText = uiState.pseudonymError?.let { { Text(it) } },
+                supportingText = uiState.pseudonymError?.let { resId -> { Text(stringResource(resId)) } },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -85,9 +87,9 @@ fun AddContactScreen(onNavigateBack: () -> Unit) {
             OutlinedTextField(
                 value = uiState.edPublicKey,
                 onValueChange = viewModel::onEdKeyChange,
-                label = { Text("Ed25519 public key (base64url)") },
+                label = { Text(stringResource(R.string.add_contact_ed_label)) },
                 isError = uiState.edKeyError != null,
-                supportingText = uiState.edKeyError?.let { { Text(it) } },
+                supportingText = uiState.edKeyError?.let { resId -> { Text(stringResource(resId)) } },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -95,9 +97,9 @@ fun AddContactScreen(onNavigateBack: () -> Unit) {
             OutlinedTextField(
                 value = uiState.xPublicKey,
                 onValueChange = viewModel::onXKeyChange,
-                label = { Text("X25519 public key (base64url)") },
+                label = { Text(stringResource(R.string.add_contact_x_label)) },
                 isError = uiState.xKeyError != null,
-                supportingText = uiState.xKeyError?.let { { Text(it) } },
+                supportingText = uiState.xKeyError?.let { resId -> { Text(stringResource(resId)) } },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -107,7 +109,7 @@ fun AddContactScreen(onNavigateBack: () -> Unit) {
                 enabled = !uiState.isSaving,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                if (uiState.isSaving) CircularProgressIndicator() else Text("Save")
+                if (uiState.isSaving) CircularProgressIndicator() else Text(stringResource(R.string.action_save))
             }
         }
     }

@@ -23,12 +23,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.deposplit.R
 import com.deposplit.api.ShareRequest
 import com.deposplit.api.ShareRequestType
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.util.UUID
 
 @Composable
@@ -49,12 +52,12 @@ fun RecipientRequestsTab(
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = uiState.error!!,
+                    text = stringResource(uiState.error!!),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Spacer(Modifier.height(12.dp))
-                Button(onClick = onRetry) { Text("Retry") }
+                Button(onClick = onRetry) { Text(stringResource(R.string.action_retry)) }
             }
         }
 
@@ -63,7 +66,7 @@ fun RecipientRequestsTab(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = "No pending requests",
+                text = stringResource(R.string.requests_empty),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -109,7 +112,8 @@ private fun RequestItem(
                     shape = MaterialTheme.shapes.small,
                 ) {
                     Text(
-                        text = if (isRetrieve) "Retrieve" else "Delete",
+                        text = if (isRetrieve) stringResource(R.string.share_request_retrieve)
+                               else stringResource(R.string.share_request_delete),
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                         style = MaterialTheme.typography.labelSmall,
                         color = if (isRetrieve) MaterialTheme.colorScheme.onPrimaryContainer
@@ -124,7 +128,7 @@ private fun RequestItem(
             }
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "From: $senderName",
+                text = stringResource(R.string.requests_from, senderName),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -141,7 +145,7 @@ private fun RequestItem(
                     modifier = Modifier.weight(1f),
                 ) {
                     if (isResponding) CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                    else Text("Deny")
+                    else Text(stringResource(R.string.requests_action_deny))
                 }
                 Button(
                     onClick = { onRespond(true) },
@@ -153,14 +157,14 @@ private fun RequestItem(
                         strokeWidth = 2.dp,
                         color = MaterialTheme.colorScheme.onPrimary,
                     )
-                    else Text("Approve")
+                    else Text(stringResource(R.string.requests_action_approve))
                 }
             }
         }
     }
 }
 
-private val dateFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy")
+private val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
 
 private fun formatDate(iso: String): String = runCatching {
     dateFormatter.format(Instant.parse(iso).atZone(ZoneId.systemDefault()))

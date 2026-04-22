@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
@@ -45,6 +46,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.deposplit.DeposplitApp
+import com.deposplit.R
 import com.google.zxing.BinaryBitmap
 import com.google.zxing.PlanarYUVLuminanceSource
 import com.google.zxing.common.HybridBinarizer
@@ -87,10 +89,10 @@ fun QrScanScreen(onNavigateBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Scan QR Code") },
+                title = { Text(stringResource(R.string.qr_scan_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
             )
@@ -105,22 +107,22 @@ fun QrScanScreen(onNavigateBack: () -> Unit) {
             when {
                 uiState.error != null -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = uiState.error!!,
+                        text = stringResource(uiState.error!!),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Spacer(Modifier.height(12.dp))
-                    Button(onClick = viewModel::retry) { Text("Try Again") }
+                    Button(onClick = viewModel::retry) { Text(stringResource(R.string.qr_scan_try_again)) }
                 }
 
                 !hasCameraPermission -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "Camera permission is required to scan QR codes.",
+                        text = stringResource(R.string.qr_scan_permission_required),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Spacer(Modifier.height(12.dp))
                     Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
-                        Text("Grant Permission")
+                        Text(stringResource(R.string.qr_scan_grant_permission))
                     }
                 }
 

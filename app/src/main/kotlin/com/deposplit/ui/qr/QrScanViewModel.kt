@@ -1,7 +1,9 @@
 package com.deposplit.ui.qr
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.deposplit.R
 import com.deposplit.contacts.Contact
 import com.deposplit.contacts.ContactRepository
 import com.deposplit.contacts.VerificationLevel
@@ -19,7 +21,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 class QrScanViewModel(private val contactRepository: ContactRepository) : ViewModel() {
 
-    data class UiState(val error: String? = null)
+    data class UiState(@StringRes val error: Int? = null)
 
     sealed interface Effect {
         data object NavigateBack : Effect
@@ -56,9 +58,9 @@ class QrScanViewModel(private val contactRepository: ContactRepository) : ViewMo
                 )
             }.onSuccess {
                 _effects.send(Effect.NavigateBack)
-            }.onFailure { e ->
+            }.onFailure {
                 hasScanned.set(false)
-                _uiState.update { it.copy(error = e.message ?: "Failed to read QR code") }
+                _uiState.update { it.copy(error = R.string.qr_scan_error_fallback) }
             }
         }
     }

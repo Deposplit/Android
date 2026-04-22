@@ -1,7 +1,9 @@
 package com.deposplit.ui.requests
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.deposplit.R
 import com.deposplit.api.Role
 import com.deposplit.api.ShareRequest
 import com.deposplit.api.ShareRequestState
@@ -26,7 +28,7 @@ class RequestsViewModel(
         val requests: List<ShareRequest> = emptyList(),
         val contacts: List<Contact> = emptyList(),
         val isLoading: Boolean = false,
-        val error: String? = null,
+        @StringRes val error: Int? = null,
         val respondingIds: Set<UUID> = emptySet(),
     )
 
@@ -56,8 +58,8 @@ class RequestsViewModel(
                         )
                     }
                 }
-                .onFailure { e ->
-                    _uiState.update { it.copy(isLoading = false, error = e.message ?: "Failed to load") }
+                .onFailure {
+                    _uiState.update { it.copy(isLoading = false, error = R.string.requests_error_load) }
                 }
         }
     }
@@ -69,11 +71,11 @@ class RequestsViewModel(
                 withContext(Dispatchers.IO) { transport.respondToShareRequest(requestId, approved) }
             }
                 .onSuccess { load() }
-                .onFailure { e ->
+                .onFailure {
                     _uiState.update {
                         it.copy(
                             respondingIds = it.respondingIds - requestId,
-                            error = e.message ?: "Failed to respond",
+                            error = R.string.requests_error_respond,
                         )
                     }
                 }

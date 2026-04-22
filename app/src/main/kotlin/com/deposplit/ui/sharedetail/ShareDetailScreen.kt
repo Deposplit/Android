@@ -1,5 +1,6 @@
 package com.deposplit.ui.sharedetail
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,7 +27,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -34,6 +34,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -41,6 +43,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.deposplit.DeposplitApp
+import com.deposplit.R
 import com.deposplit.api.ShareRequest
 import com.deposplit.api.ShareRequestState
 import com.deposplit.api.ShareRequestType
@@ -53,6 +56,7 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -80,10 +84,10 @@ fun ShareDetailScreen(shareId: UUID, onNavigateBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(uiState.share?.label ?: "Share") },
+                title = { Text(uiState.share?.label ?: stringResource(R.string.share_detail_title_fallback)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
             )
@@ -105,12 +109,12 @@ fun ShareDetailScreen(shareId: UUID, onNavigateBack: () -> Unit) {
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = uiState.error!!,
+                        text = stringResource(uiState.error!!),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Spacer(Modifier.height(12.dp))
-                    Button(onClick = viewModel::load) { Text("Retry") }
+                    Button(onClick = viewModel::load) { Text(stringResource(R.string.action_retry)) }
                 }
             }
 
@@ -128,37 +132,41 @@ fun ShareDetailScreen(shareId: UUID, onNavigateBack: () -> Unit) {
                     ?.pseudonym
                     ?: keyPreview(uiState.share!!.recipientKey)
 
-                LabeledValue("Recipient", recipientName)
+                LabeledValue(stringResource(R.string.share_detail_recipient_label), recipientName)
                 Spacer(Modifier.height(4.dp))
-                LabeledValue("Deposited", formatDate(uiState.share!!.createdAt))
+                LabeledValue(stringResource(R.string.share_detail_deposited_label), formatDate(uiState.share!!.createdAt))
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
                 RequestSection(
-                    title = "Retrieve",
+                    title = stringResource(R.string.share_request_retrieve),
                     request = uiState.retrieveRequest,
                     isOpening = uiState.isOpeningRetrieve,
-                    buttonLabel = "Request Retrieval",
+                    buttonLabel = stringResource(R.string.share_detail_retrieve_button),
                     onOpen = viewModel::openRetrieveRequest,
                 )
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
                 RequestSection(
-                    title = "Delete",
+                    title = stringResource(R.string.share_request_delete),
                     request = uiState.deleteRequest,
                     isOpening = uiState.isOpeningDelete,
-                    buttonLabel = "Request Deletion",
+                    buttonLabel = stringResource(R.string.share_detail_delete_button),
                     onOpen = viewModel::openDeleteRequest,
                 )
 
                 if (uiState.approvedRetrieveCount >= 2 || uiState.reconstructedSecret != null) {
                     HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
-                    Text("Reconstruct Secret", style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(R.string.share_detail_reconstruct_title), style = MaterialTheme.typography.titleSmall)
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        text = "${uiState.approvedRetrieveCount} approved share(s) available",
+                        text = pluralStringResource(
+                            R.plurals.share_detail_approved_shares,
+                            uiState.approvedRetrieveCount,
+                            uiState.approvedRetrieveCount,
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -180,11 +188,11 @@ fun ShareDetailScreen(shareId: UUID, onNavigateBack: () -> Unit) {
                         val unavailableMessage = when (availability) {
                             AuthAvailability.Available -> null
                             AuthAvailability.NoneEnrolled ->
-                                "Enrol a biometric (fingerprint or face) in device settings to reconstruct the secret."
+                                stringResource(R.string.share_detail_biometric_none_enrolled)
                             AuthAvailability.NoHardware ->
-                                "This device has no biometric sensor — reconstruction is disabled."
+                                stringResource(R.string.share_detail_biometric_no_hardware)
                             is AuthAvailability.Unavailable ->
-                                "Biometric authentication is currently unavailable."
+                                stringResource(R.string.share_detail_biometric_unavailable)
                         }
                         if (unavailableMessage != null) {
                             Text(
@@ -193,14 +201,16 @@ fun ShareDetailScreen(shareId: UUID, onNavigateBack: () -> Unit) {
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         } else {
+                            val promptTitle = stringResource(R.string.share_detail_biometric_prompt_title)
+                            val promptSubtitle = stringResource(R.string.share_detail_biometric_prompt_subtitle)
                             OutlinedButton(
                                 onClick = {
                                     val act = activity ?: return@OutlinedButton
                                     scope.launch {
                                         val result = authenticate(
                                             activity = act,
-                                            title = "Unlock to reconstruct",
-                                            subtitle = "Confirm it's you before the secret is shown.",
+                                            title = promptTitle,
+                                            subtitle = promptSubtitle,
                                         )
                                         if (result is AuthResult.Succeeded) viewModel.reconstruct()
                                     }
@@ -212,7 +222,7 @@ fun ShareDetailScreen(shareId: UUID, onNavigateBack: () -> Unit) {
                                     modifier = Modifier.size(16.dp),
                                     strokeWidth = 2.dp,
                                 )
-                                else Text("Reconstruct")
+                                else Text(stringResource(R.string.share_detail_reconstruct_button))
                             }
                         }
                     }
@@ -221,7 +231,7 @@ fun ShareDetailScreen(shareId: UUID, onNavigateBack: () -> Unit) {
                 if (uiState.actionError != null) {
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        text = uiState.actionError!!,
+                        text = stringResource(uiState.actionError!!),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
                     )
@@ -250,7 +260,7 @@ private fun RequestSection(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("No request", style = MaterialTheme.typography.bodyMedium,
+            Text(stringResource(R.string.share_detail_no_request), style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedButton(onClick = onOpen, enabled = !isOpening) {
                 if (isOpening) CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
@@ -259,9 +269,9 @@ private fun RequestSection(
         }
     } else {
         val (stateLabel, stateColor) = when (request.state) {
-            ShareRequestState.PENDING -> "Pending" to MaterialTheme.colorScheme.onSurfaceVariant
-            ShareRequestState.APPROVED -> "Approved" to MaterialTheme.colorScheme.primary
-            ShareRequestState.DENIED -> "Denied" to MaterialTheme.colorScheme.error
+            ShareRequestState.PENDING -> stringResource(R.string.share_request_state_pending) to MaterialTheme.colorScheme.onSurfaceVariant
+            ShareRequestState.APPROVED -> stringResource(R.string.share_request_state_approved) to MaterialTheme.colorScheme.primary
+            ShareRequestState.DENIED -> stringResource(R.string.share_request_state_denied) to MaterialTheme.colorScheme.error
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -279,7 +289,7 @@ private fun RequestSection(
             if (request.state == ShareRequestState.DENIED) {
                 OutlinedButton(onClick = onOpen, enabled = !isOpening) {
                     if (isOpening) CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                    else Text("Retry")
+                    else Text(stringResource(R.string.action_retry))
                 }
             }
         }
@@ -298,7 +308,7 @@ private fun LabeledValue(label: String, value: String) {
     }
 }
 
-private val dateFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy")
+private val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
 
 private fun formatDate(iso: String): String = runCatching {
     dateFormatter.format(Instant.parse(iso).atZone(ZoneId.systemDefault()))

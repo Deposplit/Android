@@ -1,3 +1,116 @@
 <resources>
+    <!-- App -->
     <string name="app_name">Deposplit</string>
+
+    <!-- Common actions and labels -->
+    <string name="action_back">Back</string>
+    <string name="action_retry">Retry</string>
+    <string name="action_save">Save</string>
+    <string name="action_refresh">Refresh</string>
+    <string name="action_cancel">Cancel</string>
+
+    <!-- Sign in -->
+    <string name="signin_subtitle">Choose a name for yourself</string>
+    <string name="signin_name_label">Your name</string>
+    <string name="signin_name_placeholder">e.g. Alice</string>
+    <string name="signin_button">Get Started</string>
+    <string name="signin_error_empty_name">Please enter a name to continue.</string>
+    <string name="signin_error_fallback">Setup failed</string>
+
+    <!-- Home -->
+    <string name="home_action_qr_code">My QR code</string>
+    <string name="home_action_new_secret">New secret</string>
+    <string name="home_tab_distributed">Distributed</string>
+    <string name="home_tab_held">Held</string>
+    <string name="home_tab_requests">Requests</string>
+    <string name="home_empty_distributed">No secrets distributed yet</string>
+    <string name="home_empty_held">No shares held</string>
+    <string name="home_error_fallback">Failed to load</string>
+
+    <!-- Contacts -->
+    <string name="contacts_title">Contacts</string>
+    <string name="contacts_action_scan_qr">Scan QR code</string>
+    <string name="contacts_action_add">Add contact</string>
+    <string name="contacts_empty">No contacts yet</string>
+    <string name="contacts_verified">Verified</string>
+    <string name="contacts_unverified">Unverified</string>
+    <string name="contacts_delete_description">Delete %1$s</string>
+    <string name="contacts_error_load">Failed to load</string>
+    <string name="contacts_error_delete">Failed to delete</string>
+
+    <!-- Add contact -->
+    <string name="add_contact_title">Add Contact</string>
+    <string name="add_contact_name_label">Name</string>
+    <string name="add_contact_ed_label">Ed25519 public key (base64url)</string>
+    <string name="add_contact_x_label">X25519 public key (base64url)</string>
+    <string name="add_contact_error_required">Required</string>
+    <string name="add_contact_error_invalid_base64url">Invalid base64url</string>
+    <string name="add_contact_error_ed_length">Must be 32 bytes (Ed25519 public key)</string>
+    <string name="add_contact_error_x_length">Must be 32 bytes (X25519 public key)</string>
+    <string name="add_contact_error_save">Failed to save</string>
+
+    <!-- Deposit -->
+    <string name="deposit_title">New Secret</string>
+    <string name="deposit_label_label">Label</string>
+    <string name="deposit_label_placeholder">e.g. BitLocker key</string>
+    <string name="deposit_secret_label">Secret</string>
+    <string name="deposit_recipients_title">Recipients</string>
+    <string name="deposit_no_contacts">No contacts yet — add contacts first</string>
+    <string name="deposit_threshold_title">Required to reconstruct</string>
+    <string name="deposit_threshold_format">%1$d of %2$d</string>
+    <string name="deposit_button">Split &amp; Share</string>
+    <string name="deposit_error_required">Required</string>
+    <string name="deposit_error_select_at_least_2">Select at least 2 recipients</string>
+    <string name="deposit_error_load_contacts">Failed to load contacts</string>
+    <string name="deposit_error_fallback">Deposit failed</string>
+
+    <!-- Requests -->
+    <string name="requests_empty">No pending requests</string>
+    <string name="requests_from">From: %1$s</string>
+    <string name="requests_action_deny">Deny</string>
+    <string name="requests_action_approve">Approve</string>
+    <string name="requests_error_load">Failed to load</string>
+    <string name="requests_error_respond">Failed to respond</string>
+
+    <!-- Share request types and states -->
+    <string name="share_request_retrieve">Retrieve</string>
+    <string name="share_request_delete">Delete</string>
+    <string name="share_request_state_pending">Pending</string>
+    <string name="share_request_state_approved">Approved</string>
+    <string name="share_request_state_denied">Denied</string>
+
+    <!-- Share detail -->
+    <string name="share_detail_title_fallback">Share</string>
+    <string name="share_detail_recipient_label">Recipient</string>
+    <string name="share_detail_deposited_label">Deposited</string>
+    <string name="share_detail_retrieve_button">Request Retrieval</string>
+    <string name="share_detail_delete_button">Request Deletion</string>
+    <string name="share_detail_reconstruct_title">Reconstruct Secret</string>
+    <string name="share_detail_biometric_none_enrolled">Enrol a biometric (fingerprint or face) in device settings to reconstruct the secret.</string>
+    <string name="share_detail_biometric_no_hardware">This device has no biometric sensor — reconstruction is disabled.</string>
+    <string name="share_detail_biometric_unavailable">Biometric authentication is currently unavailable.</string>
+    <string name="share_detail_biometric_prompt_title">Unlock to reconstruct</string>
+    <string name="share_detail_biometric_prompt_subtitle">Confirm it\'s you before the secret is shown.</string>
+    <string name="share_detail_reconstruct_button">Reconstruct</string>
+    <string name="share_detail_no_request">No request</string>
+    <string name="share_detail_error_load">Failed to load</string>
+    <string name="share_detail_error_open_request">Failed to open request</string>
+    <string name="share_detail_error_reconstruct">Reconstruction failed</string>
+
+    <!-- QR display -->
+    <string name="qr_display_title">My QR Code</string>
+    <string name="qr_display_content_description">My Deposplit QR code</string>
+    <string name="qr_display_error_fallback">Failed to generate QR code</string>
+
+    <!-- QR scan -->
+    <string name="qr_scan_title">Scan QR Code</string>
+    <string name="qr_scan_try_again">Try Again</string>
+    <string name="qr_scan_permission_required">Camera permission is required to scan QR codes.</string>
+    <string name="qr_scan_grant_permission">Grant Permission</string>
+    <string name="qr_scan_error_fallback">Failed to read QR code</string>
+
+    <plurals name="share_detail_approved_shares">
+        <item quantity="one">%d approved share available</item>
+        <item quantity="other">%d approved shares available</item>
+    </plurals>
 </resources>

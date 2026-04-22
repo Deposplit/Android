@@ -1,7 +1,9 @@
 package com.deposplit.ui.home
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.deposplit.R
 import com.deposplit.api.Role
 import com.deposplit.api.ShareMetadata
 import com.deposplit.api.ShareTransport
@@ -19,7 +21,7 @@ class HomeViewModel(private val transport: ShareTransport) : ViewModel() {
         val distributedShares: List<ShareMetadata> = emptyList(),
         val heldShares: List<ShareMetadata> = emptyList(),
         val isLoading: Boolean = false,
-        val error: String? = null,
+        @StringRes val error: Int? = null,
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -42,8 +44,8 @@ class HomeViewModel(private val transport: ShareTransport) : ViewModel() {
                         it.copy(isLoading = false, distributedShares = distributed, heldShares = held)
                     }
                 }
-                .onFailure { e ->
-                    _uiState.update { it.copy(isLoading = false, error = e.message ?: "Failed to load") }
+                .onFailure {
+                    _uiState.update { it.copy(isLoading = false, error = R.string.home_error_fallback) }
                 }
         }
     }

@@ -2,8 +2,10 @@ package com.deposplit.ui.qr
 
 import android.graphics.Bitmap
 import android.graphics.Color
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.deposplit.R
 import com.deposplit.auth.AuthPort
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
@@ -17,7 +19,7 @@ class QrDisplayViewModel(private val auth: AuthPort) : ViewModel() {
 
     data class UiState(
         val bitmap: Bitmap? = null,
-        val error: String? = null,
+        @StringRes val error: Int? = null,
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -43,8 +45,8 @@ class QrDisplayViewModel(private val auth: AuthPort) : ViewModel() {
                 bitmap
             }.onSuccess { bitmap ->
                 _uiState.value = UiState(bitmap = bitmap)
-            }.onFailure { e ->
-                _uiState.value = UiState(error = e.message ?: "Failed to generate QR code")
+            }.onFailure {
+                _uiState.value = UiState(error = R.string.qr_display_error_fallback)
             }
         }
     }

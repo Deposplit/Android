@@ -32,12 +32,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.deposplit.DeposplitApp
+import com.deposplit.R
 import com.deposplit.contacts.Contact
 import com.deposplit.contacts.VerificationLevel
 import java.util.UUID
@@ -66,10 +68,10 @@ fun DepositScreen(onNavigateBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("New Secret") },
+                title = { Text(stringResource(R.string.deposit_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
             )
@@ -98,10 +100,10 @@ fun DepositScreen(onNavigateBack: () -> Unit) {
             OutlinedTextField(
                 value = uiState.label,
                 onValueChange = viewModel::onLabelChange,
-                label = { Text("Label") },
-                placeholder = { Text("e.g. BitLocker key") },
+                label = { Text(stringResource(R.string.deposit_label_label)) },
+                placeholder = { Text(stringResource(R.string.deposit_label_placeholder)) },
                 isError = uiState.labelError != null,
-                supportingText = uiState.labelError?.let { { Text(it) } },
+                supportingText = uiState.labelError?.let { resId -> { Text(stringResource(resId)) } },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -111,9 +113,9 @@ fun DepositScreen(onNavigateBack: () -> Unit) {
             OutlinedTextField(
                 value = uiState.secret,
                 onValueChange = viewModel::onSecretChange,
-                label = { Text("Secret") },
+                label = { Text(stringResource(R.string.deposit_secret_label)) },
                 isError = uiState.secretError != null,
-                supportingText = uiState.secretError?.let { { Text(it) } },
+                supportingText = uiState.secretError?.let { resId -> { Text(stringResource(resId)) } },
                 minLines = 3,
                 maxLines = 6,
                 modifier = Modifier.fillMaxWidth(),
@@ -121,12 +123,12 @@ fun DepositScreen(onNavigateBack: () -> Unit) {
 
             Spacer(Modifier.height(20.dp))
 
-            Text("Recipients", style = MaterialTheme.typography.titleSmall)
+            Text(stringResource(R.string.deposit_recipients_title), style = MaterialTheme.typography.titleSmall)
 
             if (uiState.contacts.isEmpty()) {
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = "No contacts yet — add contacts first",
+                    text = stringResource(R.string.deposit_no_contacts),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -143,7 +145,7 @@ fun DepositScreen(onNavigateBack: () -> Unit) {
             if (uiState.selectionError != null) {
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = uiState.selectionError!!,
+                    text = stringResource(uiState.selectionError!!),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -151,7 +153,7 @@ fun DepositScreen(onNavigateBack: () -> Unit) {
 
             if (uiState.selectedCount >= 2) {
                 Spacer(Modifier.height(20.dp))
-                Text("Required to reconstruct", style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(R.string.deposit_threshold_title), style = MaterialTheme.typography.titleSmall)
                 Spacer(Modifier.height(8.dp))
                 ThresholdRow(
                     threshold = uiState.threshold,
@@ -164,7 +166,7 @@ fun DepositScreen(onNavigateBack: () -> Unit) {
             if (uiState.error != null) {
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    text = uiState.error!!,
+                    text = stringResource(uiState.error!!),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium,
                 )
@@ -184,7 +186,7 @@ fun DepositScreen(onNavigateBack: () -> Unit) {
                         color = MaterialTheme.colorScheme.onPrimary,
                     )
                 } else {
-                    Text("Split & Share")
+                    Text(stringResource(R.string.deposit_button))
                 }
             }
 
@@ -204,7 +206,10 @@ private fun ContactRow(contact: Contact, selected: Boolean, onToggle: () -> Unit
         Column(modifier = Modifier.weight(1f)) {
             Text(contact.pseudonym, style = MaterialTheme.typography.bodyLarge)
             Text(
-                text = if (contact.verificationLevel == VerificationLevel.VERIFIED) "Verified" else "Unverified",
+                text = if (contact.verificationLevel == VerificationLevel.VERIFIED)
+                    stringResource(R.string.contacts_verified)
+                else
+                    stringResource(R.string.contacts_unverified),
                 style = MaterialTheme.typography.bodySmall,
                 color = if (contact.verificationLevel == VerificationLevel.VERIFIED)
                     MaterialTheme.colorScheme.primary
@@ -227,7 +232,7 @@ private fun ThresholdRow(
             Text("−", style = MaterialTheme.typography.titleLarge)
         }
         Text(
-            text = "$threshold of $selectedCount",
+            text = stringResource(R.string.deposit_threshold_format, threshold, selectedCount),
             style = MaterialTheme.typography.titleMedium,
         )
         IconButton(onClick = onIncrement, enabled = threshold < selectedCount) {

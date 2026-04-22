@@ -1,7 +1,9 @@
 package com.deposplit.ui.contacts
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.deposplit.R
 import com.deposplit.contacts.Contact
 import com.deposplit.contacts.ContactRepository
 import com.deposplit.contacts.VerificationLevel
@@ -24,9 +26,9 @@ class AddContactViewModel(private val repository: ContactRepository) : ViewModel
         val pseudonym: String = "",
         val edPublicKey: String = "",
         val xPublicKey: String = "",
-        val pseudonymError: String? = null,
-        val edKeyError: String? = null,
-        val xKeyError: String? = null,
+        @StringRes val pseudonymError: Int? = null,
+        @StringRes val edKeyError: Int? = null,
+        @StringRes val xKeyError: Int? = null,
         val isSaving: Boolean = false,
     )
 
@@ -46,19 +48,19 @@ class AddContactViewModel(private val repository: ContactRepository) : ViewModel
 
     fun save() {
         val state = _uiState.value
-        val pseudonymError = if (state.pseudonym.isBlank()) "Required" else null
+        val pseudonymError = if (state.pseudonym.isBlank()) R.string.add_contact_error_required else null
         val edKeyBytes = decodeBase64Url(state.edPublicKey.trim())
         val xKeyBytes = decodeBase64Url(state.xPublicKey.trim())
         val edKeyError = when {
-            state.edPublicKey.isBlank() -> "Required"
-            edKeyBytes == null -> "Invalid base64url"
-            edKeyBytes.size != 32 -> "Must be 32 bytes (Ed25519 public key)"
+            state.edPublicKey.isBlank() -> R.string.add_contact_error_required
+            edKeyBytes == null -> R.string.add_contact_error_invalid_base64url
+            edKeyBytes.size != 32 -> R.string.add_contact_error_ed_length
             else -> null
         }
         val xKeyError = when {
-            state.xPublicKey.isBlank() -> "Required"
-            xKeyBytes == null -> "Invalid base64url"
-            xKeyBytes.size != 32 -> "Must be 32 bytes (X25519 public key)"
+            state.xPublicKey.isBlank() -> R.string.add_contact_error_required
+            xKeyBytes == null -> R.string.add_contact_error_invalid_base64url
+            xKeyBytes.size != 32 -> R.string.add_contact_error_x_length
             else -> null
         }
         if (pseudonymError != null || edKeyError != null || xKeyError != null) {
@@ -81,8 +83,8 @@ class AddContactViewModel(private val repository: ContactRepository) : ViewModel
                 withContext(Dispatchers.IO) { repository.save(contact) }
             }
                 .onSuccess { _effects.send(Effect.NavigateBack) }
-                .onFailure { e ->
-                    _uiState.update { it.copy(isSaving = false, pseudonymError = e.message ?: "Failed to save") }
+                .onFailure {
+                    _uiState.update { it.copy(isSaving = false, pseudonymError = R.string.add_contact_error_save) }
                 }
         }
     }

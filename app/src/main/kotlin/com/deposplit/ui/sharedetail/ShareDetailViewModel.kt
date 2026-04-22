@@ -1,7 +1,9 @@
 package com.deposplit.ui.sharedetail
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.deposplit.R
 import com.deposplit.api.Role
 import com.deposplit.api.ShareMetadata
 import com.deposplit.api.ShareRequest
@@ -39,8 +41,8 @@ class ShareDetailViewModel(
         val isOpeningDelete: Boolean = false,
         val isReconstructing: Boolean = false,
         val reconstructedSecret: String? = null,
-        val error: String? = null,
-        val actionError: String? = null,
+        @StringRes val error: Int? = null,
+        @StringRes val actionError: Int? = null,
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -88,8 +90,8 @@ class ShareDetailViewModel(
                         )
                     }
                 }
-                .onFailure { e ->
-                    _uiState.update { it.copy(isLoading = false, error = e.message ?: "Failed to load") }
+                .onFailure {
+                    _uiState.update { it.copy(isLoading = false, error = R.string.share_detail_error_load) }
                 }
         }
     }
@@ -109,11 +111,10 @@ class ShareDetailViewModel(
                 withContext(Dispatchers.IO) { transport.openShareRequest(shareId, type) }
             }
                 .onSuccess { load() }
-                .onFailure { e ->
+                .onFailure {
                     _uiState.update {
-                        val msg = e.message ?: "Failed to open request"
-                        if (isRetrieve) it.copy(isOpeningRetrieve = false, actionError = msg)
-                        else it.copy(isOpeningDelete = false, actionError = msg)
+                        if (isRetrieve) it.copy(isOpeningRetrieve = false, actionError = R.string.share_detail_error_open_request)
+                        else it.copy(isOpeningDelete = false, actionError = R.string.share_detail_error_open_request)
                     }
                 }
         }
@@ -149,9 +150,9 @@ class ShareDetailViewModel(
                 .onSuccess { secret ->
                     _uiState.update { it.copy(isReconstructing = false, reconstructedSecret = secret) }
                 }
-                .onFailure { e ->
+                .onFailure {
                     _uiState.update {
-                        it.copy(isReconstructing = false, actionError = e.message ?: "Reconstruction failed")
+                        it.copy(isReconstructing = false, actionError = R.string.share_detail_error_reconstruct)
                     }
                 }
         }

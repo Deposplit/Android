@@ -8,6 +8,7 @@ import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import com.deposplit.R
 import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
 
@@ -62,7 +63,7 @@ suspend fun authenticate(
     if (subtitle != null) builder.setSubtitle(subtitle)
     // Negative button is required when and only when DEVICE_CREDENTIAL is not allowed.
     if (authenticators and DEVICE_CREDENTIAL == 0) {
-        builder.setNegativeButtonText("Cancel")
+        builder.setNegativeButtonText(activity.getString(R.string.action_cancel))
     }
     prompt.authenticate(builder.build())
 }

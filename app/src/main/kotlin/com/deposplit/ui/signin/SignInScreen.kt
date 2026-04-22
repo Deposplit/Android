@@ -22,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -29,6 +30,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.deposplit.DeposplitApp
+import com.deposplit.R
 import com.deposplit.auth.SignInViewModel
 
 @Composable
@@ -59,10 +61,10 @@ fun SignInScreen(onNavigateToHome: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Text("Deposplit", style = MaterialTheme.typography.headlineLarge)
+            Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineLarge)
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Choose a name for yourself",
+                text = stringResource(R.string.signin_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -70,11 +72,13 @@ fun SignInScreen(onNavigateToHome: () -> Unit) {
             OutlinedTextField(
                 value = uiState.pseudonym,
                 onValueChange = viewModel::onPseudonymChange,
-                label = { Text("Your name") },
-                placeholder = { Text("e.g. Alice") },
+                label = { Text(stringResource(R.string.signin_name_label)) },
+                placeholder = { Text(stringResource(R.string.signin_name_placeholder)) },
                 singleLine = true,
                 isError = uiState.error != null,
-                supportingText = uiState.error?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
+                supportingText = uiState.error?.let { resId ->
+                    { Text(stringResource(resId), color = MaterialTheme.colorScheme.error) }
+                },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
                 keyboardActions = KeyboardActions(onGo = { viewModel.onRegister() }),
@@ -92,7 +96,7 @@ fun SignInScreen(onNavigateToHome: () -> Unit) {
                         color = MaterialTheme.colorScheme.onPrimary,
                     )
                 } else {
-                    Text("Get Started")
+                    Text(stringResource(R.string.signin_button))
                 }
             }
         }

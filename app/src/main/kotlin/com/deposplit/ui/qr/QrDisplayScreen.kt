@@ -22,12 +22,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.deposplit.DeposplitApp
+import com.deposplit.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,10 +45,10 @@ fun QrDisplayScreen(onNavigateBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("My QR Code") },
+                title = { Text(stringResource(R.string.qr_display_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
             )
@@ -60,13 +62,13 @@ fun QrDisplayScreen(onNavigateBack: () -> Unit) {
         ) {
             when {
                 uiState.error != null -> Text(
-                    text = uiState.error!!,
+                    text = stringResource(uiState.error!!),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 uiState.bitmap != null -> Image(
                     painter = BitmapPainter(uiState.bitmap!!.asImageBitmap()),
-                    contentDescription = "My Deposplit QR code",
+                    contentDescription = stringResource(R.string.qr_display_content_description),
                     modifier = Modifier.size(280.dp),
                 )
                 else -> CircularProgressIndicator()

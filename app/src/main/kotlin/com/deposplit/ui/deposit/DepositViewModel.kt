@@ -1,7 +1,9 @@
 package com.deposplit.ui.deposit
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.deposplit.R
 import com.deposplit.api.ShareTransport
 import com.deposplit.auth.AuthPort
 import com.deposplit.contacts.Contact
@@ -32,10 +34,10 @@ class DepositViewModel(
         val selectedContactIds: Set<UUID> = emptySet(),
         val isLoadingContacts: Boolean = false,
         val isDepositing: Boolean = false,
-        val error: String? = null,
-        val labelError: String? = null,
-        val secretError: String? = null,
-        val selectionError: String? = null,
+        @StringRes val error: Int? = null,
+        @StringRes val labelError: Int? = null,
+        @StringRes val secretError: Int? = null,
+        @StringRes val selectionError: Int? = null,
     ) {
         val selectedCount: Int get() = selectedContactIds.size
     }
@@ -59,7 +61,7 @@ class DepositViewModel(
             _uiState.update { it.copy(isLoadingContacts = true) }
             runCatching { withContext(Dispatchers.IO) { contactRepository.getAll() } }
                 .onSuccess { contacts -> _uiState.update { it.copy(isLoadingContacts = false, contacts = contacts) } }
-                .onFailure { e -> _uiState.update { it.copy(isLoadingContacts = false, error = e.message ?: "Failed to load contacts") } }
+                .onFailure { _uiState.update { it.copy(isLoadingContacts = false, error = R.string.deposit_error_load_contacts) } }
         }
     }
 
@@ -88,9 +90,9 @@ class DepositViewModel(
 
     fun deposit() {
         val state = _uiState.value
-        val labelError = if (state.label.isBlank()) "Required" else null
-        val secretError = if (state.secret.isBlank()) "Required" else null
-        val selectionError = if (state.selectedCount < 2) "Select at least 2 recipients" else null
+        val labelError = if (state.label.isBlank()) R.string.deposit_error_required else null
+        val secretError = if (state.secret.isBlank()) R.string.deposit_error_required else null
+        val selectionError = if (state.selectedCount < 2) R.string.deposit_error_select_at_least_2 else null
 
         if (labelError != null || secretError != null || selectionError != null) {
             _uiState.update { it.copy(labelError = labelError, secretError = secretError, selectionError = selectionError) }
@@ -114,7 +116,7 @@ class DepositViewModel(
                 }
             }
                 .onSuccess { _effects.send(Effect.NavigateBack) }
-                .onFailure { e -> _uiState.update { it.copy(isDepositing = false, error = e.message ?: "Deposit failed") } }
+                .onFailure { _uiState.update { it.copy(isDepositing = false, error = R.string.deposit_error_fallback) } }
         }
     }
 }

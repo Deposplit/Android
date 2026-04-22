@@ -1,7 +1,9 @@
 package com.deposplit.auth
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.deposplit.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +19,7 @@ class SignInViewModel(private val authPort: AuthPort) : ViewModel() {
     data class UiState(
         val pseudonym: String = "",
         val isLoading: Boolean = false,
-        val error: String? = null,
+        @StringRes val error: Int? = null,
     )
 
     sealed interface Effect {
@@ -37,7 +39,7 @@ class SignInViewModel(private val authPort: AuthPort) : ViewModel() {
     fun onRegister() {
         val pseudonym = _uiState.value.pseudonym.trim()
         if (pseudonym.isEmpty()) {
-            _uiState.update { it.copy(error = "Please enter a name to continue.") }
+            _uiState.update { it.copy(error = R.string.signin_error_empty_name) }
             return
         }
         viewModelScope.launch {
@@ -47,8 +49,8 @@ class SignInViewModel(private val authPort: AuthPort) : ViewModel() {
                     _uiState.update { it.copy(isLoading = false) }
                     _effects.send(Effect.NavigateToHome)
                 }
-                .onFailure { e ->
-                    _uiState.update { it.copy(isLoading = false, error = e.message ?: "Setup failed") }
+                .onFailure {
+                    _uiState.update { it.copy(isLoading = false, error = R.string.signin_error_fallback) }
                 }
         }
     }

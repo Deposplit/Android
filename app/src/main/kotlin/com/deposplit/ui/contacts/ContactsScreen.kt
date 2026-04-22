@@ -32,12 +32,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.deposplit.DeposplitApp
+import com.deposplit.R
 import com.deposplit.contacts.Contact
 import com.deposplit.contacts.VerificationLevel
 
@@ -55,17 +57,17 @@ fun ContactsScreen(onNavigateToAddContact: () -> Unit, onNavigateToScanQr: () ->
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Contacts") },
+                title = { Text(stringResource(R.string.contacts_title)) },
                 actions = {
                     IconButton(onClick = onNavigateToScanQr) {
-                        Icon(Icons.Default.QrCodeScanner, contentDescription = "Scan QR code")
+                        Icon(Icons.Default.QrCodeScanner, contentDescription = stringResource(R.string.contacts_action_scan_qr))
                     }
                 },
             )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onNavigateToAddContact) {
-                Icon(Icons.Default.Add, contentDescription = "Add contact")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.contacts_action_add))
             }
         },
     ) { padding ->
@@ -85,12 +87,12 @@ fun ContactsScreen(onNavigateToAddContact: () -> Unit, onNavigateToScanQr: () ->
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = uiState.error!!,
+                        text = stringResource(uiState.error!!),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Spacer(Modifier.height(12.dp))
-                    Button(onClick = viewModel::load) { Text("Retry") }
+                    Button(onClick = viewModel::load) { Text(stringResource(R.string.action_retry)) }
                 }
             }
 
@@ -101,7 +103,7 @@ fun ContactsScreen(onNavigateToAddContact: () -> Unit, onNavigateToScanQr: () ->
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = "No contacts yet",
+                    text = stringResource(R.string.contacts_empty),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -134,7 +136,10 @@ private fun ContactItem(contact: Contact, onDelete: () -> Unit) {
                 Text(contact.pseudonym, style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = if (contact.verificationLevel == VerificationLevel.VERIFIED) "Verified" else "Unverified",
+                    text = if (contact.verificationLevel == VerificationLevel.VERIFIED)
+                        stringResource(R.string.contacts_verified)
+                    else
+                        stringResource(R.string.contacts_unverified),
                     style = MaterialTheme.typography.bodySmall,
                     color = if (contact.verificationLevel == VerificationLevel.VERIFIED)
                         MaterialTheme.colorScheme.primary
@@ -145,7 +150,7 @@ private fun ContactItem(contact: Contact, onDelete: () -> Unit) {
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = "Delete ${contact.pseudonym}",
+                    contentDescription = stringResource(R.string.contacts_delete_description, contact.pseudonym),
                     tint = MaterialTheme.colorScheme.error,
                 )
             }

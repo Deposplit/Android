@@ -1,7 +1,9 @@
 package com.deposplit.ui.contacts
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.deposplit.R
 import com.deposplit.contacts.Contact
 import com.deposplit.contacts.ContactRepository
 import kotlinx.coroutines.Dispatchers
@@ -18,7 +20,7 @@ class ContactsViewModel(private val repository: ContactRepository) : ViewModel()
     data class UiState(
         val contacts: List<Contact> = emptyList(),
         val isLoading: Boolean = false,
-        val error: String? = null,
+        @StringRes val error: Int? = null,
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -33,7 +35,7 @@ class ContactsViewModel(private val repository: ContactRepository) : ViewModel()
             _uiState.update { it.copy(isLoading = true, error = null) }
             runCatching { withContext(Dispatchers.IO) { repository.getAll() } }
                 .onSuccess { contacts -> _uiState.update { it.copy(isLoading = false, contacts = contacts) } }
-                .onFailure { e -> _uiState.update { it.copy(isLoading = false, error = e.message ?: "Failed to load") } }
+                .onFailure { _uiState.update { it.copy(isLoading = false, error = R.string.contacts_error_load) } }
         }
     }
 
@@ -41,7 +43,7 @@ class ContactsViewModel(private val repository: ContactRepository) : ViewModel()
         viewModelScope.launch {
             runCatching { withContext(Dispatchers.IO) { repository.delete(contactId) } }
                 .onSuccess { load() }
-                .onFailure { e -> _uiState.update { it.copy(error = e.message ?: "Failed to delete") } }
+                .onFailure { _uiState.update { it.copy(error = R.string.contacts_error_delete) } }
         }
     }
 }
