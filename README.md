@@ -114,7 +114,7 @@ Android/
 │   │   │   │   ├── DeposplitApp.kt          Application subclass
 │   │   │   │   ├── MainActivity.kt          Single FragmentActivity; NavHost root
 │   │   │   │   ├── auth/
-│   │   │   │   │   ├── DeposplitAuthAdapter.kt  libsodium keypair generation + Android Keystore
+│   │   │   │   │   ├── DeposplitAuthAdapter.kt  BouncyCastle keypair generation + Ed25519 signing + ChaCha20-Poly1305 encrypt/decrypt; Android Keystore
 │   │   │   │   │   └── SignInViewModel.kt       Registration UI logic
 │   │   │   │   ├── api/
 │   │   │   │   │   └── DeposplitApiAdapter.kt   HTTP adapter — all 7 API operations + request signing
@@ -165,7 +165,7 @@ Deposplit follows **Ports & Adapters (Hexagonal Architecture)** for the domain a
 
 **Port (`AuthPort`)** — a Kotlin interface defined by the domain. It expresses what the app needs ("register with a pseudonym") without knowing anything about keypair generation or key storage.
 
-**Adapter (`DeposplitAuthAdapter`)** — implements the port using libsodium keypair generation and the Android Keystore. Changing the storage strategy only requires changing this class.
+**Adapter (`DeposplitAuthAdapter`)** — implements the port using BouncyCastle keypair generation, Ed25519 signing, and X25519+HKDF+ChaCha20-Poly1305 encryption, with private keys wrapped in the Android Keystore. Changing the storage or crypto strategy only requires changing this class.
 
 **ViewModel (`SignInViewModel`)** — sits at the UI/domain boundary. It calls the port, holds `UiState`, and emits one-shot `Effect`s (navigate). It does not know anything about Compose.
 
@@ -206,10 +206,6 @@ Identity *is* the keypair pair. If Alice loses her device, she generates new key
 - **JDK 21+** on `JAVA_HOME` (the Gradle wrapper handles the rest)
 - An Android device or AVD (Android Virtual Device) running API 29+
 
-### Emulator vs real device
-
-Any AVD running API 29+ is sufficient. The registration flow is purely local (keypair generation + SharedPreferences) — no browser, no network call, no Google Play requirement.
-
 ### Common commands
 
 ```bash
@@ -235,7 +231,7 @@ The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`. Install
 
 ### First run
 
-On first launch the app shows the sign-in screen. Enter a pseudonym (display name only — stored locally, never sent to the backend). Tapping **Register** generates Ed25519 and X25519 keypairs, stores the private keys in the Android Keystore, and navigates to the (currently placeholder) home screen.
+On first launch the app shows the sign-in screen. Enter a pseudonym (display name only — stored locally, never sent to the backend). Tapping **Register** generates Ed25519 and X25519 keypairs via BouncyCastle, stores the private keys in the Android Keystore, and navigates to the home screen.
 
 ---
 

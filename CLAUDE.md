@@ -57,7 +57,7 @@ Tests: `:hexagon/src/test/kotlin/com/deposplit/shamir/ShamirTest.kt` — round-t
 DeposplitApp.kt              Application subclass; owns authAdapter + shareTransport + contactRepository
 MainActivity.kt              Single activity; NavHost root (sign_in / home / contacts / add_contact / deposit / share_detail / qr_display / qr_scan)
 auth/
-├── DeposplitAuthAdapter.kt  Adapter: libsodium keypair generation, Android Keystore AES-GCM wrapping
+├── DeposplitAuthAdapter.kt  Adapter: BouncyCastle keypair generation + Ed25519 signing + X25519+HKDF+ChaCha20-Poly1305 encrypt/decrypt; Android Keystore AES-GCM wrapping
 └── SignInViewModel.kt       UI logic for the registration flow
 api/
 └── DeposplitApiAdapter.kt   HTTP adapter: HttpURLConnection, Ed25519 request signing, JSON via kotlinx.serialization
@@ -93,7 +93,8 @@ Deploying to a device or emulator requires Android Studio (or `adb install`).
 
 - `minSdk = 29` — do not lower; see `deposplit.com/CLAUDE.md` for rationale.
 - All UI in Jetpack Compose (no XML layouts).
-- Registration is keypair-first (libsodium X25519) — no OIDC, no password, no email. See `deposplit.com/CLAUDE.md` for rationale.
-- The X25519 private key is stored in the Android Keystore and never handled as raw key material by app code.
+- Registration is keypair-first (BouncyCastle X25519 + Ed25519) — no OIDC, no password, no email. See `deposplit.com/CLAUDE.md` for rationale.
+- **No native crypto libraries.** Use `org.bouncycastle:bcprov-jdk18on` for all crypto — no lazysodium-android, no JNA, no `.so` files beyond what AndroidX already packages. BouncyCastle is a pure-JVM library; it works on all emulator ABIs without any extra configuration.
+- Share encryption uses **X25519 + HKDF-SHA-256 + ChaCha20-Poly1305**. Wire format: `nonce(12 bytes) || ciphertext+tag`. See `deposplit.com/CLAUDE.md` → *Transport Encryption* for the full construction.
+- The X25519 and Ed25519 private keys are stored in the Android Keystore (wrapped with AES-256-GCM under the `deposplit_master` alias) and never leave the device as raw key material.
 - Session persistence uses plain `SharedPreferences` (just an "is registered" flag). Do not add `EncryptedSharedPreferences` without a concrete reason; `security-crypto` is not a dependency.
-- Private keys are wrapped by an AES-256-GCM master key in the Android Keystore (`deposplit_master` alias); only the ciphertext and IV are stored in `SharedPreferences`.
