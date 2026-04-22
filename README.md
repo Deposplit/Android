@@ -239,6 +239,70 @@ On first launch the app shows the sign-in screen. Enter a pseudonym (display nam
 
 ---
 
+## Testing against a local backend
+
+### Setup
+
+**Start the backend** (from `deposplit.com/`):
+
+```bash
+sbt run -Dconfig.file=conf/localhost.conf
+```
+
+It listens on port 9000. The emulator reaches your host machine via the special alias `10.0.2.2`, which is what the debug build uses automatically (`BuildConfig.DEBUG` switches the base URL; the production URL `https://api.deposplit.com/v1` is unaffected).
+
+**Run the app** in Android Studio: open `Android/`, create an AVD (API 29+), then **Run ▶**. The debug variant is wired up automatically — no manual configuration needed.
+
+### Two-AVD setup
+
+You need **two AVD instances** (or two physical devices on the same WiFi, using your machine's LAN IP instead of `10.0.2.2`) to exercise the full social flow. Create a second AVD in the Device Manager and launch it alongside the first.
+
+### Flow 1 — Happy path (2-of-2 threshold)
+
+| Step | Device | What to do |
+|---|---|---|
+| 1 | AVD-A | Launch → register as "Alice" |
+| 2 | AVD-B | Launch → register as "Bob" |
+| 3 | AVD-A | TopAppBar QR icon → screenshot the QR code |
+| 4 | AVD-B | Contacts → scan QR (or use **Add contact** and paste Alice's keys manually if camera emulation cannot scan the screenshot) |
+| 5 | AVD-B | TopAppBar QR icon → screenshot Bob's QR |
+| 6 | AVD-A | Add Bob as a contact |
+| 7 | AVD-A | FAB (＋) → enter a label (e.g. "test secret"), a secret text, select Bob, choose threshold 2-of-2 (add a second contact for a true 2-of-2 split) |
+| 8 | AVD-B | **Requests** tab → a Retrieve request from Alice appears |
+| 9 | AVD-B | Tap **Approve** |
+| 10 | AVD-A | **Distributed** tab → tap the share → tap **Request Retrieval** → after Bob approves, tap **Reconstruct** → biometric prompt → secret appears |
+
+For a proper 2-of-3 split you need a third AVD. The threshold logic (`Shamir.combine`) is already fully tested in the hexagon unit tests; the manual test above validates the full end-to-end path including encryption and transport.
+
+### Flow 2 — Deny and re-request
+
+After step 8 above: Bob taps **Deny** → on Alice's side the Retrieve section shows "Denied" and a **Retry** button → Alice re-requests → Bob approves.
+
+### Flow 3 — Sender-initiated deletion
+
+Alice taps **Request Deletion** on a share → Bob's Requests tab shows a Delete request → Bob approves → the share disappears from Bob's Held tab.
+
+### Flow 4 — Recipient-initiated deletion
+
+On AVD-B, Bob swipes/deletes Alice's share from his Held tab without any request. The share disappears locally; verify what Alice's Distributed tab shows on refresh.
+
+### Flow 5 — Error states
+
+Kill the backend → refresh on either device → error banner + **Retry** button appears. Restart the backend → Retry recovers successfully.
+
+### Flow 6 — Locale
+
+On the emulator: **Settings → General management → Language** → add German, make it primary → relaunch Deposplit → all strings should appear in German and dates in `dd.MM.yyyy` format.
+
+### Key edge cases to verify
+
+- Re-registering (clear app data, launch again) generates fresh keypairs — existing contacts cannot decrypt new shares with the old keys.
+- The **Reconstruct** button is hidden until ≥ 2 approved retrieve shares exist for the same `secretId`.
+- The biometric prompt on API 30+ offers "or use PIN"; on API 29 it shows biometric only (the combined `BIOMETRIC_STRONG | DEVICE_CREDENTIAL` authenticator is not supported on API 29).
+- 2-of-3 threshold: splitting across three contacts and having only 2 approve should still reconstruct the secret successfully.
+
+---
+
 ## What is next
 
 The Android app is feature-complete for v0.1. Next Android-specific work depends on cross-platform priorities — see `deposplit.com/CLAUDE.md` for the current roadmap.
