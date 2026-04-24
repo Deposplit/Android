@@ -64,6 +64,7 @@ class MainActivity : FragmentActivity() {
                     }
                     composable(ROUTE_CONTACTS) {
                         ContactsScreen(
+                            onNavigateBack = { navController.popBackStack() },
                             onNavigateToAddContact = { navController.navigate(ROUTE_ADD_CONTACT) },
                             onNavigateToScanQr = { navController.navigate(ROUTE_QR_SCAN) },
                         )

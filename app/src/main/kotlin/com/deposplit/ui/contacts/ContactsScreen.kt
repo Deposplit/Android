@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.QrCodeScanner
@@ -29,6 +30,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -45,7 +48,7 @@ import com.deposplit.contacts.VerificationLevel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ContactsScreen(onNavigateToAddContact: () -> Unit, onNavigateToScanQr: () -> Unit) {
+fun ContactsScreen(onNavigateBack: () -> Unit, onNavigateToAddContact: () -> Unit, onNavigateToScanQr: () -> Unit) {
     val app = LocalContext.current.applicationContext as DeposplitApp
     val viewModel: ContactsViewModel = viewModel(
         factory = viewModelFactory {
@@ -54,10 +57,17 @@ fun ContactsScreen(onNavigateToAddContact: () -> Unit, onNavigateToScanQr: () ->
     )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.load() }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.contacts_title)) },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                    }
+                },
                 actions = {
                     IconButton(onClick = onNavigateToScanQr) {
                         Icon(Icons.Default.QrCodeScanner, contentDescription = stringResource(R.string.contacts_action_scan_qr))

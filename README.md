@@ -245,30 +245,36 @@ On first launch the app shows the sign-in screen. Enter a pseudonym (display nam
 sbt run -Dconfig.file=conf/localhost.conf
 ```
 
-It listens on port 9000. The emulator reaches your host machine via the special alias `10.0.2.2`, which is what the debug build uses automatically (`BuildConfig.DEBUG` switches the base URL; the production URL `https://api.deposplit.com/v1` is unaffected).
+It listens on port 9000. The emulator reaches your host machine via the special alias `10.0.2.2`, which is what the debug build uses automatically (`BuildConfig.DEBUG` switches the base URL; the production URL `https://api.deposplit.com` is unaffected).
 
 **Run the app** in Android Studio: open `Android/`, create an AVD (API 29+), then **Run ▶**. The debug variant is wired up automatically — no manual configuration needed.
 
-### Two-AVD setup
+### Three-AVD setup
 
-You need **two AVD instances** (or two physical devices on the same WiFi, using your machine's LAN IP instead of `10.0.2.2`) to exercise the full social flow. Create a second AVD in the Device Manager and launch it alongside the first.
+You need **three AVD instances** (or three physical devices on the same WiFi, using your machine's LAN IP instead of `10.0.2.2`) to exercise the full social flow with a 2-of-2 threshold split across two holders. Create two additional AVDs in the Device Manager and launch them alongside the first.
 
-### Flow 1 — Happy path (2-of-2 threshold)
+> **Distributed tab shows one entry per share (per recipient), not one per logical secret.** A deposit to two contacts (Bob and Carol) produces two entries on Alice's Distributed tab — one for Bob's share and one for Carol's share — even though they share the same `secretId`. This is correct data-model behaviour; grouping by `secretId` in the UI is a planned improvement.
+
+### Flow 1 — Happy path (2-of-2 threshold, 2 holders)
 
 | Step | Device | What to do |
 |---|---|---|
 | 1 | AVD-A | Launch → register as "Alice" |
 | 2 | AVD-B | Launch → register as "Bob" |
-| 3 | AVD-A | TopAppBar QR icon → screenshot the QR code |
-| 4 | AVD-B | Contacts → scan QR (or use **Add contact** and paste Alice's keys manually if camera emulation cannot scan the screenshot) |
-| 5 | AVD-B | TopAppBar QR icon → screenshot Bob's QR |
-| 6 | AVD-A | Add Bob as a contact |
-| 7 | AVD-A | FAB (＋) → enter a label (e.g. "test secret"), a secret text, select Bob, choose threshold 2-of-2 (add a second contact for a true 2-of-2 split) |
-| 8 | AVD-B | **Requests** tab → a Retrieve request from Alice appears |
-| 9 | AVD-B | Tap **Approve** |
-| 10 | AVD-A | **Distributed** tab → tap the share → tap **Request Retrieval** → after Bob approves, tap **Reconstruct** → biometric prompt → secret appears |
+| 3 | AVD-C | Launch → register as "Carol" |
+| 4 | AVD-A | TopAppBar QR icon → screenshot Alice's QR code |
+| 5 | AVD-B | Contacts → **Add contact** → paste Alice's keys manually (or scan the screenshot if camera emulation supports it); then TopAppBar QR icon → screenshot Bob's QR |
+| 6 | AVD-C | Contacts → **Add contact** → paste Alice's keys; then TopAppBar QR icon → screenshot Carol's QR |
+| 7 | AVD-A | Add Bob as a contact; add Carol as a contact |
+| 8 | AVD-A | FAB (＋) → enter a label (e.g. "test secret"), a secret text, select Bob and Carol, choose threshold 2-of-2 → **Deposit** |
+| 9 | AVD-A | **Distributed** tab → two entries appear (one for Bob's share, one for Carol's share, same `secretId`) |
+| 10 | AVD-A | Tap the Bob entry → **Request Retrieval** |
+| 11 | AVD-A | Tap the Carol entry → **Request Retrieval** |
+| 12 | AVD-B | **Requests** tab → a Retrieve request from Alice appears → tap **Approve** |
+| 13 | AVD-C | **Requests** tab → a Retrieve request from Alice appears → tap **Approve** |
+| 14 | AVD-A | Either Distributed entry → **Reconstruct** button appears (both shares approved) → biometric prompt → secret appears |
 
-For a proper 2-of-3 split you need a third AVD. The threshold logic (`Shamir.combine`) is already fully tested in the hexagon unit tests; the manual test above validates the full end-to-end path including encryption and transport.
+The threshold logic (`Shamir.combine`) is already fully tested in the hexagon unit tests; the manual test above validates the full end-to-end path including encryption and transport.
 
 ### Flow 2 — Deny and re-request
 

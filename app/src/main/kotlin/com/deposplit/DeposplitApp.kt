@@ -21,7 +21,7 @@ class DeposplitApp : Application() {
         authAdapter = DeposplitAuthAdapter(this)
         shareTransport = DeposplitApiAdapter(
             auth = authAdapter,
-            baseUrl = if (BuildConfig.DEBUG) "http://10.0.2.2:9000/v1" else "https://api.deposplit.com/v1",
+            baseUrl = if (BuildConfig.DEBUG) "http://10.0.2.2:9000" else "https://api.deposplit.com",
         )
         contactRepository = LocalContactRepository(this)
     }
