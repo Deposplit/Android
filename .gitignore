@@ -34,5 +34,11 @@ google-services.json
 *.hprof
 
 
+# above is from https://github.com/github/gitignore/blob/main/Android.gitignore
+
+# below is from yours truly or Claude
+
+
+.kotlin/
 .metals/
 bin/
