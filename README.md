@@ -257,6 +257,8 @@ You need **three AVD instances** (or three physical devices on the same WiFi, us
 
 ### Flow 1 — Happy path (2-of-2 threshold, 2 holders)
 
+> **Note — relay protocol pending:** The backend now implements a pure relay model (Apr 2026): ciphertext is cleared from the server once the recipient picks it up, and the recipient must send it back from local storage when approving a retrieve request. The Android app has not yet been updated to implement `pickUpShare` or local share storage. Steps 9–14 below describe the **intended** flow once that work is done; the current app will break at steps 9–10 and step 12–13 against the updated backend.
+
 | Step | Device | What to do |
 |---|---|---|
 | 1 | AVD-A | Launch → register as "Alice" |
@@ -267,12 +269,15 @@ You need **three AVD instances** (or three physical devices on the same WiFi, us
 | 6 | AVD-C | Contacts → **Add contact** → paste Alice's keys; then TopAppBar QR icon → screenshot Carol's QR |
 | 7 | AVD-A | Add Bob as a contact; add Carol as a contact |
 | 8 | AVD-A | FAB (＋) → enter a label (e.g. "test secret"), a secret text, select Bob and Carol, choose threshold 2-of-2 → **Deposit** |
-| 9 | AVD-A | **Distributed** tab → two entries appear (one for Bob's share, one for Carol's share, same `secretId`) |
-| 10 | AVD-A | Tap the Bob entry → **Request Retrieval** |
-| 11 | AVD-A | Tap the Carol entry → **Request Retrieval** |
-| 12 | AVD-B | **Requests** tab → a Retrieve request from Alice appears → tap **Approve** |
-| 13 | AVD-C | **Requests** tab → a Retrieve request from Alice appears → tap **Approve** |
-| 14 | AVD-A | Either Distributed entry → **Reconstruct** button appears (both shares approved) → biometric prompt → secret appears |
+| 9 | AVD-A | **Distributed** tab → two entries appear (one for Bob's share, one for Carol's share, same `secretId`); `pickedUpAt` is null (not yet delivered) |
+| 10 | AVD-B | **Held** tab → Bob's inbox shows Alice's share → app automatically picks it up (`GET /shares/:shareId`), stores ciphertext locally, relay clears it |
+| 11 | AVD-C | **Held** tab → Carol's inbox shows Alice's share → app picks it up the same way |
+| 12 | AVD-A | **Distributed** tab → both entries now show `pickedUpAt` set |
+| 13 | AVD-A | Tap the Bob entry → **Request Retrieval** |
+| 14 | AVD-A | Tap the Carol entry → **Request Retrieval** |
+| 15 | AVD-B | **Requests** tab → a Retrieve request from Alice appears → app reads ciphertext from local storage → tap **Approve** (ciphertext sent in response body) |
+| 16 | AVD-C | **Requests** tab → a Retrieve request from Alice appears → tap **Approve** |
+| 17 | AVD-A | Either Distributed entry → **Reconstruct** button appears (both shares approved) → biometric prompt → secret appears |
 
 The threshold logic (`Shamir.combine`) is already fully tested in the hexagon unit tests; the manual test above validates the full end-to-end path including encryption and transport.
 

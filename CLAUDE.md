@@ -45,6 +45,7 @@ auth/
 └── AuthPort.kt                  Port: isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign, encrypt, decrypt
 api/
 └── ShareTransport.kt            Port + value types (Role, ShareRequestType, ShareRequestState, ShareMetadata, ShareRequest)
+                                 ⚠️ Needs relay protocol update — see "Pending work" below
 contacts/
 └── Contact.kt                   Contact + VerificationLevel + ContactRepository port
 ```
@@ -98,3 +99,45 @@ Deploying to a device or emulator requires Android Studio (or `adb install`).
 - Share encryption uses **X25519 + HKDF-SHA-256 + ChaCha20-Poly1305**. Wire format: `nonce(12 bytes) || ciphertext+tag`. See `deposplit.com/CLAUDE.md` → *Transport Encryption* for the full construction.
 - The X25519 and Ed25519 private keys are stored in the Android Keystore (wrapped with AES-256-GCM under the `deposplit_master` alias) and never leave the device as raw key material.
 - Session persistence uses plain `SharedPreferences` (just an "is registered" flag). Do not add `EncryptedSharedPreferences` without a concrete reason; `security-crypto` is not a dependency.
+
+## Pending work — relay protocol
+
+The backend (Apr 2026) implements a **pure relay model**: ciphertext is ephemeral on the server and must be managed by the client. The Android app has not yet been updated. The following changes are required:
+
+### 1. `ShareTransport.kt` — add `pickUpShare`
+
+```kotlin
+/** Fetches the ciphertext of a deposited share and signals the relay to clear it.
+ *  Must be called before the share can be used in a retrieve approval.
+ *  Throws if the share has already been picked up or does not exist.
+ */
+suspend fun pickUpShare(shareId: String): ByteArray
+```
+
+Also update `respondToShareRequest` — the backend now requires the ciphertext in the body when approving a retrieve request:
+```kotlin
+suspend fun respondToShareRequest(requestId: String, approved: Boolean, ciphertext: ByteArray? = null): ShareRequest
+```
+
+### 2. `DeposplitApiAdapter.kt` — implement pickup and ciphertext-on-approve
+
+- `pickUpShare`: `GET /shares/{shareId}`, parse `ciphertext` (base64) from the JSON response.
+- `respondToShareRequest`: when `approved == true` and `requestType == RETRIEVE`, include `"ciphertext": base64(ciphertext)` in the PATCH body. The backend returns `400` if it is absent.
+
+### 3. Local share storage
+
+After pickup, store each share's ciphertext on the device (e.g., an AES-GCM encrypted JSON file in `filesDir`, keyed by share ID). This store is the source of truth for the recipient's held shares — the relay listing only shows shares not yet picked up (inbox items awaiting delivery).
+
+Suggested adapter: `LocalShareRepository` (analogous to `LocalContactRepository`) — implements a new port interface `ShareRepository` in `:hexagon`.
+
+### 4. `HomeViewModel` — update Held tab
+
+Switch the Held tab from `listShares(role = RECIPIENT)` (relay listing) to reading from `LocalShareRepository`. On `ON_RESUME`, also poll the relay inbox (`listShares(role = RECIPIENT)`) and auto-pick up any new shares (call `pickUpShare`, store locally, relay clears them).
+
+### 5. `RequestsViewModel` / `RecipientRequestsTab` — ciphertext on approve
+
+When Bob taps **Approve** on a retrieve request, read the share's ciphertext from `LocalShareRepository` and pass it to `respondToShareRequest`. If the share is not found locally (e.g., it was never picked up — should not happen in normal flow), show an error.
+
+### 6. `ShareDetailViewModel` — sender cleanup after reconstruct
+
+After a successful reconstruction, call `DELETE /shares/:shareId` (as sender) for each fully-retrieved share to remove the relay row. The backend allows this only after pickup (`pickedUpAt` set); it returns `409` otherwise.
