@@ -46,6 +46,11 @@ class DeposplitApiAdapter(
             .map { it.toDomain() }
     }
 
+    override fun pickUpShare(shareId: UUID): ByteArray {
+        val body = execute("GET", "/shares/$shareId")
+        return json.decodeFromString<PickUpShareResponseJson>(body).ciphertext.decodeBase64()
+    }
+
     override fun deleteShare(shareId: UUID) {
         execute("DELETE", "/shares/$shareId")
     }
@@ -72,8 +77,13 @@ class DeposplitApiAdapter(
     override fun getShareRequest(requestId: UUID): ShareRequest =
         json.decodeFromString<ShareRequestJson>(execute("GET", "/share-requests/$requestId")).toDomain()
 
-    override fun respondToShareRequest(requestId: UUID, approved: Boolean): ShareRequest {
-        val body = json.encodeToString(RespondJson(state = if (approved) "approved" else "denied"))
+    override fun respondToShareRequest(requestId: UUID, approved: Boolean, ciphertext: ByteArray?): ShareRequest {
+        val body = json.encodeToString(
+            RespondJson(
+                state = if (approved) "approved" else "denied",
+                ciphertext = ciphertext?.encodeBase64(),
+            )
+        )
         return json.decodeFromString<ShareRequestJson>(
             execute("PATCH", "/share-requests/$requestId", body)
         ).toDomain()
@@ -150,7 +160,10 @@ class DeposplitApiAdapter(
     )
 
     @Serializable
-    private data class RespondJson(val state: String)
+    private data class PickUpShareResponseJson(val ciphertext: String)
+
+    @Serializable
+    private data class RespondJson(val state: String, val ciphertext: String? = null)
 
     @Serializable
     private data class ShareRequestJson(

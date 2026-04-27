@@ -5,8 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deposplit.R
 import com.deposplit.api.Role
+import com.deposplit.api.ShareRepository
 import com.deposplit.api.ShareRequest
 import com.deposplit.api.ShareRequestState
+import com.deposplit.api.ShareRequestType
 import com.deposplit.api.ShareTransport
 import com.deposplit.contacts.Contact
 import com.deposplit.contacts.ContactRepository
@@ -22,6 +24,7 @@ import java.util.UUID
 class RequestsViewModel(
     private val transport: ShareTransport,
     private val contactRepository: ContactRepository,
+    private val shareRepository: ShareRepository,
 ) : ViewModel() {
 
     data class UiState(
@@ -65,10 +68,20 @@ class RequestsViewModel(
     }
 
     fun respond(requestId: UUID, approved: Boolean) {
+        val request = _uiState.value.requests.find { it.id == requestId } ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(respondingIds = it.respondingIds + requestId) }
             runCatching {
-                withContext(Dispatchers.IO) { transport.respondToShareRequest(requestId, approved) }
+                withContext(Dispatchers.IO) {
+                    val ciphertext = if (approved && request.requestType == ShareRequestType.RETRIEVE) {
+                        shareRepository.getCiphertext(request.share.id)
+                            ?: error("Share ciphertext not found in local storage")
+                    } else null
+                    transport.respondToShareRequest(requestId, approved, ciphertext)
+                    if (approved && request.requestType == ShareRequestType.DELETE) {
+                        shareRepository.delete(request.share.id)
+                    }
+                }
             }
                 .onSuccess { load() }
                 .onFailure {

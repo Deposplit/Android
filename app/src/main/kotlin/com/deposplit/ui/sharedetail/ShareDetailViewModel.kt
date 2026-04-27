@@ -144,6 +144,10 @@ class ShareDetailViewModel(
                         auth.decrypt(req.ciphertext!!, contact.xPublicKey)
                     }
                     val secretBytes = combine(decryptedShares)
+                    // Best-effort relay cleanup — sender deletes each share row after pickup
+                    for (req in approvedShares) {
+                        runCatching { transport.deleteShare(req.share.id) }
+                    }
                     secretBytes.toString(Charsets.UTF_8)
                 }
             }

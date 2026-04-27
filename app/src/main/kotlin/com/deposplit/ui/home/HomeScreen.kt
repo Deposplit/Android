@@ -47,7 +47,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.deposplit.DeposplitApp
 import com.deposplit.R
-import com.deposplit.api.ShareMetadata
+import com.deposplit.api.HeldShare
 import com.deposplit.ui.requests.RecipientRequestsTab
 import com.deposplit.ui.requests.RequestsViewModel
 import java.time.Instant
@@ -67,12 +67,12 @@ fun HomeScreen(
     val app = LocalContext.current.applicationContext as DeposplitApp
     val viewModel: HomeViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { HomeViewModel(app.shareTransport) }
+            initializer { HomeViewModel(app.shareTransport, app.shareRepository) }
         }
     )
     val requestsViewModel: RequestsViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { RequestsViewModel(app.shareTransport, app.contactRepository) }
+            initializer { RequestsViewModel(app.shareTransport, app.contactRepository, app.shareRepository) }
         }
     )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -161,8 +161,9 @@ fun HomeScreen(
                     }
 
                     else -> {
-                        val shares = if (selectedTab == 0) uiState.distributedShares else uiState.heldShares
-                        if (shares.isEmpty()) {
+                        val isEmpty = if (selectedTab == 0) uiState.distributedShares.isEmpty()
+                                      else uiState.heldShares.isEmpty()
+                        if (isEmpty) {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
                                 contentAlignment = Alignment.Center,
@@ -174,18 +175,26 @@ fun HomeScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
+                        } else if (selectedTab == 0) {
+                            LazyColumn(
+                                contentPadding = PaddingValues(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                items(uiState.distributedShares, key = { it.id }) { share ->
+                                    ShareItem(
+                                        label = share.label,
+                                        createdAt = share.createdAt,
+                                        onClick = { onNavigateToShareDetail(share.id) },
+                                    )
+                                }
+                            }
                         } else {
                             LazyColumn(
                                 contentPadding = PaddingValues(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                items(shares, key = { it.id }) { share ->
-                                    ShareItem(
-                                        share = share,
-                                        onClick = if (selectedTab == 0) {
-                                            { onNavigateToShareDetail(share.id) }
-                                        } else null,
-                                    )
+                                items(uiState.heldShares, key = { it.id }) { share ->
+                                    ShareItem(label = share.label, createdAt = share.createdAt)
                                 }
                             }
                         }
@@ -197,13 +206,13 @@ fun HomeScreen(
 }
 
 @Composable
-private fun ShareItem(share: ShareMetadata, onClick: (() -> Unit)? = null) {
+private fun ShareItem(label: String, createdAt: String, onClick: (() -> Unit)? = null) {
     Card(modifier = Modifier.fillMaxWidth(), onClick = onClick ?: {}, enabled = onClick != null) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(share.label, style = MaterialTheme.typography.titleMedium)
+            Text(label, style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(4.dp))
             Text(
-                text = formatDate(share.createdAt),
+                text = formatDate(createdAt),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

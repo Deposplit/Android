@@ -257,8 +257,6 @@ You need **three AVD instances** (or three physical devices on the same WiFi, us
 
 ### Flow 1 — Happy path (2-of-2 threshold, 2 holders)
 
-> **Note — relay protocol pending:** The backend now implements a pure relay model (Apr 2026): ciphertext is cleared from the server once the recipient picks it up, and the recipient must send it back from local storage when approving a retrieve request. The Android app has not yet been updated to implement `pickUpShare` or local share storage. Steps 9–14 below describe the **intended** flow once that work is done; the current app will break at steps 9–10 and step 12–13 against the updated backend.
-
 | Step | Device | What to do |
 |---|---|---|
 | 1 | AVD-A | Launch → register as "Alice" |

@@ -41,6 +41,8 @@ interface ShareTransport {
 
     fun listShares(role: Role, counterpartyKey: ByteArray? = null): List<ShareMetadata>
 
+    fun pickUpShare(shareId: UUID): ByteArray
+
     fun deleteShare(shareId: UUID)
 
     fun openShareRequest(shareId: UUID, type: ShareRequestType): ShareRequest
@@ -49,5 +51,5 @@ interface ShareTransport {
 
     fun getShareRequest(requestId: UUID): ShareRequest
 
-    fun respondToShareRequest(requestId: UUID, approved: Boolean): ShareRequest
+    fun respondToShareRequest(requestId: UUID, approved: Boolean, ciphertext: ByteArray? = null): ShareRequest
 }
