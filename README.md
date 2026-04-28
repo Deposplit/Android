@@ -245,9 +245,17 @@ On first launch the app shows the sign-in screen. Enter a pseudonym (display nam
 sbt run -Dconfig.file=conf/localhost.conf
 ```
 
-It listens on port 9000. The emulator reaches your host machine via the special alias `10.0.2.2`, which is what the debug build uses automatically (`BuildConfig.DEBUG` switches the base URL; the production URL `https://api.deposplit.com` is unaffected).
+It listens on port 9000.
 
-**Run the app** in Android Studio: open `Android/`, create an AVD (API 29+), then **Run ▶**. The debug variant is wired up automatically — no manual configuration needed.
+**Run on an emulator** — the emulator reaches your host machine via the special alias `10.0.2.2`, which is the default debug `BASE_URL`. Open `Android/` in Android Studio, create an AVD (API 29+), then **Run ▶**. No extra configuration needed.
+
+**Run on a physical device** — the `10.0.2.2` alias is emulator-only. Add your machine's LAN IP to `local.properties` (already gitignored):
+
+```
+BASE_URL=http://192.168.x.x:9000
+```
+
+`local.properties` is read at Gradle sync time; rebuild the app after editing it. Remove or comment out the line to revert to the emulator default. Android Studio regenerates `local.properties` when you change the SDK path, but it only rewrites the `sdk.dir` line — custom properties like `BASE_URL` survive.
 
 ### Three-AVD setup
 

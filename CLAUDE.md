@@ -96,6 +96,49 @@ Adapters may only depend on `:hexagon` ports and Android/infrastructure librarie
 
 Deploying to a device or emulator requires Android Studio (or `adb install`).
 
+## Environment configuration (base URL)
+
+`BuildConfig.BASE_URL` is the single source of truth for the backend URL. It is set via `buildConfigField` in `app/build.gradle.kts`:
+
+- **`release` build type**: always `https://api.deposplit.com` — hardcoded, no override.
+- **`debug` build type**: defaults to `http://10.0.2.2:9000` (emulator localhost alias); overridden by a `BASE_URL` key in `local.properties` (already gitignored).
+
+### Changing the debug URL (e.g. physical device on LAN)
+
+Add one line to `Android/local.properties`:
+
+```
+BASE_URL=http://192.168.x.x:9000
+```
+
+Gradle reads `local.properties` at sync time — rebuild the app after editing. Remove the line to revert to the emulator default. Android Studio may regenerate `local.properties` when you change the SDK path, but it only rewrites `sdk.dir`; custom keys survive.
+
+### Alternative: product flavors with `buildConfigField`
+
+If you ever need a persistent named environment (e.g. `staging` pointing at `https://staging.api.deposplit.com`) rather than a per-developer override, prefer **product flavors** over `local.properties`:
+
+```kotlin
+// app/build.gradle.kts
+flavorDimensions += "env"
+productFlavors {
+    create("emulator") {
+        dimension = "env"
+        buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:9000\"")
+    }
+    create("device") {
+        dimension = "env"
+        // developer fills in their LAN IP here and does not commit it
+        buildConfigField("String", "BASE_URL", "\"http://192.168.x.x:9000\"")
+    }
+    create("staging") {
+        dimension = "env"
+        buildConfigField("String", "BASE_URL", "\"https://staging.api.deposplit.com\"")
+    }
+}
+```
+
+This produces named build variants (`emulatorDebug`, `deviceDebug`, `stagingDebug`, `stagingRelease`, …) selectable from the Android Studio Build Variants panel and from `./gradlew assembleEmulatorDebug`. The tradeoff: each new flavor multiplies the variant matrix; for solo development, `local.properties` is simpler.
+
 ## Key decisions to preserve
 
 - `minSdk = 29` — do not lower; see `deposplit.com/CLAUDE.md` for rationale.

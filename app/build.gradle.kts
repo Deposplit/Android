@@ -1,7 +1,13 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+}
+
+val localProps = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
 }
 
 android {
@@ -23,7 +29,12 @@ android {
     }
 
     buildTypes {
+        debug {
+            val url = localProps.getProperty("BASE_URL") ?: "http://10.0.2.2:9000"
+            buildConfigField("String", "BASE_URL", "\"$url\"")
+        }
         release {
+            buildConfigField("String", "BASE_URL", "\"https://api.deposplit.com\"")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
