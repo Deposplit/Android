@@ -98,20 +98,32 @@ Deploying to a device or emulator requires Android Studio (or `adb install`).
 
 ## Environment configuration (base URL)
 
-`BuildConfig.BASE_URL` is the single source of truth for the backend URL. It is set via `buildConfigField` in `app/build.gradle.kts`:
+`BuildConfig.BASE_URL` and `BuildConfig.SKIP_BIOMETRIC` are set via `buildConfigField` in `app/build.gradle.kts`. The `release` build type hard-codes safe production values for both; the `debug` build type reads overrides from `local.properties` (already gitignored) and falls back to safe defaults.
 
-- **`release` build type**: always `https://api.deposplit.com` — hardcoded, no override.
-- **`debug` build type**: defaults to `http://10.0.2.2:9000` (emulator localhost alias); overridden by a `BASE_URL` key in `local.properties` (already gitignored).
+| `local.properties` key | Type | Debug default | Release |
+|---|---|---|---|
+| `BASE_URL` | `String` | `http://10.0.2.2:9000` | `https://api.deposplit.com` (fixed) |
+| `SKIP_BIOMETRIC` | `Boolean` | `false` | `false` (fixed) |
+
+Gradle reads `local.properties` at sync time — rebuild the app after editing. Android Studio may regenerate `local.properties` when you change the SDK path, but it only rewrites `sdk.dir`; custom keys survive.
 
 ### Changing the debug URL (e.g. physical device on LAN)
 
-Add one line to `Android/local.properties`:
+Add to `Android/local.properties`:
 
 ```
 BASE_URL=http://192.168.x.x:9000
 ```
 
-Gradle reads `local.properties` at sync time — rebuild the app after editing. Remove the line to revert to the emulator default. Android Studio may regenerate `local.properties` when you change the SDK path, but it only rewrites `sdk.dir`; custom keys survive.
+### Skipping biometric during development
+
+Emulators often have no enrolled biometric, which blocks the Reconstruct flow. Add to `Android/local.properties`:
+
+```
+SKIP_BIOMETRIC=true
+```
+
+When set, `ShareDetailScreen` shows the Reconstruct button unconditionally and calls `viewModel.reconstruct()` directly, bypassing `BiometricGate`. The release build always enforces biometric regardless of this key.
 
 ### Alternative: product flavors with `buildConfigField`
 

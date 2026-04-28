@@ -42,6 +42,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.deposplit.BuildConfig
 import com.deposplit.DeposplitApp
 import com.deposplit.R
 import com.deposplit.api.ShareRequest
@@ -185,37 +186,10 @@ fun ShareDetailScreen(shareId: UUID, onNavigateBack: () -> Unit) {
                         }
                     } else {
                         Spacer(Modifier.height(8.dp))
-                        val unavailableMessage = when (availability) {
-                            AuthAvailability.Available -> null
-                            AuthAvailability.NoneEnrolled ->
-                                stringResource(R.string.share_detail_biometric_none_enrolled)
-                            AuthAvailability.NoHardware ->
-                                stringResource(R.string.share_detail_biometric_no_hardware)
-                            is AuthAvailability.Unavailable ->
-                                stringResource(R.string.share_detail_biometric_unavailable)
-                        }
-                        if (unavailableMessage != null) {
-                            Text(
-                                text = unavailableMessage,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        } else {
-                            val promptTitle = stringResource(R.string.share_detail_biometric_prompt_title)
-                            val promptSubtitle = stringResource(R.string.share_detail_biometric_prompt_subtitle)
+                        if (BuildConfig.SKIP_BIOMETRIC) {
                             OutlinedButton(
-                                onClick = {
-                                    val act = activity ?: return@OutlinedButton
-                                    scope.launch {
-                                        val result = authenticate(
-                                            activity = act,
-                                            title = promptTitle,
-                                            subtitle = promptSubtitle,
-                                        )
-                                        if (result is AuthResult.Succeeded) viewModel.reconstruct()
-                                    }
-                                },
-                                enabled = !uiState.isReconstructing && activity != null,
+                                onClick = { scope.launch { viewModel.reconstruct() } },
+                                enabled = !uiState.isReconstructing,
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
                                 if (uiState.isReconstructing) CircularProgressIndicator(
@@ -223,6 +197,47 @@ fun ShareDetailScreen(shareId: UUID, onNavigateBack: () -> Unit) {
                                     strokeWidth = 2.dp,
                                 )
                                 else Text(stringResource(R.string.share_detail_reconstruct_button))
+                            }
+                        } else {
+                            val unavailableMessage = when (availability) {
+                                AuthAvailability.Available -> null
+                                AuthAvailability.NoneEnrolled ->
+                                    stringResource(R.string.share_detail_biometric_none_enrolled)
+                                AuthAvailability.NoHardware ->
+                                    stringResource(R.string.share_detail_biometric_no_hardware)
+                                is AuthAvailability.Unavailable ->
+                                    stringResource(R.string.share_detail_biometric_unavailable)
+                            }
+                            if (unavailableMessage != null) {
+                                Text(
+                                    text = unavailableMessage,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            } else {
+                                val promptTitle = stringResource(R.string.share_detail_biometric_prompt_title)
+                                val promptSubtitle = stringResource(R.string.share_detail_biometric_prompt_subtitle)
+                                OutlinedButton(
+                                    onClick = {
+                                        val act = activity ?: return@OutlinedButton
+                                        scope.launch {
+                                            val result = authenticate(
+                                                activity = act,
+                                                title = promptTitle,
+                                                subtitle = promptSubtitle,
+                                            )
+                                            if (result is AuthResult.Succeeded) viewModel.reconstruct()
+                                        }
+                                    },
+                                    enabled = !uiState.isReconstructing && activity != null,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    if (uiState.isReconstructing) CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        strokeWidth = 2.dp,
+                                    )
+                                    else Text(stringResource(R.string.share_detail_reconstruct_button))
+                                }
                             }
                         }
                     }
