@@ -20,11 +20,22 @@
     <!-- Home -->
     <string name="home_action_qr_code">My QR code</string>
     <string name="home_action_new_secret">New secret</string>
-    <string name="home_tab_distributed">Distributed</string>
-    <string name="home_tab_held">Held</string>
+    <string name="home_tab_distributed">My Shared Secrets</string>
+    <string name="home_tab_held">Their Secret Shares</string>
     <string name="home_tab_requests">Requests</string>
     <string name="home_empty_distributed">No secrets distributed yet</string>
     <string name="home_empty_held">No shares held</string>
+    <string name="home_request_all">Request Retrieval</string>
+    <string name="home_holder_delivered">Delivered</string>
+    <string name="home_holder_awaiting_pickup">Awaiting pickup</string>
+    <string name="home_held_from">From: %1$s</string>
+    <string name="home_sort_date">Date</string>
+    <string name="home_sort_label">Label</string>
+    <string name="home_sort_sender">From</string>
+    <string name="home_held_delete_title">Delete share?</string>
+    <string name="home_held_delete_body">This will permanently remove this share from your device.</string>
+    <string name="home_held_delete_all_from">Delete all shares from %1$s</string>
+    <string name="home_held_delete_confirm">Delete</string>
     <string name="home_error_fallback">Failed to load</string>
 
     <!-- Contacts -->

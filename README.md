@@ -122,7 +122,7 @@ Android/
 │   │   │   │   │   └── LocalContactRepository.kt JSON file in filesDir
 │   │   │   │   └── ui/
 │   │   │   │       ├── signin/       SignInScreen
-│   │   │   │       ├── home/         HomeViewModel + HomeScreen (Distributed / Held / Requests tabs)
+│   │   │   │       ├── home/         HomeViewModel + HomeScreen (My Shared Secrets / Their Secret Shares / Requests tabs)
 │   │   │   │       ├── contacts/     Contacts{ViewModel,Screen}, AddContact{ViewModel,Screen}
 │   │   │   │       ├── deposit/      Deposit{ViewModel,Screen} — split + encrypt + depositShare
 │   │   │   │       ├── requests/     RequestsViewModel + RecipientRequestsTab
@@ -253,7 +253,7 @@ It listens on port 9000. The emulator reaches your host machine via the special 
 
 You need **three AVD instances** (or three physical devices on the same WiFi, using your machine's LAN IP instead of `10.0.2.2`) to exercise the full social flow with a 2-of-2 threshold split across two holders. Create two additional AVDs in the Device Manager and launch them alongside the first.
 
-> **Distributed tab shows one entry per share (per recipient), not one per logical secret.** A deposit to two contacts (Bob and Carol) produces two entries on Alice's Distributed tab — one for Bob's share and one for Carol's share — even though they share the same `secretId`. This is correct data-model behaviour; grouping by `secretId` in the UI is a planned improvement.
+> The **My Shared Secrets** tab groups shares by `secretId`: a deposit to Bob and Carol shows as a single expandable card. Tap it to see delivery status and retrieve-request state per holder, and use **Request Retrieval** to open requests for all holders at once.
 
 ### Flow 1 — Happy path (2-of-2 threshold, 2 holders)
 
@@ -267,15 +267,14 @@ You need **three AVD instances** (or three physical devices on the same WiFi, us
 | 6 | AVD-C | Contacts → **Add contact** → paste Alice's keys; then TopAppBar QR icon → screenshot Carol's QR |
 | 7 | AVD-A | Add Bob as a contact; add Carol as a contact |
 | 8 | AVD-A | FAB (＋) → enter a label (e.g. "test secret"), a secret text, select Bob and Carol, choose threshold 2-of-2 → **Deposit** |
-| 9 | AVD-A | **Distributed** tab → two entries appear (one for Bob's share, one for Carol's share, same `secretId`); `pickedUpAt` is null (not yet delivered) |
-| 10 | AVD-B | **Held** tab → Bob's inbox shows Alice's share → app automatically picks it up (`GET /shares/:shareId`), stores ciphertext locally, relay clears it |
-| 11 | AVD-C | **Held** tab → Carol's inbox shows Alice's share → app picks it up the same way |
-| 12 | AVD-A | **Distributed** tab → both entries now show `pickedUpAt` set |
-| 13 | AVD-A | Tap the Bob entry → **Request Retrieval** |
-| 14 | AVD-A | Tap the Carol entry → **Request Retrieval** |
-| 15 | AVD-B | **Requests** tab → a Retrieve request from Alice appears → app reads ciphertext from local storage → tap **Approve** (ciphertext sent in response body) |
-| 16 | AVD-C | **Requests** tab → a Retrieve request from Alice appears → tap **Approve** |
-| 17 | AVD-A | Either Distributed entry → **Reconstruct** button appears (both shares approved) → biometric prompt → secret appears |
+| 9 | AVD-A | **My Shared Secrets** tab → one grouped card for the secret; expand it to see Bob and Carol as holders (delivery status: "Awaiting pickup") |
+| 10 | AVD-B | **Their Secret Shares** tab → Bob's inbox shows Alice's share → app automatically picks it up (`GET /shares/:shareId`), stores ciphertext locally, relay clears it |
+| 11 | AVD-C | **Their Secret Shares** tab → Carol's inbox shows Alice's share → app picks it up the same way |
+| 12 | AVD-A | **My Shared Secrets** tab → expand the card; both holders now show "Delivered" |
+| 13 | AVD-A | Expand the card → tap **Request Retrieval** (opens retrieve requests for Bob and Carol at once) |
+| 14 | AVD-B | **Requests** tab → a Retrieve request from Alice appears → app reads ciphertext from local storage → tap **Approve** (ciphertext sent in response body) |
+| 15 | AVD-C | **Requests** tab → a Retrieve request from Alice appears → tap **Approve** |
+| 16 | AVD-A | Expand the card → both holders show "Approved" → tap **Reconstruct** in `ShareDetailScreen` → biometric prompt → secret appears |
 
 The threshold logic (`Shamir.combine`) is already fully tested in the hexagon unit tests; the manual test above validates the full end-to-end path including encryption and transport.
 
@@ -285,11 +284,11 @@ After step 8 above: Bob taps **Deny** → on Alice's side the Retrieve section s
 
 ### Flow 3 — Sender-initiated deletion
 
-Alice taps **Request Deletion** on a share → Bob's Requests tab shows a Delete request → Bob approves → the share disappears from Bob's Held tab.
+Alice taps **Request Deletion** on a share (via `ShareDetailScreen`) → Bob's Requests tab shows a Delete request → Bob approves → the share disappears from Bob's **Their Secret Shares** tab.
 
 ### Flow 4 — Recipient-initiated deletion
 
-On AVD-B, Bob swipes/deletes Alice's share from his Held tab without any request. The share disappears locally; verify what Alice's Distributed tab shows on refresh.
+On AVD-B, Bob taps the delete icon on Alice's share in the **Their Secret Shares** tab → confirmation dialog → **Delete**. The share disappears locally. If Bob has multiple shares from Alice, the dialog also offers **Delete all shares from Alice**. Verify what Alice's **My Shared Secrets** tab shows on refresh.
 
 ### Flow 5 — Error states
 

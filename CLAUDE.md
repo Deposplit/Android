@@ -44,7 +44,7 @@ shamir/
 auth/
 └── AuthPort.kt                  Port: isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign, encrypt, decrypt
 api/
-├── ShareTransport.kt            Port + value types (Role, ShareRequestType, ShareRequestState, ShareMetadata, ShareRequest)
+├── ShareTransport.kt            Port + value types (Role, ShareRequestType, ShareRequestState, ShareMetadata{+pickedUpAt}, ShareRequest)
 │                                pickUpShare(shareId) + respondToShareRequest(..., ciphertext) for relay protocol
 └── HeldShare.kt                 HeldShare value type + ShareRepository port (local share storage)
 contacts/
@@ -70,7 +70,9 @@ shares/
 └── LocalShareRepository.kt  JSON file in filesDir; @Synchronized; stores HeldShare (ciphertext + metadata) keyed by share ID
 ui/
 ├── signin/       SignInScreen                               — pseudonym input + Register button
-├── home/         HomeViewModel + HomeScreen                 — Distributed / Held / Requests tabs
+├── home/         HomeViewModel + HomeScreen                 — My Shared Secrets / Their Secret Shares / Requests tabs
+│                                                              SecretGroup + HolderStatus (sender view); HeldShareDisplay + HeldSortOrder (recipient view)
+│                                                              requestAll, setHeldSortOrder, deleteSingleShare, deleteAllFromSender
 ├── contacts/     ContactsViewModel + ContactsScreen, AddContactViewModel + AddContactScreen
 ├── deposit/      DepositViewModel + DepositScreen           — Shamir.split + auth.encrypt + transport.depositShare
 ├── requests/     RequestsViewModel + RecipientRequestsTab   — approve/deny incoming requests
@@ -104,3 +106,52 @@ Deploying to a device or emulator requires Android Studio (or `adb install`).
 - The X25519 and Ed25519 private keys are stored in the Android Keystore (wrapped with AES-256-GCM under the `deposplit_master` alias) and never leave the device as raw key material.
 - Session persistence uses plain `SharedPreferences` (just an "is registered" flag). Do not add `EncryptedSharedPreferences` without a concrete reason; `security-crypto` is not a dependency.
 - **Local share storage** (`LocalShareRepository`): held shares (ciphertext + metadata) are stored as JSON in `filesDir/shares.json`, keyed by share ID. The relay is polled for new inbox items on each load; each new share is picked up (`GET /shares/:shareId`), stored locally, and the relay clears its ciphertext. Ciphertext is standard base64 in the JSON wire format; sender keys are base64url (consistent with the contact and API conventions).
+
+## what follows was moved from ../deposplit.com/CLAUDE.md to ./CLAUDE.md
+
+### Android App
+
+#### Minimum SDK: API 29 (Android 10)
+
+The Android app targets **`minSdk = 29`**, not the Android Studio default of API 24. This was a deliberate choice for a security-sensitive app:
+
+| API | Feature | Relevance |
+|---|---|---|
+| 28 | **`BiometricPrompt`** (native) | Gate secret reconstruction behind biometric auth |
+| 28 | **StrongBox Keymaster** (`setIsStrongBoxBacked(true)`) | Keys stored in dedicated security chip, not just TEE |
+| 28 | Cleartext traffic disabled by default | No accidental plaintext traffic to the backend |
+| 29 | **Scoped Storage** | Relevant for the file-upload secret input method |
+| 29 | **TLS 1.3** enabled by default | Baseline transport security for backend comms |
+
+API 29 still covers >90% of active Android devices, which is acceptable for a niche security app. Do not lower `minSdk` without revisiting these dependencies.
+
+Note: `BiometricPrompt` and StrongBox require runtime capability checks regardless of `minSdk` — `BiometricManager.canAuthenticate()` and `setIsStrongBoxBacked(true)` can throw `StrongBoxUnavailableException` on devices lacking the hardware.
+
+#### Authentication / Registration
+
+Registration is **keypair-first** — no OIDC, no password, no email.
+
+Flow:
+1. On first launch the device generates two keypairs via BouncyCastle (Android) / Swift Crypto (iOS): an X25519 keypair (share encryption) and an Ed25519 keypair (API authentication)
+2. The user picks a pseudonym (display name only — stored locally, never sent to the backend)
+3. Both private keys are stored in the Android Keystore (wrapped with AES-256-GCM) and never leave the device
+4. Both public keys are shared with contacts out-of-band (QR code scan, share link via Signal/Threema, etc.) — the backend never stores or indexes them
+
+Subsequent API requests are authenticated by signing a canonical request representation with the Ed25519 private key; the backend verifies against the Ed25519 public key supplied in the `X-Deposplit-Public-Key` header. No pre-registration is required.
+
+Session state (the "has completed onboarding" flag) is persisted via plain `SharedPreferences`. Private keys are managed by the Android Keystore — the app never handles raw key material directly.
+
+Identity *is* the keypair pair. This integrates directly with the k-of-n social recovery design: if Alice loses her device, she generates new keypairs on a new device and initiates a re-association request that existing contacts approve.
+
+#### UI toolkit: Jetpack Compose + Material 3
+
+Use **Jetpack Compose** (not XML/Views) for all UI. The "Empty Activity" template in Android Studio is the Compose template and is the correct starting point for new app scaffolding.
+
+#### Build toolchain: AGP 9.x + Kotlin 2.x
+
+AGP 9.x integrates Kotlin compilation directly — it registers the `kotlin` Gradle extension itself. Do **not** apply `org.jetbrains.kotlin.android`; doing so causes a "extension already registered" conflict. The Android Studio template deliberately omits it.
+
+Consequences:
+- `kotlinOptions { }` is **not available** (it requires `kotlin.android`)
+- Set the Kotlin JVM target via `compileOptions` only — AGP 9.x propagates `targetCompatibility` to the Kotlin compiler automatically
+- `kotlin.plugin.compose` (the Compose compiler plugin) is still required and does not conflict

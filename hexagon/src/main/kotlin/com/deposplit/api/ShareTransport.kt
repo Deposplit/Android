@@ -13,6 +13,7 @@ data class ShareMetadata(
     val senderKey: ByteArray,
     val recipientKey: ByteArray,
     val createdAt: String,
+    val pickedUpAt: String? = null,
 ) {
     override fun equals(other: Any?) = other is ShareMetadata && id == other.id
     override fun hashCode() = id.hashCode()

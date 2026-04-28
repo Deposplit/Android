@@ -151,6 +151,7 @@ class DeposplitApiAdapter(
         val senderKey: String,
         val recipientKey: String,
         val createdAt: String,
+        val pickedUpAt: String? = null,
     )
 
     @Serializable
@@ -185,6 +186,7 @@ class DeposplitApiAdapter(
         senderKey = senderKey.decodeBase64Url(),
         recipientKey = recipientKey.decodeBase64Url(),
         createdAt = createdAt,
+        pickedUpAt = pickedUpAt,
     )
 
     private fun ShareRequestJson.toDomain() = ShareRequest(
