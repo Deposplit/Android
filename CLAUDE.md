@@ -42,7 +42,9 @@ The top-level `build.gradle.kts` declares all plugins `apply false` so subprojec
 shamir/
 └── Shamir.kt                    split(...) / combine(...) — SSS implementation
 auth/
-└── AuthPort.kt                  Port: isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign, encrypt, decrypt
+├── AuthPort.kt                  Driving port: isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign, encrypt, decrypt
+├── IdentityStore.kt             Driven port: isRegistered, save, pseudonym, edPublicKey, edPrivateKey, xPublicKey, xPrivateKey
+└── AuthService.kt               Service implementing AuthPort — BouncyCastle keypair generation, Ed25519 signing, X25519+HKDF+ChaCha20-Poly1305 encrypt/decrypt; delegates persistence to IdentityStore
 api/
 ├── ShareTransport.kt            Port + value types (Role, ShareRequestType, ShareRequestState, ShareMetadata{+pickedUpAt}, ShareRequest)
 │                                pickUpShare(shareId) + respondToShareRequest(..., ciphertext) for relay protocol
@@ -59,7 +61,7 @@ Tests: `:hexagon/src/test/kotlin/com/deposplit/shamir/ShamirTest.kt` — round-t
 DeposplitApp.kt              Application subclass; owns authAdapter + shareTransport + contactRepository + shareRepository
 MainActivity.kt              Single activity; NavHost root (sign_in / home / contacts / add_contact / deposit / share_detail / qr_display / qr_scan)
 auth/
-├── DeposplitAuthAdapter.kt  Adapter: BouncyCastle keypair generation + Ed25519 signing + X25519+HKDF+ChaCha20-Poly1305 encrypt/decrypt; Android Keystore AES-GCM wrapping
+├── AndroidIdentityStore.kt  Adapter implementing IdentityStore — Android Keystore AES-256-GCM wrapping of private keys; public keys + pseudonym in SharedPreferences
 └── SignInViewModel.kt       UI logic for the registration flow
 api/
 └── DeposplitApiAdapter.kt   HTTP adapter: HttpURLConnection, Ed25519 request signing, JSON via kotlinx.serialization

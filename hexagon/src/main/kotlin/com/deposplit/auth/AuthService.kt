@@ -1,9 +1,5 @@
-package com.deposplit.auth
+﻿package com.deposplit.auth
 
-import android.content.Context
-import android.content.SharedPreferences
-import android.security.keystore.KeyGenParameterSpec
-import android.security.keystore.KeyProperties
 import org.bouncycastle.crypto.agreement.X25519Agreement
 import org.bouncycastle.crypto.digests.SHA256Digest
 import org.bouncycastle.crypto.generators.Ed25519KeyPairGenerator
@@ -20,19 +16,11 @@ import org.bouncycastle.crypto.params.X25519KeyGenerationParameters
 import org.bouncycastle.crypto.params.X25519PrivateKeyParameters
 import org.bouncycastle.crypto.params.X25519PublicKeyParameters
 import org.bouncycastle.crypto.signers.Ed25519Signer
-import java.security.KeyStore
 import java.security.SecureRandom
-import java.util.Base64
-import javax.crypto.Cipher
-import javax.crypto.KeyGenerator
-import javax.crypto.SecretKey
-import javax.crypto.spec.GCMParameterSpec
 
-class DeposplitAuthAdapter(context: Context) : AuthPort {
+class AuthService(private val identityStore: IdentityStore) : AuthPort {
 
-    private val prefs = context.getSharedPreferences("deposplit", Context.MODE_PRIVATE)
-
-    override fun isRegistered(): Boolean = prefs.getBoolean("registered", false)
+    override fun isRegistered(): Boolean = identityStore.isRegistered()
 
     override fun register(pseudonym: String) {
         val random = SecureRandom()
@@ -49,25 +37,17 @@ class DeposplitAuthAdapter(context: Context) : AuthPort {
         val xPk = (xPair.public as X25519PublicKeyParameters).encoded
         val xSk = (xPair.private as X25519PrivateKeyParameters).encoded
 
-        val masterKey = loadOrCreateMasterKey()
-        prefs.edit()
-            .putString("pseudonym", pseudonym)
-            .putString("ed_pk", edPk.encodeBase64())
-            .putEncrypted(masterKey, "ed_sk", edSk)
-            .putString("x_pk", xPk.encodeBase64())
-            .putEncrypted(masterKey, "x_sk", xSk)
-            .putBoolean("registered", true)
-            .apply()
+        identityStore.save(pseudonym, edPk, edSk, xPk, xSk)
     }
 
-    override fun pseudonym(): String = requirePref("pseudonym")
+    override fun pseudonym(): String = identityStore.pseudonym()
 
-    override fun edPublicKey(): ByteArray = requirePref("ed_pk").decodeBase64()
+    override fun edPublicKey(): ByteArray = identityStore.edPublicKey()
 
-    override fun xPublicKey(): ByteArray = requirePref("x_pk").decodeBase64()
+    override fun xPublicKey(): ByteArray = identityStore.xPublicKey()
 
     override fun sign(message: ByteArray): ByteArray {
-        val sk = Ed25519PrivateKeyParameters(prefs.getDecrypted(loadOrCreateMasterKey(), "ed_sk"))
+        val sk = Ed25519PrivateKeyParameters(identityStore.edPrivateKey())
         val signer = Ed25519Signer()
         signer.init(true, sk)
         signer.update(message, 0, message.size)
@@ -75,7 +55,7 @@ class DeposplitAuthAdapter(context: Context) : AuthPort {
     }
 
     override fun encrypt(plaintext: ByteArray, recipientXPublicKey: ByteArray): ByteArray {
-        val sk = X25519PrivateKeyParameters(prefs.getDecrypted(loadOrCreateMasterKey(), "x_sk"))
+        val sk = X25519PrivateKeyParameters(identityStore.xPrivateKey())
         val nonce = ByteArray(NONCE_BYTES).also { secureRandom.nextBytes(it) }
         val key = deriveKey(sk, X25519PublicKeyParameters(recipientXPublicKey), nonce)
         val cipher = ChaCha20Poly1305()
@@ -87,7 +67,7 @@ class DeposplitAuthAdapter(context: Context) : AuthPort {
     }
 
     override fun decrypt(noncePlusCiphertext: ByteArray, recipientXPublicKey: ByteArray): ByteArray {
-        val sk = X25519PrivateKeyParameters(prefs.getDecrypted(loadOrCreateMasterKey(), "x_sk"))
+        val sk = X25519PrivateKeyParameters(identityStore.xPrivateKey())
         val nonce = noncePlusCiphertext.copyOfRange(0, NONCE_BYTES)
         val ciphertext = noncePlusCiphertext.copyOfRange(NONCE_BYTES, noncePlusCiphertext.size)
         val key = deriveKey(sk, X25519PublicKeyParameters(recipientXPublicKey), nonce)
@@ -115,27 +95,7 @@ class DeposplitAuthAdapter(context: Context) : AuthPort {
         return key
     }
 
-    private fun requirePref(key: String): String =
-        prefs.getString(key, null) ?: error("Not registered — '$key' missing")
-
-    private fun loadOrCreateMasterKey(): SecretKey {
-        val keyStore = KeyStore.getInstance("AndroidKeyStore").also { it.load(null) }
-        if (keyStore.containsAlias(KEYSTORE_ALIAS)) {
-            return keyStore.getKey(KEYSTORE_ALIAS, null) as SecretKey
-        }
-        val gen = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
-        gen.init(
-            KeyGenParameterSpec.Builder(KEYSTORE_ALIAS, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
-                .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-                .setKeySize(256)
-                .build()
-        )
-        return gen.generateKey()
-    }
-
     companion object {
-        private const val KEYSTORE_ALIAS = "deposplit_master"
         private const val NONCE_BYTES = 12
         private const val KEY_BYTES = 32
         private const val TAG_BITS = 128
@@ -143,26 +103,3 @@ class DeposplitAuthAdapter(context: Context) : AuthPort {
         private val secureRandom = SecureRandom()
     }
 }
-
-private fun SharedPreferences.Editor.putEncrypted(
-    masterKey: SecretKey,
-    key: String,
-    value: ByteArray,
-): SharedPreferences.Editor {
-    val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-    cipher.init(Cipher.ENCRYPT_MODE, masterKey)
-    putString("${key}_iv", cipher.iv.encodeBase64())
-    putString(key, cipher.doFinal(value).encodeBase64())
-    return this
-}
-
-private fun SharedPreferences.getDecrypted(masterKey: SecretKey, key: String): ByteArray {
-    val iv = requireNotNull(getString("${key}_iv", null)) { "'${key}_iv' missing" }.decodeBase64()
-    val ct = requireNotNull(getString(key, null)) { "'$key' missing" }.decodeBase64()
-    val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-    cipher.init(Cipher.DECRYPT_MODE, masterKey, GCMParameterSpec(128, iv))
-    return cipher.doFinal(ct)
-}
-
-private fun ByteArray.encodeBase64(): String = Base64.getEncoder().encodeToString(this)
-private fun String.decodeBase64(): ByteArray = Base64.getDecoder().decode(this)

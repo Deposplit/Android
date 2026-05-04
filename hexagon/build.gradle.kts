@@ -16,5 +16,6 @@ kotlin {
 }
 
 dependencies {
+    implementation(libs.bouncycastle)
     testImplementation(kotlin("test-junit"))
 }
