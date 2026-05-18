@@ -176,9 +176,9 @@ The Android app targets **`minSdk = 29`**, not the Android Studio default of API
 |---|---|---|
 | 28 | **`BiometricPrompt`** (native) | Gate secret reconstruction behind biometric auth |
 | 28 | **StrongBox Keymaster** (`setIsStrongBoxBacked(true)`) | Keys stored in dedicated security chip, not just TEE |
-| 28 | Cleartext traffic disabled by default | No accidental plaintext traffic to the backend |
+| 28 | Cleartext traffic disabled by default | No accidental plaintext traffic to the Web app/service |
 | 29 | **Scoped Storage** | Relevant for the file-upload secret input method |
-| 29 | **TLS 1.3** enabled by default | Baseline transport security for backend comms |
+| 29 | **TLS 1.3** enabled by default | Baseline transport security for Web app/service comms |
 
 API 29 still covers >90% of active Android devices, which is acceptable for a niche security app. Do not lower `minSdk` without revisiting these dependencies.
 
@@ -190,11 +190,11 @@ Registration is **keypair-first** — no OIDC, no password, no email.
 
 Flow:
 1. On first launch the device generates two keypairs via BouncyCastle (Android) / Swift Crypto (iOS): an X25519 keypair (share encryption) and an Ed25519 keypair (API authentication)
-2. The user picks a pseudonym (display name only — stored locally, never sent to the backend)
+2. The user picks a pseudonym (display name only — stored locally, never sent to the Web app/service)
 3. Both private keys are stored in the Android Keystore (wrapped with AES-256-GCM) and never leave the device
-4. Both public keys are shared with contacts out-of-band (QR code scan, share link via Signal/Threema, etc.) — the backend never stores or indexes them
+4. Both public keys are shared with contacts out-of-band (QR code scan, share link via Signal/Threema, etc.) — the Web app/service never stores or indexes them
 
-Subsequent API requests are authenticated by signing a canonical request representation with the Ed25519 private key; the backend verifies against the Ed25519 public key supplied in the `X-Deposplit-Public-Key` header. No pre-registration is required.
+Subsequent API requests are authenticated by signing a canonical request representation with the Ed25519 private key; the Web app/service verifies against the Ed25519 public key supplied in the `X-Deposplit-Public-Key` header. No pre-registration is required.
 
 Session state (the "has completed onboarding" flag) is persisted via plain `SharedPreferences`. Private keys are managed by the Android Keystore — the app never handles raw key material directly.
 

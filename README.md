@@ -1,6 +1,6 @@
 # Deposplit — Android
 
-Kotlin Android app for [Deposplit](https://github.com/Deposplit/deposplit.com): a secret-sharing app built on Shamir's Secret Sharing (SSS). Secrets are split into *n* shares and distributed to contacts via the deposplit.com backend; reconstruction requires at least *k* holders to cooperate.
+Kotlin Android app for [Deposplit](https://github.com/Deposplit/deposplit.com): a secret-sharing app built on Shamir's Secret Sharing (SSS). Secrets are split into *n* shares and distributed to contacts via the deposplit.com Web app/service; reconstruction requires at least *k* holders to cooperate.
 
 This document is written for a developer who knows Kotlin well but has limited Android experience.
 
@@ -184,7 +184,7 @@ Deposplit does not use OIDC, passwords, or email. Registration is keypair-first.
         │
 2. App generates an Ed25519 keypair (API auth) and an X25519 keypair (share encryption)
         │  → Both private keys stored in Android Keystore (never leave the device)
-        │  → Pseudonym stored in SharedPreferences (local only, never sent to the backend)
+        │  → Pseudonym stored in SharedPreferences (local only, never sent to the Web app/service)
         │
 3. App calls AuthPort.register(pseudonym)
         │  → DeposplitAuthAdapter persists the "is registered" flag
@@ -231,15 +231,15 @@ The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`. Install
 
 ### First run
 
-On first launch the app shows the sign-in screen. Enter a pseudonym (display name only — stored locally, never sent to the backend). Tapping **Register** generates Ed25519 and X25519 keypairs via BouncyCastle, stores the private keys in the Android Keystore, and navigates to the home screen.
+On first launch the app shows the sign-in screen. Enter a pseudonym (display name only — stored locally, never sent to the Web app/service). Tapping **Register** generates Ed25519 and X25519 keypairs via BouncyCastle, stores the private keys in the Android Keystore, and navigates to the home screen.
 
 ---
 
-## Testing against a local backend
+## Testing against a local Web app/service
 
 ### Setup
 
-**Start the backend** (from `deposplit.com/`):
+**Start the Web app/service** (from `deposplit.com/`):
 
 ```bash
 sbt run -Dconfig.file=conf/localhost.conf
@@ -300,7 +300,7 @@ On AVD-B, Bob taps the delete icon on Alice's share in the **Their Secret Shares
 
 ### Flow 5 — Error states
 
-Kill the backend → refresh on either device → error banner + **Retry** button appears. Restart the backend → Retry recovers successfully.
+Kill the Web app/service → refresh on either device → error banner + **Retry** button appears. Restart the Web app/service → Retry recovers successfully.
 
 ### Flow 6 — Locale
 
