@@ -395,7 +395,7 @@ private fun HolderRow(holder: HolderStatus, onClick: () -> Unit) {
 @Composable
 private fun ShareItem(
     label: String,
-    createdAt: String,
+    createdAt: Instant,
     sender: String? = null,
     onDelete: (() -> Unit)? = null,
     onClick: (() -> Unit)? = null,
@@ -441,6 +441,5 @@ private fun ShareItem(
 
 private val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
 
-private fun formatDate(iso: String): String = runCatching {
-    dateFormatter.format(Instant.parse(iso).atZone(ZoneId.systemDefault()))
-}.getOrDefault(iso)
+private fun formatDate(instant: Instant): String =
+    dateFormatter.format(instant.atZone(ZoneId.systemDefault()))

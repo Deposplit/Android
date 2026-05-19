@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.time.Instant
 import java.util.Base64
 import java.util.UUID
 
@@ -65,7 +66,7 @@ class LocalShareRepository(context: Context) : ShareRepository {
         secretId = UUID.fromString(secretId),
         label = label,
         senderKey = Base64.getUrlDecoder().decode(senderKey),
-        createdAt = createdAt,
+        createdAt = Instant.parse(createdAt),
         ciphertext = Base64.getDecoder().decode(ciphertext),
     )
 
@@ -74,7 +75,7 @@ class LocalShareRepository(context: Context) : ShareRepository {
         secretId = secretId.toString(),
         label = label,
         senderKey = Base64.getUrlEncoder().withoutPadding().encodeToString(senderKey),
-        createdAt = createdAt,
+        createdAt = createdAt.toString(),
         ciphertext = Base64.getEncoder().encodeToString(ciphertext),
     )
 }

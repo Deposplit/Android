@@ -78,7 +78,7 @@ class AddContactViewModel(private val repository: ContactRepository) : ViewModel
                     xPublicKey = xKeyBytes!!,
                     verificationLevel = VerificationLevel.UNVERIFIED,
                     verifiedAt = null,
-                    addedAt = Instant.now().toString(),
+                    addedAt = Instant.now(),
                 )
                 withContext(Dispatchers.IO) { repository.save(contact) }
             }

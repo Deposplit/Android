@@ -19,19 +19,20 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.Instant
 import java.util.UUID
 
 data class HolderStatus(
     val shareId: UUID,
     val recipientName: String,
-    val pickedUpAt: String?,
+    val pickedUpAt: Instant?,
     val retrieveRequest: ShareRequest?,
 )
 
 data class SecretGroup(
     val secretId: UUID,
     val label: String,
-    val createdAt: String,
+    val createdAt: Instant,
     val holders: List<HolderStatus>,
 )
 

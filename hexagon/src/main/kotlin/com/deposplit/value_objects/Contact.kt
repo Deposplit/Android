@@ -1,5 +1,6 @@
 package com.deposplit.value_objects
 
+import java.time.Instant
 import java.util.UUID
 
 enum class VerificationLevel { UNVERIFIED, VERIFIED }
@@ -10,8 +11,8 @@ data class Contact(
     val edPublicKey: ByteArray,
     val xPublicKey: ByteArray,
     val verificationLevel: VerificationLevel,
-    val verifiedAt: String?,
-    val addedAt: String,
+    val verifiedAt: Instant?,
+    val addedAt: Instant,
 ) {
     override fun equals(other: Any?) = other is Contact && id == other.id
     override fun hashCode() = id.hashCode()

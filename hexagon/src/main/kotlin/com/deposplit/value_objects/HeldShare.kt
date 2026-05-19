@@ -1,5 +1,6 @@
 package com.deposplit.value_objects
 
+import java.time.Instant
 import java.util.UUID
 
 data class HeldShare(
@@ -7,7 +8,7 @@ data class HeldShare(
     val secretId: UUID,
     val label: String,
     val senderKey: ByteArray,
-    val createdAt: String,
+    val createdAt: Instant,
     val ciphertext: ByteArray,
 ) {
     override fun equals(other: Any?) = other is HeldShare && id == other.id

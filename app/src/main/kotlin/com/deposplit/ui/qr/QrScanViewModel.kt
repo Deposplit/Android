@@ -44,7 +44,7 @@ class QrScanViewModel(private val contactRepository: ContactRepository) : ViewMo
                 val decoder = Base64.getUrlDecoder()
                 val edKey = decoder.decode(payload.ed)
                 val xKey = decoder.decode(payload.x)
-                val now = Instant.now().toString()
+                val now = Instant.now()
                 contactRepository.save(
                     Contact(
                         id = UUID.randomUUID(),

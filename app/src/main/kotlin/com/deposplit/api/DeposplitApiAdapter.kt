@@ -15,6 +15,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
 import java.security.SecureRandom
+import java.time.Instant
 import java.util.Base64
 import java.util.UUID
 
@@ -192,8 +193,8 @@ class DeposplitApiAdapter(
         label = label,
         senderKey = senderKey.decodeBase64Url(),
         recipientKey = recipientKey.decodeBase64Url(),
-        createdAt = createdAt,
-        pickedUpAt = pickedUpAt,
+        createdAt = Instant.parse(createdAt),
+        pickedUpAt = pickedUpAt?.let { Instant.parse(it) },
     )
 
     private fun ShareRequestJson.toDomain() = ShareRequest(
@@ -210,8 +211,8 @@ class DeposplitApiAdapter(
             "denied" -> ShareRequestState.DENIED
             else -> error("Unknown state: $state")
         },
-        requestedAt = requestedAt,
-        respondedAt = respondedAt,
+        requestedAt = Instant.parse(requestedAt),
+        respondedAt = respondedAt?.let { Instant.parse(it) },
         ciphertext = ciphertext?.decodeBase64(),
     )
 

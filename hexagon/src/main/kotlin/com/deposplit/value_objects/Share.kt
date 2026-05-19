@@ -1,5 +1,6 @@
 package com.deposplit.value_objects
 
+import java.time.Instant
 import java.util.UUID
 
 enum class Role { SENDER, RECIPIENT }
@@ -12,8 +13,8 @@ data class ShareMetadata(
     val label: String,
     val senderKey: ByteArray,
     val recipientKey: ByteArray,
-    val createdAt: String,
-    val pickedUpAt: String? = null,
+    val createdAt: Instant,
+    val pickedUpAt: Instant? = null,
 ) {
     override fun equals(other: Any?) = other is ShareMetadata && id == other.id
     override fun hashCode() = id.hashCode()
@@ -24,8 +25,8 @@ data class ShareRequest(
     val share: ShareMetadata,
     val requestType: ShareRequestType,
     val state: ShareRequestState,
-    val requestedAt: String,
-    val respondedAt: String?,
+    val requestedAt: Instant,
+    val respondedAt: Instant?,
     val ciphertext: ByteArray?,
 ) {
     override fun equals(other: Any?) = other is ShareRequest && id == other.id

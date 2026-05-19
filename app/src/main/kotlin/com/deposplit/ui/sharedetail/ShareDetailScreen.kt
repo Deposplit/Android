@@ -325,9 +325,8 @@ private fun LabeledValue(label: String, value: String) {
 
 private val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
 
-private fun formatDate(iso: String): String = runCatching {
-    dateFormatter.format(Instant.parse(iso).atZone(ZoneId.systemDefault()))
-}.getOrDefault(iso)
+private fun formatDate(instant: Instant): String =
+    dateFormatter.format(instant.atZone(ZoneId.systemDefault()))
 
 private fun keyPreview(key: ByteArray): String =
     key.take(4).joinToString("") { "%02x".format(it.toInt() and 0xff) } + "…"

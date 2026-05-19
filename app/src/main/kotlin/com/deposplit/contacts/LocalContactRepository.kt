@@ -8,6 +8,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.time.Instant
 import java.util.Base64
 import java.util.UUID
 
@@ -64,8 +65,8 @@ class LocalContactRepository(context: Context) : ContactRepository {
         edPublicKey = Base64.getUrlDecoder().decode(edPublicKey),
         xPublicKey = Base64.getUrlDecoder().decode(xPublicKey),
         verificationLevel = VerificationLevel.valueOf(verificationLevel),
-        verifiedAt = verifiedAt,
-        addedAt = addedAt,
+        verifiedAt = verifiedAt?.let { Instant.parse(it) },
+        addedAt = Instant.parse(addedAt),
     )
 
     private fun Contact.toWire() = ContactWire(
@@ -74,7 +75,7 @@ class LocalContactRepository(context: Context) : ContactRepository {
         edPublicKey = Base64.getUrlEncoder().withoutPadding().encodeToString(edPublicKey),
         xPublicKey = Base64.getUrlEncoder().withoutPadding().encodeToString(xPublicKey),
         verificationLevel = verificationLevel.name,
-        verifiedAt = verifiedAt,
-        addedAt = addedAt,
+        verifiedAt = verifiedAt?.toString(),
+        addedAt = addedAt.toString(),
     )
 }
