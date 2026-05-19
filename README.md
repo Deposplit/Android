@@ -98,12 +98,19 @@ Android/
 │   │   ├── main/kotlin/com/deposplit/
 │   │   │   ├── shamir/
 │   │   │   │   └── Shamir.kt            SSS library (split / combine)
-│   │   │   ├── auth/
-│   │   │   │   └── AuthPort.kt          Port: isRegistered, register, pseudonym, keys, sign, encrypt, decrypt
-│   │   │   ├── api/
+│   │   │   ├── driving_ports/
+│   │   │   │   ├── Identity.kt          Port: isRegistered, register, pseudonym, keys, sign, encrypt, decrypt
 │   │   │   │   └── ShareTransport.kt    Port + value types (Role, ShareRequest{Type,State}, ShareMetadata, ShareRequest)
-│   │   │   └── contacts/
-│   │   │       └── Contact.kt           Contact + VerificationLevel + ContactRepository port
+│   │   │   ├── driven_ports/
+│   │   │   │   ├── IdentityStore.kt     Credential store interface (save/load keys + pseudonym)
+│   │   │   │   ├── ContactRepository.kt Contact persistence interface
+│   │   │   │   └── ShareRepository.kt   Local share storage interface
+│   │   │   ├── services/
+│   │   │   │   └── IdentityService.kt   Implements Identity — BouncyCastle keypair generation, Ed25519 signing, X25519+HKDF+ChaCha20-Poly1305 encrypt/decrypt
+│   │   │   └── value_objects/
+│   │   │       ├── Contact.kt           Contact + VerificationLevel
+│   │   │       ├── HeldShare.kt         HeldShare (ciphertext + metadata, held by the recipient)
+│   │   │       └── Share.kt             Role, ShareRequestType, ShareRequestState, ShareMetadata, ShareRequest
 │   │   └── test/kotlin/com/deposplit/shamir/
 │   │       └── ShamirTest.kt            SSS unit tests
 │   └── build.gradle.kts
@@ -114,14 +121,13 @@ Android/
 │   │   │   │   ├── DeposplitApp.kt          Application subclass
 │   │   │   │   ├── MainActivity.kt          Single FragmentActivity; NavHost root
 │   │   │   │   ├── auth/
-│   │   │   │   │   ├── DeposplitAuthAdapter.kt  BouncyCastle keypair generation + Ed25519 signing + ChaCha20-Poly1305 encrypt/decrypt; Android Keystore
-│   │   │   │   │   └── SignInViewModel.kt       Registration UI logic
+│   │   │   │   │   └── AndroidIdentityStore.kt  Android Keystore AES-256-GCM wrapping of private keys; public keys + pseudonym in SharedPreferences
 │   │   │   │   ├── api/
 │   │   │   │   │   └── DeposplitApiAdapter.kt   HTTP adapter — all 7 API operations + request signing
 │   │   │   │   ├── contacts/
 │   │   │   │   │   └── LocalContactRepository.kt JSON file in filesDir
 │   │   │   │   └── ui/
-│   │   │   │       ├── signin/       SignInScreen
+│   │   │   │       ├── signin/       SignInViewModel + SignInScreen
 │   │   │   │       ├── home/         HomeViewModel + HomeScreen (My Shared Secrets / Their Secret Shares / Requests tabs)
 │   │   │   │       ├── contacts/     Contacts{ViewModel,Screen}, AddContact{ViewModel,Screen}
 │   │   │   │       ├── deposit/      Deposit{ViewModel,Screen} — split + encrypt + depositShare
@@ -159,13 +165,15 @@ Deposplit follows **Ports & Adapters (Hexagonal Architecture)** for the domain a
                           │ calls port interface
 ┌─────────────────────────▼────────────────────────────┐
 │  Domain (Port)                                       │
-│  AuthPort  ◄──── DeposplitAuthAdapter (Adapter)      │
+│  Identity  ◄──── IdentityService (Service)           │
 └──────────────────────────────────────────────────────┘
 ```
 
-**Port (`AuthPort`)** — a Kotlin interface defined by the domain. It expresses what the app needs ("register with a pseudonym") without knowing anything about keypair generation or key storage.
+**Port (`Identity`)** — a Kotlin interface defined by the domain. It expresses what the app needs ("register with a pseudonym") without knowing anything about keypair generation or key storage.
 
-**Adapter (`DeposplitAuthAdapter`)** — implements the port using BouncyCastle keypair generation, Ed25519 signing, and X25519+HKDF+ChaCha20-Poly1305 encryption, with private keys wrapped in the Android Keystore. Changing the storage or crypto strategy only requires changing this class.
+**Service (`IdentityService`)** — implements the port using BouncyCastle keypair generation, Ed25519 signing, and X25519+HKDF+ChaCha20-Poly1305 encryption. Delegates key persistence to the `IdentityStore` driven port.
+
+**Adapter (`AndroidIdentityStore`)** — implements `IdentityStore` using Android Keystore AES-256-GCM wrapping for private keys. Changing the storage strategy only requires changing this class.
 
 **ViewModel (`SignInViewModel`)** — sits at the UI/domain boundary. It calls the port, holds `UiState`, and emits one-shot `Effect`s (navigate). It does not know anything about Compose.
 
@@ -186,8 +194,8 @@ Deposplit does not use OIDC, passwords, or email. Registration is keypair-first.
         │  → Both private keys stored in Android Keystore (never leave the device)
         │  → Pseudonym stored in SharedPreferences (local only, never sent to the Web app/service)
         │
-3. App calls AuthPort.register(pseudonym)
-        │  → DeposplitAuthAdapter persists the "is registered" flag
+3. App calls Identity.register(pseudonym)
+        │  → IdentityService persists the "is registered" flag via AndroidIdentityStore
         │  → No server call — the keypair IS the identity; no registration endpoint exists
         │
 4. ViewModel emits Effect.NavigateToHome
