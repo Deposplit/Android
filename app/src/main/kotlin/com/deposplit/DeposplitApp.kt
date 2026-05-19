@@ -4,13 +4,13 @@ import android.app.Application
 import com.deposplit.api.DeposplitApiAdapter
 import com.deposplit.auth.AndroidIdentityStore
 import com.deposplit.contacts.LocalContactRepository
-import com.deposplit.driving_ports.AuthPort
-import com.deposplit.services.AuthService
+import com.deposplit.driving_ports.Identity
+import com.deposplit.services.IdentityService
 import com.deposplit.shares.LocalShareRepository
 
 class DeposplitApp : Application() {
 
-    lateinit var authAdapter: AuthPort
+    lateinit var authAdapter: Identity
         private set
 
     lateinit var shareTransport: DeposplitApiAdapter
@@ -24,7 +24,7 @@ class DeposplitApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        authAdapter = AuthService(AndroidIdentityStore(this))
+        authAdapter = IdentityService(AndroidIdentityStore(this))
         shareTransport = DeposplitApiAdapter(
             auth = authAdapter,
             baseUrl = BuildConfig.BASE_URL,

@@ -22,20 +22,17 @@
  * THE SOFTWARE.
  */
 
-package com.deposplit.driven_ports
+package com.deposplit.driving_ports
 
-
-/* IdentityStore manages exactly one thing: the current user's keypair and pseudonym. There's no list, no ID-based
- * lookup, no getAll(). The interface is essentially a typed credential store — save(...) once at registration, then
- * read individual fields. Calling it IdentityRepository would imply a collection of identities could exist, which
- * doesn't match the model (one device = one identity).
- */
-interface IdentityStore {
+interface Identity {
     fun isRegistered(): Boolean
-    fun save(pseudonym: String, edPk: ByteArray, edSk: ByteArray, xPk: ByteArray, xSk: ByteArray)
+    fun register(pseudonym: String)
     fun pseudonym(): String
     fun edPublicKey(): ByteArray
-    fun edPrivateKey(): ByteArray
     fun xPublicKey(): ByteArray
-    fun xPrivateKey(): ByteArray
+    fun sign(message: ByteArray): ByteArray
+    /** Encrypts [plaintext] to [recipientXPublicKey] via X25519+HKDF-SHA-256+ChaCha20-Poly1305. Returns nonce(12) || ciphertext+tag. */
+    fun encrypt(plaintext: ByteArray, recipientXPublicKey: ByteArray): ByteArray
+    /** Decrypts [noncePlusCiphertext] (nonce(12) || ciphertext+tag) using [recipientXPublicKey] via X25519+HKDF-SHA-256+ChaCha20-Poly1305. */
+    fun decrypt(noncePlusCiphertext: ByteArray, recipientXPublicKey: ByteArray): ByteArray
 }

@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deposplit.R
 import com.deposplit.driven_ports.ContactRepository
-import com.deposplit.driving_ports.AuthPort
+import com.deposplit.driving_ports.Identity
 import com.deposplit.driving_ports.ShareTransport
 import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.Role
@@ -25,7 +25,7 @@ import java.util.UUID
 
 class ShareDetailViewModel(
     private val shareId: UUID,
-    private val auth: AuthPort,
+    private val auth: Identity,
     private val transport: ShareTransport,
     private val contactRepository: ContactRepository,
 ) : ViewModel() {

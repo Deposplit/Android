@@ -6,7 +6,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deposplit.R
-import com.deposplit.driving_ports.AuthPort
+import com.deposplit.driving_ports.Identity
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import kotlinx.coroutines.Dispatchers
@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class QrDisplayViewModel(private val auth: AuthPort) : ViewModel() {
+class QrDisplayViewModel(private val auth: Identity) : ViewModel() {
 
     data class UiState(
         val bitmap: Bitmap? = null,

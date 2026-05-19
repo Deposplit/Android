@@ -44,7 +44,7 @@ Packages use snake_case to mirror the Scala relay hexagon (`driving_ports`, `dri
 shamir/
 └── Shamir.kt                      split(...) / combine(...) — SSS implementation
 driving_ports/
-├── AuthPort.kt                    isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign, encrypt, decrypt
+├── Identity.kt                    isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign, encrypt, decrypt
 └── ShareTransport.kt              depositShare, listShares, pickUpShare, deleteShare, openShareRequest,
                                    listShareRequests, getShareRequest, respondToShareRequest
                                    + value types: Role, ShareRequestType, ShareRequestState, ShareMetadata{+pickedUpAt}, ShareRequest
@@ -53,7 +53,7 @@ driven_ports/
 ├── ContactRepository.kt           getAll, getById, getByEdKey, save, delete
 └── ShareRepository.kt             getAll, getCiphertext, save, delete (local share storage)
 services/
-└── AuthService.kt                 Implements AuthPort — BouncyCastle keypair generation, Ed25519 signing,
+└── IdentityService.kt             Implements Identity — BouncyCastle keypair generation, Ed25519 signing,
                                    X25519+HKDF+ChaCha20-Poly1305 encrypt/decrypt; delegates persistence to IdentityStore
 value_objects/
 ├── Contact.kt                     Contact data class + VerificationLevel enum (UNVERIFIED, VERIFIED)
