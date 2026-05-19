@@ -43,8 +43,8 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.deposplit.DeposplitApp
 import com.deposplit.R
-import com.deposplit.contacts.Contact
-import com.deposplit.contacts.VerificationLevel
+import com.deposplit.value_objects.Contact
+import com.deposplit.value_objects.VerificationLevel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

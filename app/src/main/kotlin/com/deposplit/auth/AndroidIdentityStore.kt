@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import com.deposplit.driven_ports.IdentityStore
 import java.security.KeyStore
 import java.util.Base64
 import javax.crypto.Cipher

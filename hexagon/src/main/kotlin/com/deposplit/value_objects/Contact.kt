@@ -1,4 +1,4 @@
-package com.deposplit.contacts
+package com.deposplit.value_objects
 
 import java.util.UUID
 
@@ -15,11 +15,4 @@ data class Contact(
 ) {
     override fun equals(other: Any?) = other is Contact && id == other.id
     override fun hashCode() = id.hashCode()
-}
-
-interface ContactRepository {
-    fun getAll(): List<Contact>
-    fun getByEdKey(edPublicKey: ByteArray): Contact?
-    fun save(contact: Contact)
-    fun delete(contactId: UUID)
 }

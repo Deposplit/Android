@@ -1,4 +1,4 @@
-package com.deposplit.api
+package com.deposplit.value_objects
 
 import java.util.UUID
 
@@ -30,27 +30,4 @@ data class ShareRequest(
 ) {
     override fun equals(other: Any?) = other is ShareRequest && id == other.id
     override fun hashCode() = id.hashCode()
-}
-
-interface ShareTransport {
-    fun depositShare(
-        secretId: UUID,
-        label: String,
-        recipientKey: ByteArray,
-        ciphertext: ByteArray,
-    ): ShareMetadata
-
-    fun listShares(role: Role, counterpartyKey: ByteArray? = null): List<ShareMetadata>
-
-    fun pickUpShare(shareId: UUID): ByteArray
-
-    fun deleteShare(shareId: UUID)
-
-    fun openShareRequest(shareId: UUID, type: ShareRequestType): ShareRequest
-
-    fun listShareRequests(role: Role, state: ShareRequestState? = null): List<ShareRequest>
-
-    fun getShareRequest(requestId: UUID): ShareRequest
-
-    fun respondToShareRequest(requestId: UUID, approved: Boolean, ciphertext: ByteArray? = null): ShareRequest
 }

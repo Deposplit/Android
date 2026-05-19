@@ -1,8 +1,8 @@
 package com.deposplit.shares
 
 import android.content.Context
-import com.deposplit.api.HeldShare
-import com.deposplit.api.ShareRepository
+import com.deposplit.driven_ports.ShareRepository
+import com.deposplit.value_objects.HeldShare
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json

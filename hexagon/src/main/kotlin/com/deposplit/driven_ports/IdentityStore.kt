@@ -1,4 +1,4 @@
-﻿package com.deposplit.auth
+package com.deposplit.driven_ports
 
 interface IdentityStore {
     fun isRegistered(): Boolean

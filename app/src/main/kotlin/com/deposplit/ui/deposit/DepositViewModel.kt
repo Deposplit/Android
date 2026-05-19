@@ -4,10 +4,10 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deposplit.R
-import com.deposplit.api.ShareTransport
-import com.deposplit.auth.AuthPort
-import com.deposplit.contacts.Contact
-import com.deposplit.contacts.ContactRepository
+import com.deposplit.driven_ports.ContactRepository
+import com.deposplit.driving_ports.AuthPort
+import com.deposplit.driving_ports.ShareTransport
+import com.deposplit.value_objects.Contact
 import com.deposplit.shamir.split
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel

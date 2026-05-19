@@ -1,6 +1,9 @@
 package com.deposplit.contacts
 
 import android.content.Context
+import com.deposplit.driven_ports.ContactRepository
+import com.deposplit.value_objects.Contact
+import com.deposplit.value_objects.VerificationLevel
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json

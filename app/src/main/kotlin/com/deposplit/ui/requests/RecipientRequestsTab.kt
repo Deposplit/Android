@@ -26,8 +26,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.deposplit.R
-import com.deposplit.api.ShareRequest
-import com.deposplit.api.ShareRequestType
+import com.deposplit.value_objects.ShareRequest
+import com.deposplit.value_objects.ShareRequestType
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter

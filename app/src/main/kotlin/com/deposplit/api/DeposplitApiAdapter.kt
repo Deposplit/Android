@@ -1,6 +1,13 @@
 package com.deposplit.api
 
-import com.deposplit.auth.AuthPort
+import com.deposplit.driven_ports.ShareRepository
+import com.deposplit.driving_ports.AuthPort
+import com.deposplit.driving_ports.ShareTransport
+import com.deposplit.value_objects.Role
+import com.deposplit.value_objects.ShareMetadata
+import com.deposplit.value_objects.ShareRequest
+import com.deposplit.value_objects.ShareRequestState
+import com.deposplit.value_objects.ShareRequestType
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json

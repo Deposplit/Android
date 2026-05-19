@@ -38,19 +38,27 @@ The top-level `build.gradle.kts` declares all plugins `apply false` so subprojec
 
 ### `:hexagon/src/main/kotlin/com/deposplit/`
 
+Packages use snake_case to mirror the Scala relay hexagon (`driving_ports`, `driven_ports`, etc.).
+
 ```
 shamir/
-└── Shamir.kt                    split(...) / combine(...) — SSS implementation
-auth/
-├── AuthPort.kt                  Driving port: isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign, encrypt, decrypt
-├── IdentityStore.kt             Driven port: isRegistered, save, pseudonym, edPublicKey, edPrivateKey, xPublicKey, xPrivateKey
-└── AuthService.kt               Service implementing AuthPort — BouncyCastle keypair generation, Ed25519 signing, X25519+HKDF+ChaCha20-Poly1305 encrypt/decrypt; delegates persistence to IdentityStore
-api/
-├── ShareTransport.kt            Port + value types (Role, ShareRequestType, ShareRequestState, ShareMetadata{+pickedUpAt}, ShareRequest)
-│                                pickUpShare(shareId) + respondToShareRequest(..., ciphertext) for relay protocol
-└── HeldShare.kt                 HeldShare value type + ShareRepository port (local share storage)
-contacts/
-└── Contact.kt                   Contact + VerificationLevel + ContactRepository port
+└── Shamir.kt                      split(...) / combine(...) — SSS implementation
+driving_ports/
+├── AuthPort.kt                    isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign, encrypt, decrypt
+└── ShareTransport.kt              depositShare, listShares, pickUpShare, deleteShare, openShareRequest,
+                                   listShareRequests, getShareRequest, respondToShareRequest
+                                   + value types: Role, ShareRequestType, ShareRequestState, ShareMetadata{+pickedUpAt}, ShareRequest
+driven_ports/
+├── IdentityStore.kt               isRegistered, save, pseudonym, edPublicKey, edPrivateKey, xPublicKey, xPrivateKey
+├── ContactRepository.kt           getAll, getById, getByEdKey, save, delete
+└── ShareRepository.kt             getAll, getCiphertext, save, delete (local share storage)
+services/
+└── AuthService.kt                 Implements AuthPort — BouncyCastle keypair generation, Ed25519 signing,
+                                   X25519+HKDF+ChaCha20-Poly1305 encrypt/decrypt; delegates persistence to IdentityStore
+value_objects/
+├── Contact.kt                     Contact data class + VerificationLevel enum (UNVERIFIED, VERIFIED)
+├── HeldShare.kt                   HeldShare data class
+└── Share.kt                       Role, ShareRequestType, ShareRequestState, ShareMetadata, ShareRequest
 ```
 
 Tests: `:hexagon/src/test/kotlin/com/deposplit/shamir/ShamirTest.kt` — round-trip, cross-platform vectors, input validation. Uses `kotlin.test` (JUnit 4 backend via `kotlin-test-junit`).

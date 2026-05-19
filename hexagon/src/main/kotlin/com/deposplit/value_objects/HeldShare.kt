@@ -1,4 +1,4 @@
-package com.deposplit.api
+package com.deposplit.value_objects
 
 import java.util.UUID
 
@@ -12,11 +12,4 @@ data class HeldShare(
 ) {
     override fun equals(other: Any?) = other is HeldShare && id == other.id
     override fun hashCode() = id.hashCode()
-}
-
-interface ShareRepository {
-    fun getAll(): List<HeldShare>
-    fun getCiphertext(shareId: UUID): ByteArray?
-    fun save(share: HeldShare)
-    fun delete(shareId: UUID)
 }

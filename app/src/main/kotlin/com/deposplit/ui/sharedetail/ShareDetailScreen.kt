@@ -45,10 +45,10 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.deposplit.BuildConfig
 import com.deposplit.DeposplitApp
 import com.deposplit.R
-import com.deposplit.api.ShareRequest
-import com.deposplit.api.ShareRequestState
-import com.deposplit.api.ShareRequestType
-import com.deposplit.contacts.Contact
+import com.deposplit.value_objects.Contact
+import com.deposplit.value_objects.ShareRequest
+import com.deposplit.value_objects.ShareRequestState
+import com.deposplit.value_objects.ShareRequestType
 import com.deposplit.ui.biometric.AuthAvailability
 import com.deposplit.ui.biometric.AuthResult
 import com.deposplit.ui.biometric.authenticate

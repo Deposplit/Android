@@ -59,7 +59,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.deposplit.DeposplitApp
 import com.deposplit.R
-import com.deposplit.api.ShareRequestState
+import com.deposplit.value_objects.ShareRequestState
 import com.deposplit.ui.requests.RecipientRequestsTab
 import com.deposplit.ui.requests.RequestsViewModel
 import java.time.Instant

@@ -4,8 +4,8 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deposplit.R
-import com.deposplit.contacts.Contact
-import com.deposplit.contacts.ContactRepository
+import com.deposplit.driven_ports.ContactRepository
+import com.deposplit.value_objects.Contact
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
