@@ -31,7 +31,6 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.deposplit.DeposplitApp
 import com.deposplit.R
-import com.deposplit.auth.SignInViewModel
 
 @Composable
 fun SignInScreen(onNavigateToHome: () -> Unit) {

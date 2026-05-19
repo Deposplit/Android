@@ -69,8 +69,7 @@ Tests: `:hexagon/src/test/kotlin/com/deposplit/shamir/ShamirTest.kt` — round-t
 DeposplitApp.kt              Application subclass; owns authAdapter + shareTransport + contactRepository + shareRepository
 MainActivity.kt              Single activity; NavHost root (sign_in / home / contacts / add_contact / deposit / share_detail / qr_display / qr_scan)
 auth/
-├── AndroidIdentityStore.kt  Adapter implementing IdentityStore — Android Keystore AES-256-GCM wrapping of private keys; public keys + pseudonym in SharedPreferences
-└── SignInViewModel.kt       UI logic for the registration flow
+└── AndroidIdentityStore.kt  Adapter implementing IdentityStore — Android Keystore AES-256-GCM wrapping of private keys; public keys + pseudonym in SharedPreferences
 api/
 └── DeposplitApiAdapter.kt   HTTP adapter: HttpURLConnection, Ed25519 request signing, JSON via kotlinx.serialization
                              pickUpShare (GET /shares/:shareId) + ciphertext-on-approve (PATCH /share-requests/:id)
@@ -79,7 +78,7 @@ contacts/
 shares/
 └── LocalShareRepository.kt  JSON file in filesDir; @Synchronized; stores HeldShare (ciphertext + metadata) keyed by share ID
 ui/
-├── signin/       SignInScreen                               — pseudonym input + Register button
+├── signin/       SignInViewModel + SignInScreen              — pseudonym input + Register button
 ├── home/         HomeViewModel + HomeScreen                 — My Shared Secrets / Their Secret Shares / Requests tabs
 │                                                              SecretGroup + HolderStatus (sender view); HeldShareDisplay + HeldSortOrder (recipient view)
 │                                                              requestAll, setHeldSortOrder, deleteSingleShare, deleteAllFromSender

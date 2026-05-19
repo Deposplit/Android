@@ -1,4 +1,4 @@
-package com.deposplit.auth
+package com.deposplit.ui.signin
 
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
