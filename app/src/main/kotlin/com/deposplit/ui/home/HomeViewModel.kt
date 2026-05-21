@@ -4,13 +4,10 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deposplit.R
-import com.deposplit.driven_ports.ContactRepository
-import com.deposplit.driven_ports.ShareRepository
-import com.deposplit.driving_ports.ShareTransport
+import com.deposplit.driving_ports.ContactManagement
+import com.deposplit.driving_ports.ShareManagement
 import com.deposplit.value_objects.HeldShare
-import com.deposplit.value_objects.Role
 import com.deposplit.value_objects.ShareRequest
-import com.deposplit.value_objects.ShareRequestState
 import com.deposplit.value_objects.ShareRequestType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,9 +41,8 @@ data class HeldShareDisplay(
 enum class HeldSortOrder { DATE, LABEL, SENDER }
 
 class HomeViewModel(
-    private val transport: ShareTransport,
-    private val shareRepository: ShareRepository,
-    private val contactRepository: ContactRepository,
+    private val shareManagement: ShareManagement,
+    private val contactManagement: ContactManagement,
 ) : ViewModel() {
 
     data class UiState(
@@ -72,28 +68,10 @@ class HomeViewModel(
             _uiState.update { it.copy(isLoading = true, error = null) }
             runCatching {
                 withContext(Dispatchers.IO) {
-                    val distributed = transport.listShares(Role.SENDER)
-                    val allRequests = transport.listShareRequests(Role.SENDER)
-                    val contacts = contactRepository.getAll()
-                    val inbox = transport.listShares(Role.RECIPIENT)
-                    for (meta in inbox) {
-                        if (shareRepository.getCiphertext(meta.id) == null) {
-                            runCatching {
-                                val ciphertext = transport.pickUpShare(meta.id)
-                                shareRepository.save(
-                                    HeldShare(
-                                        id = meta.id,
-                                        secretId = meta.secretId,
-                                        label = meta.label,
-                                        senderKey = meta.senderKey,
-                                        createdAt = meta.createdAt,
-                                        ciphertext = ciphertext,
-                                    )
-                                )
-                            }
-                            // Silently skip: relay may have already cleared it on a previous run
-                        }
-                    }
+                    shareManagement.syncInbox()
+                    val distributed = shareManagement.listDistributed()
+                    val allRequests = shareManagement.listSentRequests()
+                    val contacts = contactManagement.listContacts()
                     val grouped = distributed
                         .groupBy { it.secretId }
                         .map { (secretId, shares) ->
@@ -123,7 +101,7 @@ class HomeViewModel(
                             )
                         }
                         .sortedByDescending { it.createdAt }
-                    val held = shareRepository.getAll()
+                    val held = shareManagement.listHeld()
                         .map { share ->
                             val name = contacts
                                 .find { it.edPublicKey.contentEquals(share.senderKey) }
@@ -152,17 +130,9 @@ class HomeViewModel(
     }
 
     fun requestAll(secretId: UUID) {
-        val group = _uiState.value.groupedSecrets.find { it.secretId == secretId } ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(requestingAllIds = it.requestingAllIds + secretId) }
-            withContext(Dispatchers.IO) {
-                for (holder in group.holders) {
-                    val state = holder.retrieveRequest?.state
-                    if (state != ShareRequestState.PENDING && state != ShareRequestState.APPROVED) {
-                        runCatching { transport.openShareRequest(holder.shareId, ShareRequestType.RETRIEVE) }
-                    }
-                }
-            }
+            withContext(Dispatchers.IO) { runCatching { shareManagement.requestAll(secretId) } }
             _uiState.update { it.copy(requestingAllIds = it.requestingAllIds - secretId) }
             load()
         }
@@ -179,18 +149,14 @@ class HomeViewModel(
 
     fun deleteSingleShare(shareId: UUID) {
         viewModelScope.launch {
-            withContext(Dispatchers.IO) { shareRepository.delete(shareId) }
+            withContext(Dispatchers.IO) { shareManagement.deleteHeldShare(shareId) }
             load()
         }
     }
 
     fun deleteAllFromSender(senderKey: ByteArray) {
         viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                shareRepository.getAll()
-                    .filter { it.senderKey.contentEquals(senderKey) }
-                    .forEach { shareRepository.delete(it.id) }
-            }
+            withContext(Dispatchers.IO) { shareManagement.deleteAllHeldFromSender(senderKey) }
             load()
         }
     }

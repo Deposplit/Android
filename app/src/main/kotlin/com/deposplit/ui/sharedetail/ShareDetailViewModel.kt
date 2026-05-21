@@ -4,16 +4,13 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deposplit.R
-import com.deposplit.driven_ports.ContactRepository
-import com.deposplit.driving_ports.Identity
-import com.deposplit.driving_ports.ShareTransport
+import com.deposplit.driving_ports.ContactManagement
+import com.deposplit.driving_ports.ShareManagement
 import com.deposplit.value_objects.Contact
-import com.deposplit.value_objects.Role
 import com.deposplit.value_objects.ShareMetadata
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareRequestState
 import com.deposplit.value_objects.ShareRequestType
-import com.deposplit.shamir.combine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,9 +22,8 @@ import java.util.UUID
 
 class ShareDetailViewModel(
     private val shareId: UUID,
-    private val auth: Identity,
-    private val transport: ShareTransport,
-    private val contactRepository: ContactRepository,
+    private val shareManagement: ShareManagement,
+    private val contactManagement: ContactManagement,
 ) : ViewModel() {
 
     data class UiState(
@@ -57,11 +53,11 @@ class ShareDetailViewModel(
             _uiState.update { it.copy(isLoading = true, error = null) }
             runCatching {
                 withContext(Dispatchers.IO) {
-                    val shares = transport.listShares(Role.SENDER)
+                    val shares = shareManagement.listDistributed()
                     val share = shares.find { it.id == shareId }
                         ?: error("Share not found")
-                    val allRequests = transport.listShareRequests(Role.SENDER)
-                    val contacts = contactRepository.getAll()
+                    val allRequests = shareManagement.listSentRequests()
+                    val contacts = contactManagement.listContacts()
                     Triple(share, allRequests, contacts)
                 }
             }
@@ -108,7 +104,7 @@ class ShareDetailViewModel(
                 else it.copy(isOpeningDelete = true, actionError = null)
             }
             runCatching {
-                withContext(Dispatchers.IO) { transport.openShareRequest(shareId, type) }
+                withContext(Dispatchers.IO) { shareManagement.openRequest(shareId, type) }
             }
                 .onSuccess { load() }
                 .onFailure {
@@ -121,34 +117,12 @@ class ShareDetailViewModel(
     }
 
     fun reconstruct() {
-        val state = _uiState.value
-        val share = state.share ?: return
+        val share = _uiState.value.share ?: return
         _uiState.update { it.copy(isReconstructing = true, actionError = null, reconstructedSecret = null) }
         viewModelScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    val allRequests = transport.listShareRequests(Role.SENDER)
-                    val approvedShares = allRequests.filter {
-                        it.share.secretId == share.secretId &&
-                            it.requestType == ShareRequestType.RETRIEVE &&
-                            it.state == ShareRequestState.APPROVED &&
-                            it.ciphertext != null
-                    }
-                    check(approvedShares.size >= 2) {
-                        "Need at least 2 approved shares to reconstruct (have ${approvedShares.size})"
-                    }
-                    val contacts = contactRepository.getAll()
-                    val decryptedShares = approvedShares.map { req ->
-                        val contact = contacts.find { it.edPublicKey.contentEquals(req.share.recipientKey) }
-                            ?: error("Contact not found for recipient key — cannot decrypt share")
-                        auth.decrypt(req.ciphertext!!, contact.xPublicKey)
-                    }
-                    val secretBytes = combine(decryptedShares)
-                    // Best-effort relay cleanup — sender deletes each share row after pickup
-                    for (req in approvedShares) {
-                        runCatching { transport.deleteShare(req.share.id) }
-                    }
-                    secretBytes.toString(Charsets.UTF_8)
+                    shareManagement.reconstruct(share.secretId).toString(Charsets.UTF_8)
                 }
             }
                 .onSuccess { secret ->

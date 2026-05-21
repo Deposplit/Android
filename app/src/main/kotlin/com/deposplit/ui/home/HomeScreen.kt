@@ -79,12 +79,12 @@ fun HomeScreen(
     val app = LocalContext.current.applicationContext as DeposplitApp
     val viewModel: HomeViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { HomeViewModel(app.shareTransport, app.shareRepository, app.contactRepository) }
+            initializer { HomeViewModel(app.shareManagement, app.contactManagement) }
         }
     )
     val requestsViewModel: RequestsViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { RequestsViewModel(app.shareTransport, app.contactRepository, app.shareRepository) }
+            initializer { RequestsViewModel(app.shareManagement, app.contactManagement) }
         }
     )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()

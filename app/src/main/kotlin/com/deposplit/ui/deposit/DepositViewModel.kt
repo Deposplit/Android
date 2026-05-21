@@ -4,11 +4,9 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deposplit.R
-import com.deposplit.driven_ports.ContactRepository
-import com.deposplit.driving_ports.Identity
-import com.deposplit.driving_ports.ShareTransport
+import com.deposplit.driving_ports.ContactManagement
+import com.deposplit.driving_ports.ShareManagement
 import com.deposplit.value_objects.Contact
-import com.deposplit.shamir.split
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,9 +19,8 @@ import kotlinx.coroutines.withContext
 import java.util.UUID
 
 class DepositViewModel(
-    private val auth: Identity,
-    private val transport: ShareTransport,
-    private val contactRepository: ContactRepository,
+    private val shareManagement: ShareManagement,
+    private val contactManagement: ContactManagement,
 ) : ViewModel() {
 
     data class UiState(
@@ -59,7 +56,7 @@ class DepositViewModel(
     private fun loadContacts() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingContacts = true) }
-            runCatching { withContext(Dispatchers.IO) { contactRepository.getAll() } }
+            runCatching { withContext(Dispatchers.IO) { contactManagement.listContacts() } }
                 .onSuccess { contacts -> _uiState.update { it.copy(isLoadingContacts = false, contacts = contacts) } }
                 .onFailure { _uiState.update { it.copy(isLoadingContacts = false, error = R.string.deposit_error_load_contacts) } }
         }
@@ -105,14 +102,9 @@ class DepositViewModel(
             runCatching {
                 val selectedContacts = state.contacts.filter { it.id in state.selectedContactIds }
                 val secretBytes = state.secret.toByteArray(Charsets.UTF_8)
-                val shares = split(secretBytes, selectedContacts.size, state.threshold)
-                val secretId = UUID.randomUUID()
                 val label = state.label.trim()
                 withContext(Dispatchers.IO) {
-                    shares.zip(selectedContacts).forEach { (share, contact) ->
-                        val ciphertext = auth.encrypt(share, contact.xPublicKey)
-                        transport.depositShare(secretId, label, contact.edPublicKey, ciphertext)
-                    }
+                    shareManagement.deposit(secretBytes, label, selectedContacts, state.threshold)
                 }
             }
                 .onSuccess { _effects.send(Effect.NavigateBack) }

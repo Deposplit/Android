@@ -45,16 +45,23 @@ shamir/
 └── Shamir.kt                      split(...) / combine(...) — SSS implementation
 driving_ports/
 ├── Identity.kt                    isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign, encrypt, decrypt
-└── ShareTransport.kt              depositShare, listShares, pickUpShare, deleteShare, openShareRequest,
-                                   listShareRequests, getShareRequest, respondToShareRequest
-                                   + value types: Role, ShareRequestType, ShareRequestState, ShareMetadata{+pickedUpAt}, ShareRequest
+├── ContactManagement.kt           listContacts, addManually, addFromQr, deleteContact
+└── ShareManagement.kt             deposit, listDistributed, listSentRequests, requestAll, openRequest, reconstruct,
+                                   syncInbox, listHeld, listPendingRequests, respond, deleteHeldShare,
+                                   deleteAllHeldFromSender
 driven_ports/
 ├── IdentityStore.kt               isRegistered, save, pseudonym, edPublicKey, edPrivateKey, xPublicKey, xPrivateKey
 ├── ContactRepository.kt           getAll, getById, getByEdKey, save, delete
-└── ShareRepository.kt             getAll, getCiphertext, save, delete (local share storage)
+├── ShareRepository.kt             getAll, getCiphertext, save, delete (local share storage)
+└── ShareRelay.kt                  depositShare, listShares, pickUpShare, deleteShare, openShareRequest,
+                                   listShareRequests, getShareRequest, respondToShareRequest
 services/
-└── IdentityService.kt             Implements Identity — BouncyCastle keypair generation, Ed25519 signing,
-                                   X25519+HKDF+ChaCha20-Poly1305 encrypt/decrypt; delegates persistence to IdentityStore
+├── IdentityService.kt             Implements Identity — BouncyCastle keypair generation, Ed25519 signing,
+│                                  X25519+HKDF+ChaCha20-Poly1305 encrypt/decrypt; delegates persistence to IdentityStore
+├── ContactService.kt              Implements ContactManagement — key-size validation, VerificationLevel assignment,
+│                                  UUID/timestamp generation; delegates persistence to ContactRepository
+└── ShareService.kt                Implements ShareManagement — Shamir.split/combine + Identity.encrypt/decrypt +
+                                   ShareRelay + ShareRepository + ContactRepository
 value_objects/
 ├── Contact.kt                     Contact data class + VerificationLevel enum (UNVERIFIED, VERIFIED)
 ├── HeldShare.kt                   HeldShare data class
@@ -66,13 +73,13 @@ Tests: `:hexagon/src/test/kotlin/com/deposplit/shamir/ShamirTest.kt` — round-t
 ### `:app/src/main/kotlin/com/deposplit/`
 
 ```
-DeposplitApp.kt              Application subclass; owns authAdapter + shareTransport + contactRepository + shareRepository
+DeposplitApp.kt              Application subclass; owns authAdapter + contactManagement + shareManagement
 MainActivity.kt              Single activity; NavHost root (sign_in / home / contacts / add_contact / deposit / share_detail / qr_display / qr_scan)
 auth/
 └── AndroidIdentityStore.kt  Adapter implementing IdentityStore — Android Keystore AES-256-GCM wrapping of private keys; public keys + pseudonym in SharedPreferences
 api/
-└── DeposplitApiAdapter.kt   HTTP adapter: HttpURLConnection, Ed25519 request signing, JSON via kotlinx.serialization
-                             pickUpShare (GET /shares/:shareId) + ciphertext-on-approve (PATCH /share-requests/:id)
+└── DeposplitApiAdapter.kt   HTTP adapter implementing ShareRelay: HttpURLConnection, Ed25519 request signing,
+                             JSON via kotlinx.serialization
 contacts/
 └── LocalContactRepository.kt  JSON file in filesDir; @Synchronized; kotlinx.serialization wire types
 shares/
@@ -82,10 +89,12 @@ ui/
 ├── home/         HomeViewModel + HomeScreen                 — My Shared Secrets / Their Secret Shares / Requests tabs
 │                                                              SecretGroup + HolderStatus (sender view); HeldShareDisplay + HeldSortOrder (recipient view)
 │                                                              requestAll, setHeldSortOrder, deleteSingleShare, deleteAllFromSender
-├── contacts/     ContactsViewModel + ContactsScreen, AddContactViewModel + AddContactScreen
-├── deposit/      DepositViewModel + DepositScreen           — Shamir.split + auth.encrypt + transport.depositShare
+├── contacts/     ContactsViewModel + ContactsScreen (contactManagement.listContacts/deleteContact),
+│               AddContactViewModel + AddContactScreen (contactManagement.addManually),
+│               QrScanViewModel uses contactManagement.addFromQr
+├── deposit/      DepositViewModel + DepositScreen           — contactManagement.listContacts + shareManagement.deposit(...)
 ├── requests/     RequestsViewModel + RecipientRequestsTab   — approve/deny incoming requests
-├── sharedetail/  ShareDetailViewModel + ShareDetailScreen   — open RETRIEVE/DELETE + reconstruct via Shamir.combine + auth.decrypt
+├── sharedetail/  ShareDetailViewModel + ShareDetailScreen   — open RETRIEVE/DELETE + shareManagement.reconstruct(...)
 ├── qr/           QrPayload, QrDisplay{ViewModel,Screen}, QrScan{ViewModel,Screen}
 └── theme/        Material 3 colour, type, theme
 ```

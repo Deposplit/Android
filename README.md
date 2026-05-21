@@ -100,13 +100,19 @@ Android/
 │   │   │   │   └── Shamir.kt            SSS library (split / combine)
 │   │   │   ├── driving_ports/
 │   │   │   │   ├── Identity.kt          Port: isRegistered, register, pseudonym, keys, sign, encrypt, decrypt
-│   │   │   │   └── ShareTransport.kt    Port + value types (Role, ShareRequest{Type,State}, ShareMetadata, ShareRequest)
+│   │   │   │   ├── ContactManagement.kt Port: listContacts, addManually, addFromQr, deleteContact
+│   │   │   │   └── ShareManagement.kt   Port: deposit, listDistributed, listSentRequests, requestAll,
+│   │   │   │                            openRequest, reconstruct, syncInbox, listHeld, listPendingRequests,
+│   │   │   │                            respond, deleteHeldShare, deleteAllHeldFromSender
 │   │   │   ├── driven_ports/
 │   │   │   │   ├── IdentityStore.kt     Credential store interface (save/load keys + pseudonym)
 │   │   │   │   ├── ContactRepository.kt Contact persistence interface
-│   │   │   │   └── ShareRepository.kt   Local share storage interface
+│   │   │   │   ├── ShareRepository.kt   Local share storage interface
+│   │   │   │   └── ShareRelay.kt        Raw relay API interface (depositShare, listShares, pickUpShare, …)
 │   │   │   ├── services/
-│   │   │   │   └── IdentityService.kt   Implements Identity — BouncyCastle keypair generation, Ed25519 signing, X25519+HKDF+ChaCha20-Poly1305 encrypt/decrypt
+│   │   │   │   ├── IdentityService.kt   Implements Identity — BouncyCastle keypair generation, Ed25519 signing, X25519+HKDF+ChaCha20-Poly1305 encrypt/decrypt
+│   │   │   │   ├── ContactService.kt    Implements ContactManagement — key-size validation, VerificationLevel, UUID/timestamp
+│   │   │   │   └── ShareService.kt      Implements ShareManagement — SSS split/combine + encrypt/decrypt + relay coordination
 │   │   │   └── value_objects/
 │   │   │       ├── Contact.kt           Contact + VerificationLevel
 │   │   │       ├── HeldShare.kt         HeldShare (ciphertext + metadata, held by the recipient)
@@ -118,7 +124,7 @@ Android/
 │   ├── src/
 │   │   ├── main/
 │   │   │   ├── kotlin/com/deposplit/
-│   │   │   │   ├── DeposplitApp.kt          Application subclass
+│   │   │   │   ├── DeposplitApp.kt          Application subclass; wires adapters into ContactService + ShareService; exposes contactManagement + shareManagement
 │   │   │   │   ├── MainActivity.kt          Single FragmentActivity; NavHost root
 │   │   │   │   ├── auth/
 │   │   │   │   │   └── AndroidIdentityStore.kt  Android Keystore AES-256-GCM wrapping of private keys; public keys + pseudonym in SharedPreferences
@@ -130,7 +136,7 @@ Android/
 │   │   │   │       ├── signin/       SignInViewModel + SignInScreen
 │   │   │   │       ├── home/         HomeViewModel + HomeScreen (My Shared Secrets / Their Secret Shares / Requests tabs)
 │   │   │   │       ├── contacts/     Contacts{ViewModel,Screen}, AddContact{ViewModel,Screen}
-│   │   │   │       ├── deposit/      Deposit{ViewModel,Screen} — split + encrypt + depositShare
+│   │   │   │       ├── deposit/      Deposit{ViewModel,Screen} — contactManagement.listContacts + shareManagement.deposit
 │   │   │   │       ├── requests/     RequestsViewModel + RecipientRequestsTab
 │   │   │   │       ├── sharedetail/  ShareDetail{ViewModel,Screen} — open requests + reconstruct
 │   │   │   │       ├── qr/           QrPayload, QrDisplay{ViewModel,Screen}, QrScan{ViewModel,Screen}

@@ -4,9 +4,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deposplit.R
-import com.deposplit.driven_ports.ContactRepository
-import com.deposplit.value_objects.Contact
-import com.deposplit.value_objects.VerificationLevel
+import com.deposplit.driving_ports.ContactManagement
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,11 +14,9 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.time.Instant
 import java.util.Base64
-import java.util.UUID
 
-class AddContactViewModel(private val repository: ContactRepository) : ViewModel() {
+class AddContactViewModel(private val contactManagement: ContactManagement) : ViewModel() {
 
     data class UiState(
         val pseudonym: String = "",
@@ -71,16 +67,9 @@ class AddContactViewModel(private val repository: ContactRepository) : ViewModel
         _uiState.update { it.copy(isSaving = true) }
         viewModelScope.launch {
             runCatching {
-                val contact = Contact(
-                    id = UUID.randomUUID(),
-                    pseudonym = state.pseudonym.trim(),
-                    edPublicKey = edKeyBytes!!,
-                    xPublicKey = xKeyBytes!!,
-                    verificationLevel = VerificationLevel.UNVERIFIED,
-                    verifiedAt = null,
-                    addedAt = Instant.now(),
-                )
-                withContext(Dispatchers.IO) { repository.save(contact) }
+                withContext(Dispatchers.IO) {
+                    contactManagement.addManually(state.pseudonym.trim(), edKeyBytes!!, xKeyBytes!!)
+                }
             }
                 .onSuccess { _effects.send(Effect.NavigateBack) }
                 .onFailure {

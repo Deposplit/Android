@@ -73,9 +73,8 @@ fun ShareDetailScreen(shareId: UUID, onNavigateBack: () -> Unit) {
             initializer {
                 ShareDetailViewModel(
                     shareId = shareId,
-                    auth = app.authAdapter,
-                    transport = app.shareTransport,
-                    contactRepository = app.contactRepository,
+                    shareManagement = app.shareManagement,
+                    contactManagement = app.contactManagement,
                 )
             }
         }

@@ -4,14 +4,10 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deposplit.R
-import com.deposplit.driven_ports.ContactRepository
-import com.deposplit.driven_ports.ShareRepository
-import com.deposplit.driving_ports.ShareTransport
+import com.deposplit.driving_ports.ContactManagement
+import com.deposplit.driving_ports.ShareManagement
 import com.deposplit.value_objects.Contact
-import com.deposplit.value_objects.Role
 import com.deposplit.value_objects.ShareRequest
-import com.deposplit.value_objects.ShareRequestState
-import com.deposplit.value_objects.ShareRequestType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,9 +18,8 @@ import kotlinx.coroutines.withContext
 import java.util.UUID
 
 class RequestsViewModel(
-    private val transport: ShareTransport,
-    private val contactRepository: ContactRepository,
-    private val shareRepository: ShareRepository,
+    private val shareManagement: ShareManagement,
+    private val contactManagement: ContactManagement,
 ) : ViewModel() {
 
     data class UiState(
@@ -47,8 +42,7 @@ class RequestsViewModel(
             _uiState.update { it.copy(isLoading = true, error = null) }
             runCatching {
                 withContext(Dispatchers.IO) {
-                    transport.listShareRequests(Role.RECIPIENT, ShareRequestState.PENDING) to
-                        contactRepository.getAll()
+                    shareManagement.listPendingRequests() to contactManagement.listContacts()
                 }
             }
                 .onSuccess { (requests, contacts) ->
@@ -68,20 +62,10 @@ class RequestsViewModel(
     }
 
     fun respond(requestId: UUID, approved: Boolean) {
-        val request = _uiState.value.requests.find { it.id == requestId } ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(respondingIds = it.respondingIds + requestId) }
             runCatching {
-                withContext(Dispatchers.IO) {
-                    val ciphertext = if (approved && request.requestType == ShareRequestType.RETRIEVE) {
-                        shareRepository.getCiphertext(request.share.id)
-                            ?: error("Share ciphertext not found in local storage")
-                    } else null
-                    transport.respondToShareRequest(requestId, approved, ciphertext)
-                    if (approved && request.requestType == ShareRequestType.DELETE) {
-                        shareRepository.delete(request.share.id)
-                    }
-                }
+                withContext(Dispatchers.IO) { shareManagement.respond(requestId, approved) }
             }
                 .onSuccess { load() }
                 .onFailure {

@@ -60,7 +60,7 @@ fun QrScanScreen(onNavigateBack: () -> Unit) {
     val app = context.applicationContext as DeposplitApp
     val viewModel: QrScanViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { QrScanViewModel(app.contactRepository) }
+            initializer { QrScanViewModel(app.contactManagement) }
         }
     )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()

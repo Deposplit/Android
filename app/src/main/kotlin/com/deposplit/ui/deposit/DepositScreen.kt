@@ -51,7 +51,7 @@ fun DepositScreen(onNavigateBack: () -> Unit) {
     val viewModel: DepositViewModel = viewModel(
         factory = viewModelFactory {
             initializer {
-                DepositViewModel(app.authAdapter, app.shareTransport, app.contactRepository)
+                DepositViewModel(app.shareManagement, app.contactManagement)
             }
         }
     )

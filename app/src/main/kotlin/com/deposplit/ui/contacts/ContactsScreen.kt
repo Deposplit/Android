@@ -52,7 +52,7 @@ fun ContactsScreen(onNavigateBack: () -> Unit, onNavigateToAddContact: () -> Uni
     val app = LocalContext.current.applicationContext as DeposplitApp
     val viewModel: ContactsViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { ContactsViewModel(app.contactRepository) }
+            initializer { ContactsViewModel(app.contactManagement) }
         }
     )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()

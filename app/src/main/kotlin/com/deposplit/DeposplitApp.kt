@@ -4,8 +4,12 @@ import android.app.Application
 import com.deposplit.api.DeposplitApiAdapter
 import com.deposplit.auth.AndroidIdentityStore
 import com.deposplit.contacts.LocalContactRepository
+import com.deposplit.driving_ports.ContactManagement
 import com.deposplit.driving_ports.Identity
+import com.deposplit.driving_ports.ShareManagement
+import com.deposplit.services.ContactService
 import com.deposplit.services.IdentityService
+import com.deposplit.services.ShareService
 import com.deposplit.shares.LocalShareRepository
 
 class DeposplitApp : Application() {
@@ -13,23 +17,23 @@ class DeposplitApp : Application() {
     lateinit var authAdapter: Identity
         private set
 
-    lateinit var shareTransport: DeposplitApiAdapter
+    lateinit var contactManagement: ContactManagement
         private set
 
-    lateinit var contactRepository: LocalContactRepository
-        private set
-
-    lateinit var shareRepository: LocalShareRepository
+    lateinit var shareManagement: ShareManagement
         private set
 
     override fun onCreate() {
         super.onCreate()
         authAdapter = IdentityService(AndroidIdentityStore(this))
-        shareTransport = DeposplitApiAdapter(
-            auth = authAdapter,
-            baseUrl = BuildConfig.BASE_URL,
+        val contactRepository = LocalContactRepository(this)
+        val shareRepository = LocalShareRepository(this)
+        contactManagement = ContactService(contactRepository)
+        shareManagement = ShareService(
+            relay = DeposplitApiAdapter(auth = authAdapter, baseUrl = BuildConfig.BASE_URL),
+            identity = authAdapter,
+            shareRepository = shareRepository,
+            contactRepository = contactRepository,
         )
-        contactRepository = LocalContactRepository(this)
-        shareRepository = LocalShareRepository(this)
     }
 }
