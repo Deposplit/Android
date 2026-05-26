@@ -25,13 +25,14 @@ class DeposplitApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        authAdapter = IdentityService(AndroidIdentityStore(this))
+        val identityService = IdentityService(AndroidIdentityStore(this))
+        authAdapter = identityService
         val contactRepository = LocalContactRepository(this)
         val shareRepository = LocalShareRepository(this)
         contactManagement = ContactService(contactRepository)
         shareManagement = ShareService(
-            relay = DeposplitApiAdapter(auth = authAdapter, baseUrl = BuildConfig.BASE_URL),
-            identity = authAdapter,
+            relay = DeposplitApiAdapter(auth = identityService, baseUrl = BuildConfig.BASE_URL),
+            encryption = identityService,
             shareRepository = shareRepository,
             contactRepository = contactRepository,
         )

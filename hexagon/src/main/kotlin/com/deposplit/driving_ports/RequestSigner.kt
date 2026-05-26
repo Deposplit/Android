@@ -24,10 +24,7 @@
 
 package com.deposplit.driving_ports
 
-interface Identity {
-    fun isRegistered(): Boolean
-    fun register(pseudonym: String)
-    fun pseudonym(): String
+interface RequestSigner {
     fun edPublicKey(): ByteArray
-    fun xPublicKey(): ByteArray
+    fun sign(message: ByteArray): ByteArray
 }

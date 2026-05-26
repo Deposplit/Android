@@ -44,7 +44,8 @@ Packages use snake_case to mirror the Scala relay hexagon (`driving_ports`, `dri
 shamir/
 └── Shamir.kt                      split(...) / combine(...) — SSS implementation
 driving_ports/
-├── Identity.kt                    isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign, encrypt, decrypt
+├── Identity.kt                    isRegistered, register, pseudonym, edPublicKey, xPublicKey
+├── RequestSigner.kt               edPublicKey, sign — consumed by DeposplitApiAdapter
 ├── ContactManagement.kt           listContacts, addManually, addFromQr, deleteContact
 └── ShareManagement.kt             deposit, listDistributed, listSentRequests, requestAll, openRequest, reconstruct,
                                    syncInbox, listHeld, listPendingRequests, respond, deleteHeldShare,
@@ -56,11 +57,15 @@ driven_ports/
 └── ShareRelay.kt                  depositShare, listShares, pickUpShare, deleteShare, openShareRequest,
                                    listShareRequests, getShareRequest, respondToShareRequest
 services/
-├── IdentityService.kt             Implements Identity — BouncyCastle keypair generation, Ed25519 signing,
-│                                  X25519+HKDF+ChaCha20-Poly1305 encrypt/decrypt; delegates persistence to IdentityStore
+├── IdentityService.kt             Implements Identity, ShareEncryption, RequestSigner — BouncyCastle keypair generation,
+│                                  Ed25519 signing, X25519+HKDF+ChaCha20-Poly1305 encrypt/decrypt; delegates persistence
+│                                  to IdentityStore
 ├── ContactService.kt              Implements ContactManagement — key-size validation, VerificationLevel assignment,
 │                                  UUID/timestamp generation; delegates persistence to ContactRepository
-└── ShareService.kt                Implements ShareManagement — Shamir.split/combine + Identity.encrypt/decrypt +
+├── ShareEncryption.kt             Intra-hexagon interface: encrypt(plaintext, recipientXPublicKey),
+│                                  decrypt(noncePlusCiphertext, recipientXPublicKey) — consumed by ShareService,
+│                                  implemented by IdentityService
+└── ShareService.kt                Implements ShareManagement — Shamir.split/combine + ShareEncryption.encrypt/decrypt +
                                    ShareRelay + ShareRepository + ContactRepository
 value_objects/
 ├── Contact.kt                     Contact data class + VerificationLevel enum (UNVERIFIED, VERIFIED)

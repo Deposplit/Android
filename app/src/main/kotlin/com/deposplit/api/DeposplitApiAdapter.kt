@@ -1,7 +1,7 @@
 package com.deposplit.api
 
+import com.deposplit.driving_ports.RequestSigner
 import com.deposplit.driven_ports.ShareRelay
-import com.deposplit.driving_ports.Identity
 import com.deposplit.value_objects.Role
 import com.deposplit.value_objects.ShareMetadata
 import com.deposplit.value_objects.ShareRequest
@@ -21,7 +21,7 @@ import java.util.UUID
 class ApiException(val statusCode: Int, body: String) : Exception("HTTP $statusCode: $body")
 
 class DeposplitApiAdapter(
-    private val auth: Identity,
+    private val auth: RequestSigner,
     private val baseUrl: String = "https://api.deposplit.com/v1",
 ) : ShareRelay {
 

@@ -99,7 +99,8 @@ Android/
 │   │   │   ├── shamir/
 │   │   │   │   └── Shamir.kt            SSS library (split / combine)
 │   │   │   ├── driving_ports/
-│   │   │   │   ├── Identity.kt          Port: isRegistered, register, pseudonym, keys, sign, encrypt, decrypt
+│   │   │   │   ├── Identity.kt          Port: isRegistered, register, pseudonym, edPublicKey, xPublicKey
+│   │   │   │   ├── RequestSigner.kt     Port: edPublicKey, sign — consumed by DeposplitApiAdapter
 │   │   │   │   ├── ContactManagement.kt Port: listContacts, addManually, addFromQr, deleteContact
 │   │   │   │   └── ShareManagement.kt   Port: deposit, listDistributed, listSentRequests, requestAll,
 │   │   │   │                            openRequest, reconstruct, syncInbox, listHeld, listPendingRequests,
@@ -110,9 +111,12 @@ Android/
 │   │   │   │   ├── ShareRepository.kt   Local share storage interface
 │   │   │   │   └── ShareRelay.kt        Raw relay API interface (depositShare, listShares, pickUpShare, …)
 │   │   │   ├── services/
-│   │   │   │   ├── IdentityService.kt   Implements Identity — BouncyCastle keypair generation, Ed25519 signing, X25519+HKDF+ChaCha20-Poly1305 encrypt/decrypt
+│   │   │   │   ├── IdentityService.kt   Implements Identity, ShareEncryption, RequestSigner — BouncyCastle keypair generation,
+│   │   │   │   │                        Ed25519 signing, X25519+HKDF+ChaCha20-Poly1305 encrypt/decrypt; delegates persistence to IdentityStore
 │   │   │   │   ├── ContactService.kt    Implements ContactManagement — key-size validation, VerificationLevel, UUID/timestamp
-│   │   │   │   └── ShareService.kt      Implements ShareManagement — SSS split/combine + encrypt/decrypt + relay coordination
+│   │   │   │   ├── ShareEncryption.kt   Intra-hexagon interface: encrypt(plaintext, recipientXPublicKey),
+│   │   │   │   │                        decrypt(noncePlusCiphertext, recipientXPublicKey) — consumed by ShareService
+│   │   │   │   └── ShareService.kt      Implements ShareManagement — SSS split/combine + ShareEncryption.encrypt/decrypt + relay coordination
 │   │   │   └── value_objects/
 │   │   │       ├── Contact.kt           Contact + VerificationLevel
 │   │   │       ├── HeldShare.kt         HeldShare (ciphertext + metadata, held by the recipient)

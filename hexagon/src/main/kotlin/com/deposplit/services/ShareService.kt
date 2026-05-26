@@ -3,7 +3,6 @@ package com.deposplit.services
 import com.deposplit.driven_ports.ContactRepository
 import com.deposplit.driven_ports.ShareRelay
 import com.deposplit.driven_ports.ShareRepository
-import com.deposplit.driving_ports.Identity
 import com.deposplit.driving_ports.ShareManagement
 import com.deposplit.shamir.combine
 import com.deposplit.shamir.split
@@ -18,7 +17,7 @@ import java.util.UUID
 
 class ShareService(
     private val relay: ShareRelay,
-    private val identity: Identity,
+    private val encryption: ShareEncryption,
     private val shareRepository: ShareRepository,
     private val contactRepository: ContactRepository,
 ) : ShareManagement {
@@ -27,7 +26,7 @@ class ShareService(
         val shares = split(secret, contacts.size, threshold)
         val secretId = UUID.randomUUID()
         shares.zip(contacts).forEach { (share, contact) ->
-            val ciphertext = identity.encrypt(share, contact.xPublicKey)
+            val ciphertext = encryption.encrypt(share, contact.xPublicKey)
             relay.depositShare(secretId, label, contact.edPublicKey, ciphertext)
         }
     }
@@ -65,7 +64,7 @@ class ShareService(
         val decrypted = approved.map { req ->
             val contact = contacts.find { it.edPublicKey.contentEquals(req.share.recipientKey) }
                 ?: error("Contact not found for recipient key")
-            identity.decrypt(req.ciphertext!!, contact.xPublicKey)
+            encryption.decrypt(req.ciphertext!!, contact.xPublicKey)
         }
         val secretBytes = combine(decrypted)
         for (req in approved) runCatching { relay.deleteShare(req.share.id) }
