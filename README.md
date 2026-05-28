@@ -102,13 +102,14 @@ Android/
 │   │   │   │   ├── Identity.kt          Port: isRegistered, register, pseudonym, edPublicKey, xPublicKey
 │   │   │   │   ├── RequestSigner.kt     Port: edPublicKey, sign — consumed by DeposplitApiAdapter
 │   │   │   │   ├── ContactManagement.kt Port: listContacts, addManually, addFromQr, deleteContact
-│   │   │   │   └── ShareManagement.kt   Port: deposit, listDistributed, listSentRequests, requestAll,
+│   │   │   │   └── ShareManagement.kt   Port: deposit, syncDistributed, listDistributed, listSentRequests, requestAll,
 │   │   │   │                            openRequest, reconstruct, syncInbox, listHeld, listPendingRequests,
 │   │   │   │                            respond, deleteHeldShare, deleteAllHeldFromSender
 │   │   │   ├── driven_ports/
 │   │   │   │   ├── IdentityStore.kt     Credential store interface (save/load keys + pseudonym)
 │   │   │   │   ├── ContactRepository.kt Contact persistence interface
 │   │   │   │   ├── ShareRepository.kt   Local share storage interface
+│   │   │   │   ├── ShareMetadataRepository.kt  Local cache interface for distributed ShareMetadata
 │   │   │   │   └── ShareRelay.kt        Raw relay API interface (depositShare, listShares, pickUpShare, …)
 │   │   │   ├── services/
 │   │   │   │   ├── IdentityService.kt   Implements Identity, ShareEncryption, RequestSigner — BouncyCastle keypair generation,
@@ -116,7 +117,8 @@ Android/
 │   │   │   │   ├── ContactService.kt    Implements ContactManagement — key-size validation, VerificationLevel, UUID/timestamp
 │   │   │   │   ├── ShareEncryption.kt   Intra-hexagon interface: encrypt(plaintext, recipientXPublicKey),
 │   │   │   │   │                        decrypt(noncePlusCiphertext, recipientXPublicKey) — consumed by ShareService
-│   │   │   │   └── ShareService.kt      Implements ShareManagement — SSS split/combine + ShareEncryption.encrypt/decrypt + relay coordination
+│   │   │   │   └── ShareService.kt      Implements ShareManagement — SSS split/combine + ShareEncryption.encrypt/decrypt + relay + ShareMetadataRepository cache;
+│   │   │   │                            deposit() writes to cache; listDistributed() reads from cache; syncDistributed() upserts relay metadata (never deletes)
 │   │   │   └── value_objects/
 │   │   │       ├── Contact.kt           Contact + VerificationLevel
 │   │   │       ├── HeldShare.kt         HeldShare (ciphertext + metadata, held by the recipient)
@@ -136,6 +138,9 @@ Android/
 │   │   │   │   │   └── DeposplitApiAdapter.kt   HTTP adapter — all 7 API operations + request signing
 │   │   │   │   ├── contacts/
 │   │   │   │   │   └── LocalContactRepository.kt JSON file in filesDir
+│   │   │   │   ├── shares/
+│   │   │   │   │   ├── LocalShareRepository.kt         JSON file in filesDir (shares.json); ciphertext + metadata for held shares
+│   │   │   │   │   └── LocalShareMetadataRepository.kt JSON file in filesDir (distributed_shares.json); local cache of distributed ShareMetadata
 │   │   │   │   └── ui/
 │   │   │   │       ├── signin/       SignInViewModel + SignInScreen
 │   │   │   │       ├── home/         HomeViewModel + HomeScreen (My Shared Secrets / Their Secret Shares / Requests tabs)
@@ -316,9 +321,13 @@ Alice taps **Request Deletion** on a share (via `ShareDetailScreen`) → Bob's R
 
 On AVD-B, Bob taps the delete icon on Alice's share in the **Their Secret Shares** tab → confirmation dialog → **Delete**. The share disappears locally. If Bob has multiple shares from Alice, the dialog also offers **Delete all shares from Alice**. Verify what Alice's **My Shared Secrets** tab shows on refresh.
 
-### Flow 5 — Error states
+### Flow 5 — Offline / error states
 
-Kill the Web app/service → refresh on either device → error banner + **Retry** button appears. Restart the Web app/service → Retry recovers successfully.
+Kill the Web app/service → open or refresh the app:
+- **My Shared Secrets** and **Their Secret Shares** tabs render from local cache; a small warning banner ("Couldn't sync — showing cached data") replaces the blocking error.
+- **Requests** tab still polls the relay directly and will show an error (no local cache).
+
+Restart the Web app/service → navigate away and back (or re-open the app) → warning clears, data refreshes from relay.
 
 ### Flow 6 — Locale
 

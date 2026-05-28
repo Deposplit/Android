@@ -6,7 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.deposplit.R
 import com.deposplit.driving_ports.ContactManagement
 import com.deposplit.driving_ports.ShareManagement
+import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.HeldShare
+import com.deposplit.value_objects.ShareMetadata
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareRequestType
 import kotlinx.coroutines.Dispatchers
@@ -50,6 +52,7 @@ class HomeViewModel(
         val heldShares: List<HeldShareDisplay> = emptyList(),
         val heldSortOrder: HeldSortOrder = HeldSortOrder.DATE,
         val isLoading: Boolean = false,
+        val syncWarning: Boolean = false,
         @StringRes val error: Int? = null,
         val expandedSecretId: UUID? = null,
         val requestingAllIds: Set<UUID> = emptySet(),
@@ -65,61 +68,53 @@ class HomeViewModel(
     fun load() {
         val sortOrder = _uiState.value.heldSortOrder
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true, error = null, syncWarning = false) }
+
+            // Phase 1: local data only — renders immediately even when offline
+            val phase1 = runCatching {
+                withContext(Dispatchers.IO) {
+                    Triple(
+                        contactManagement.listContacts(),
+                        shareManagement.listDistributed(),
+                        shareManagement.listHeld(),
+                    )
+                }
+            }
+            if (phase1.isFailure) {
+                _uiState.update { it.copy(isLoading = false, error = R.string.home_error_fallback) }
+                return@launch
+            }
+            val (contacts, distributed, held) = phase1.getOrThrow()
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    groupedSecrets = buildGroups(distributed, emptyList(), contacts),
+                    heldShares = toDisplayList(held, contacts, sortOrder),
+                )
+            }
+
+            // Phase 2: relay sync — soft failure, shows warning banner without wiping the lists
             runCatching {
                 withContext(Dispatchers.IO) {
                     shareManagement.syncInbox()
-                    val distributed = shareManagement.listDistributed()
-                    val allRequests = shareManagement.listSentRequests()
-                    val contacts = contactManagement.listContacts()
-                    val grouped = distributed
-                        .groupBy { it.secretId }
-                        .map { (secretId, shares) ->
-                            val first = shares.first()
-                            val holders = shares.map { share ->
-                                val name = contacts
-                                    .find { it.edPublicKey.contentEquals(share.recipientKey) }
-                                    ?.pseudonym ?: "?"
-                                val latestRetrieve = allRequests
-                                    .filter {
-                                        it.share.id == share.id &&
-                                            it.requestType == ShareRequestType.RETRIEVE
-                                    }
-                                    .maxByOrNull { it.requestedAt }
-                                HolderStatus(
-                                    shareId = share.id,
-                                    recipientName = name,
-                                    pickedUpAt = share.pickedUpAt,
-                                    retrieveRequest = latestRetrieve,
-                                )
-                            }
-                            SecretGroup(
-                                secretId = secretId,
-                                label = first.label,
-                                createdAt = first.createdAt,
-                                holders = holders,
-                            )
-                        }
-                        .sortedByDescending { it.createdAt }
-                    val held = shareManagement.listHeld()
-                        .map { share ->
-                            val name = contacts
-                                .find { it.edPublicKey.contentEquals(share.senderKey) }
-                                ?.pseudonym ?: "?"
-                            HeldShareDisplay(share = share, senderName = name)
-                        }
-                        .sortedWith(sortComparator(sortOrder))
-                    grouped to held
+                    shareManagement.syncDistributed()
+                    Triple(
+                        shareManagement.listSentRequests(),
+                        shareManagement.listDistributed(),
+                        shareManagement.listHeld(),
+                    )
                 }
+            }.onSuccess { (allRequests, freshDistributed, freshHeld) ->
+                val currentSortOrder = _uiState.value.heldSortOrder
+                _uiState.update {
+                    it.copy(
+                        groupedSecrets = buildGroups(freshDistributed, allRequests, contacts),
+                        heldShares = toDisplayList(freshHeld, contacts, currentSortOrder),
+                    )
+                }
+            }.onFailure {
+                _uiState.update { it.copy(syncWarning = true) }
             }
-                .onSuccess { (grouped, held) ->
-                    _uiState.update {
-                        it.copy(isLoading = false, groupedSecrets = grouped, heldShares = held)
-                    }
-                }
-                .onFailure {
-                    _uiState.update { it.copy(isLoading = false, error = R.string.home_error_fallback) }
-                }
         }
     }
 
@@ -160,6 +155,46 @@ class HomeViewModel(
             load()
         }
     }
+
+    private fun buildGroups(
+        distributed: List<ShareMetadata>,
+        allRequests: List<ShareRequest>,
+        contacts: List<Contact>,
+    ): List<SecretGroup> = distributed
+        .groupBy { it.secretId }
+        .map { (secretId, shares) ->
+            val first = shares.first()
+            val holders = shares.map { share ->
+                val name = contacts.find { it.edPublicKey.contentEquals(share.recipientKey) }?.pseudonym ?: "?"
+                val latestRetrieve = allRequests
+                    .filter { it.share.id == share.id && it.requestType == ShareRequestType.RETRIEVE }
+                    .maxByOrNull { it.requestedAt }
+                HolderStatus(
+                    shareId = share.id,
+                    recipientName = name,
+                    pickedUpAt = share.pickedUpAt,
+                    retrieveRequest = latestRetrieve,
+                )
+            }
+            SecretGroup(
+                secretId = secretId,
+                label = first.label,
+                createdAt = first.createdAt,
+                holders = holders,
+            )
+        }
+        .sortedByDescending { it.createdAt }
+
+    private fun toDisplayList(
+        held: List<HeldShare>,
+        contacts: List<Contact>,
+        order: HeldSortOrder,
+    ): List<HeldShareDisplay> = held
+        .map { share ->
+            val name = contacts.find { it.edPublicKey.contentEquals(share.senderKey) }?.pseudonym ?: "?"
+            HeldShareDisplay(share = share, senderName = name)
+        }
+        .sortedWith(sortComparator(order))
 
     private fun sortComparator(order: HeldSortOrder): Comparator<HeldShareDisplay> = when (order) {
         HeldSortOrder.DATE -> compareByDescending { it.share.createdAt }

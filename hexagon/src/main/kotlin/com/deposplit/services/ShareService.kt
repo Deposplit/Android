@@ -1,6 +1,7 @@
 package com.deposplit.services
 
 import com.deposplit.driven_ports.ContactRepository
+import com.deposplit.driven_ports.ShareMetadataRepository
 import com.deposplit.driven_ports.ShareRelay
 import com.deposplit.driven_ports.ShareRepository
 import com.deposplit.driving_ports.ShareManagement
@@ -19,6 +20,7 @@ class ShareService(
     private val relay: ShareRelay,
     private val encryption: ShareEncryption,
     private val shareRepository: ShareRepository,
+    private val shareMetadataRepository: ShareMetadataRepository,
     private val contactRepository: ContactRepository,
 ) : ShareManagement {
 
@@ -27,11 +29,16 @@ class ShareService(
         val secretId = UUID.randomUUID()
         shares.zip(contacts).forEach { (share, contact) ->
             val ciphertext = encryption.encrypt(share, contact.xPublicKey)
-            relay.depositShare(secretId, label, contact.edPublicKey, ciphertext)
+            val metadata = relay.depositShare(secretId, label, contact.edPublicKey, ciphertext)
+            shareMetadataRepository.save(metadata)
         }
     }
 
-    override fun listDistributed(): List<ShareMetadata> = relay.listShares(Role.SENDER)
+    override fun syncDistributed() {
+        relay.listShares(Role.SENDER).forEach { shareMetadataRepository.save(it) }
+    }
+
+    override fun listDistributed(): List<ShareMetadata> = shareMetadataRepository.getAll()
 
     override fun listSentRequests(): List<ShareRequest> = relay.listShareRequests(Role.SENDER)
 
@@ -67,7 +74,10 @@ class ShareService(
             encryption.decrypt(req.ciphertext!!, contact.xPublicKey)
         }
         val secretBytes = combine(decrypted)
-        for (req in approved) runCatching { relay.deleteShare(req.share.id) }
+        for (req in approved) runCatching {
+            relay.deleteShare(req.share.id)
+            shareMetadataRepository.delete(req.share.id)
+        }
         return secretBytes
     }
 

@@ -37,6 +37,7 @@
     <string name="home_held_delete_all_from">Delete all shares from %1$s</string>
     <string name="home_held_delete_confirm">Delete</string>
     <string name="home_error_fallback">Failed to load</string>
+    <string name="home_sync_warning">Couldn\'t sync — showing cached data</string>
 
     <!-- Contacts -->
     <string name="contacts_title">Contacts</string>

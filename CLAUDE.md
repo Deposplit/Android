@@ -53,7 +53,8 @@ driving_ports/
 driven_ports/
 ├── IdentityStore.kt               isRegistered, save, pseudonym, edPublicKey, edPrivateKey, xPublicKey, xPrivateKey
 ├── ContactRepository.kt           getAll, getById, getByEdKey, save, delete
-├── ShareRepository.kt             getAll, getCiphertext, save, delete (local share storage)
+├── ShareRepository.kt             getAll, getCiphertext, save, delete (local held-share storage)
+├── ShareMetadataRepository.kt     getAll, save, delete (local cache of distributed ShareMetadata)
 └── ShareRelay.kt                  depositShare, listShares, pickUpShare, deleteShare, openShareRequest,
                                    listShareRequests, getShareRequest, respondToShareRequest
 services/
@@ -66,7 +67,10 @@ services/
 │                                  decrypt(noncePlusCiphertext, recipientXPublicKey) — consumed by ShareService,
 │                                  implemented by IdentityService
 └── ShareService.kt                Implements ShareManagement — Shamir.split/combine + ShareEncryption.encrypt/decrypt +
-                                   ShareRelay + ShareRepository + ContactRepository
+                                   ShareRelay + ShareRepository + ShareMetadataRepository + ContactRepository;
+                                   deposit() writes metadata to local cache; listDistributed() reads cache;
+                                   syncDistributed() refreshes field updates (e.g. pickedUpAt) from relay —
+                                   never deletes; only reconstruct() and explicit delete flows remove entries
 value_objects/
 ├── Contact.kt                     Contact data class + VerificationLevel enum (UNVERIFIED, VERIFIED)
 ├── HeldShare.kt                   HeldShare data class
@@ -88,7 +92,8 @@ api/
 contacts/
 └── LocalContactRepository.kt  JSON file in filesDir; @Synchronized; kotlinx.serialization wire types
 shares/
-└── LocalShareRepository.kt  JSON file in filesDir; @Synchronized; stores HeldShare (ciphertext + metadata) keyed by share ID
+├── LocalShareRepository.kt         JSON file in filesDir (shares.json); @Synchronized; stores HeldShare (ciphertext + metadata) keyed by share ID
+└── LocalShareMetadataRepository.kt JSON file in filesDir (distributed_shares.json); @Synchronized; cache of distributed ShareMetadata keyed by share ID
 ui/
 ├── signin/       SignInViewModel + SignInScreen              — pseudonym input + Register button
 ├── home/         HomeViewModel + HomeScreen                 — My Shared Secrets / Their Secret Shares / Requests tabs
@@ -233,3 +238,4 @@ Consequences:
 - `kotlinOptions { }` is **not available** (it requires `kotlin.android`)
 - Set the Kotlin JVM target via `compileOptions` only — AGP 9.x propagates `targetCompatibility` to the Kotlin compiler automatically
 - `kotlin.plugin.compose` (the Compose compiler plugin) is still required and does not conflict
+

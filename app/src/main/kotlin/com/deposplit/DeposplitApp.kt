@@ -10,6 +10,7 @@ import com.deposplit.driving_ports.ShareManagement
 import com.deposplit.services.ContactService
 import com.deposplit.services.IdentityService
 import com.deposplit.services.ShareService
+import com.deposplit.shares.LocalShareMetadataRepository
 import com.deposplit.shares.LocalShareRepository
 
 class DeposplitApp : Application() {
@@ -29,11 +30,13 @@ class DeposplitApp : Application() {
         authAdapter = identityService
         val contactRepository = LocalContactRepository(this)
         val shareRepository = LocalShareRepository(this)
+        val shareMetadataRepository = LocalShareMetadataRepository(this)
         contactManagement = ContactService(contactRepository)
         shareManagement = ShareService(
             relay = DeposplitApiAdapter(auth = identityService, baseUrl = BuildConfig.BASE_URL),
             encryption = identityService,
             shareRepository = shareRepository,
+            shareMetadataRepository = shareMetadataRepository,
             contactRepository = contactRepository,
         )
     }

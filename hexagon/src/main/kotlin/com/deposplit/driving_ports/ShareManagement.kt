@@ -10,6 +10,7 @@ import java.util.UUID
 interface ShareManagement {
     // ─── Sender ───────────────────────────────────────────────────────────────
     fun deposit(secret: ByteArray, label: String, contacts: List<Contact>, threshold: Int)
+    fun syncDistributed()
     fun listDistributed(): List<ShareMetadata>
     fun listSentRequests(): List<ShareRequest>
     fun requestAll(secretId: UUID)
