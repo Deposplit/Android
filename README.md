@@ -99,8 +99,7 @@ Android/
 │   │   │   ├── shamir/
 │   │   │   │   └── Shamir.kt            SSS library (split / combine)
 │   │   │   ├── driving_ports/
-│   │   │   │   ├── Identity.kt          Port: isRegistered, register, pseudonym, edPublicKey, xPublicKey
-│   │   │   │   ├── RequestSigner.kt     Port: edPublicKey, sign — consumed by DeposplitApiAdapter
+│   │   │   │   ├── Identity.kt          Port: isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign
 │   │   │   │   ├── ContactManagement.kt Port: listContacts, addManually, addFromQr, deleteContact
 │   │   │   │   └── ShareManagement.kt   Port: deposit, syncDistributed, listDistributed, listSentRequests, requestAll,
 │   │   │   │                            openRequest, reconstruct, syncInbox, listHeld, listPendingRequests,
@@ -112,7 +111,7 @@ Android/
 │   │   │   │   ├── ShareMetadataRepository.kt  Local cache interface for distributed ShareMetadata
 │   │   │   │   └── ShareRelay.kt        Raw relay API interface (depositShare, listShares, pickUpShare, …)
 │   │   │   ├── services/
-│   │   │   │   ├── IdentityService.kt   Implements Identity, ShareEncryption, RequestSigner — BouncyCastle keypair generation,
+│   │   │   │   ├── IdentityService.kt   Implements Identity, ShareEncryption — BouncyCastle keypair generation,
 │   │   │   │   │                        Ed25519 signing, X25519+HKDF+ChaCha20-Poly1305 encrypt/decrypt; delegates persistence to IdentityStore
 │   │   │   │   ├── ContactService.kt    Implements ContactManagement — key-size validation, VerificationLevel, UUID/timestamp
 │   │   │   │   ├── ShareEncryption.kt   Intra-hexagon interface: encrypt(plaintext, recipientXPublicKey),

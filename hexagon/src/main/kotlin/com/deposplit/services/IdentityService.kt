@@ -26,7 +26,6 @@ package com.deposplit.services
 
 import com.deposplit.driven_ports.IdentityStore
 import com.deposplit.driving_ports.Identity
-import com.deposplit.driving_ports.RequestSigner
 import org.bouncycastle.crypto.agreement.X25519Agreement
 import org.bouncycastle.crypto.digests.SHA256Digest
 import org.bouncycastle.crypto.generators.Ed25519KeyPairGenerator
@@ -45,7 +44,7 @@ import org.bouncycastle.crypto.params.X25519PublicKeyParameters
 import org.bouncycastle.crypto.signers.Ed25519Signer
 import java.security.SecureRandom
 
-class IdentityService(private val identityStore: IdentityStore) : Identity, ShareEncryption, RequestSigner {
+class IdentityService(private val identityStore: IdentityStore) : Identity, ShareEncryption {
 
     override fun isRegistered(): Boolean = identityStore.isRegistered()
 

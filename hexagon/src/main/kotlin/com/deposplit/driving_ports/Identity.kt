@@ -30,4 +30,5 @@ interface Identity {
     fun pseudonym(): String
     fun edPublicKey(): ByteArray
     fun xPublicKey(): ByteArray
+    fun sign(message: ByteArray): ByteArray
 }
