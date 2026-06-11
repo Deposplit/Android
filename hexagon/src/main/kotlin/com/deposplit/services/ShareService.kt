@@ -14,6 +14,7 @@ import com.deposplit.value_objects.ShareMetadata
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareRequestState
 import com.deposplit.value_objects.ShareRequestType
+import java.time.Instant
 import java.util.UUID
 
 class ShareService(
@@ -94,6 +95,7 @@ class ShareService(
                             label = meta.label,
                             senderKey = meta.senderKey,
                             createdAt = meta.createdAt,
+                            pickedUpAt = Instant.now(),
                             ciphertext = ciphertext,
                         )
                     )

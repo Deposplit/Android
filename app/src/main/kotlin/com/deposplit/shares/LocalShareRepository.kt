@@ -23,6 +23,7 @@ class LocalShareRepository(context: Context) : ShareRepository {
         val label: String,
         val senderKey: String,
         val createdAt: String,
+        val pickedUpAt: String,
         val ciphertext: String,
     )
 
@@ -67,6 +68,7 @@ class LocalShareRepository(context: Context) : ShareRepository {
         label = label,
         senderKey = Base64.getUrlDecoder().decode(senderKey),
         createdAt = Instant.parse(createdAt),
+        pickedUpAt = Instant.parse(pickedUpAt),
         ciphertext = Base64.getDecoder().decode(ciphertext),
     )
 
@@ -76,6 +78,7 @@ class LocalShareRepository(context: Context) : ShareRepository {
         label = label,
         senderKey = Base64.getUrlEncoder().withoutPadding().encodeToString(senderKey),
         createdAt = createdAt.toString(),
+        pickedUpAt = pickedUpAt.toString(),
         ciphertext = Base64.getEncoder().encodeToString(ciphertext),
     )
 }

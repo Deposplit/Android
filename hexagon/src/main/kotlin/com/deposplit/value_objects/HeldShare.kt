@@ -9,6 +9,7 @@ data class HeldShare(
     val label: String,
     val senderKey: ByteArray,
     val createdAt: Instant,
+    val pickedUpAt: Instant,
     val ciphertext: ByteArray,
 ) {
     override fun equals(other: Any?) = other is HeldShare && id == other.id
