@@ -31,6 +31,7 @@ class DeposplitApiAdapter(
         secretId: UUID,
         label: String,
         recipientKey: ByteArray,
+        createdAt: Instant,
         ciphertext: ByteArray,
     ): ShareMetadata {
         val body = json.encodeToString(
@@ -38,6 +39,7 @@ class DeposplitApiAdapter(
                 secretId = secretId.toString(),
                 label = label,
                 recipientKey = recipientKey.encodeBase64Url(),
+                createdAt = createdAt.toString(),
                 ciphertext = ciphertext.encodeBase64(),
             )
         )
@@ -147,6 +149,7 @@ class DeposplitApiAdapter(
         val secretId: String,
         val label: String,
         val recipientKey: String,
+        val createdAt: String,
         val ciphertext: String,
     )
 

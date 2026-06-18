@@ -28,9 +28,10 @@ class ShareService(
     override fun deposit(secret: ByteArray, label: String, contacts: List<Contact>, threshold: Int) {
         val shares = split(secret, contacts.size, threshold)
         val secretId = UUID.randomUUID()
+        val createdAt = Instant.now()
         shares.zip(contacts).forEach { (share, contact) ->
             val ciphertext = encryption.encrypt(share, contact.xPublicKey)
-            val metadata = relay.depositShare(secretId, label, contact.edPublicKey, ciphertext)
+            val metadata = relay.depositShare(secretId, label, contact.edPublicKey, createdAt, ciphertext)
             shareMetadataRepository.save(metadata)
         }
     }

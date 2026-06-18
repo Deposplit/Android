@@ -5,10 +5,11 @@ import com.deposplit.value_objects.ShareMetadata
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareRequestState
 import com.deposplit.value_objects.ShareRequestType
+import java.time.Instant
 import java.util.UUID
 
 interface ShareRelay {
-    fun depositShare(secretId: UUID, label: String, recipientKey: ByteArray, ciphertext: ByteArray): ShareMetadata
+    fun depositShare(secretId: UUID, label: String, recipientKey: ByteArray, createdAt: Instant, ciphertext: ByteArray): ShareMetadata
     fun listShares(role: Role, counterpartyKey: ByteArray? = null): List<ShareMetadata>
     fun pickUpShare(shareId: UUID): ByteArray
     fun deleteShare(shareId: UUID)
