@@ -4,17 +4,15 @@ import java.time.Instant
 import java.util.UUID
 
 enum class Role { SENDER, RECIPIENT }
-enum class ShareRequestType { RETRIEVE, DELETE }
+enum class ShareRequestType { PICK_UP, RETRIEVE, DELETE }
 enum class ShareRequestState { PENDING, APPROVED, DENIED }
 
 data class ShareMetadata(
-    val id: UUID,
+    val id: UUID,           // PickUp request ID
     val secretId: UUID,
     val label: String,
-    val senderKey: ByteArray,
     val recipientKey: ByteArray,
-    val createdAt: Instant,
-    val pickedUpAt: Instant? = null,
+    val secretCreatedAt: Instant,
 ) {
     override fun equals(other: Any?) = other is ShareMetadata && id == other.id
     override fun hashCode() = id.hashCode()
@@ -22,9 +20,14 @@ data class ShareMetadata(
 
 data class ShareRequest(
     val id: UUID,
-    val share: ShareMetadata,
+    val secretId: UUID,
+    val senderKey: ByteArray,
+    val recipientKey: ByteArray,
+    val label: String,
+    val secretCreatedAt: Instant,
     val requestType: ShareRequestType,
     val state: ShareRequestState,
+    val shareId: UUID?,
     val requestedAt: Instant,
     val respondedAt: Instant?,
     val ciphertext: ByteArray?,

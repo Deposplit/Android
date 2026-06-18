@@ -1,7 +1,6 @@
 package com.deposplit.driven_ports
 
 import com.deposplit.value_objects.Role
-import com.deposplit.value_objects.ShareMetadata
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareRequestState
 import com.deposplit.value_objects.ShareRequestType
@@ -9,12 +8,18 @@ import java.time.Instant
 import java.util.UUID
 
 interface ShareRelay {
-    fun depositShare(secretId: UUID, label: String, recipientKey: ByteArray, createdAt: Instant, ciphertext: ByteArray): ShareMetadata
-    fun listShares(role: Role, counterpartyKey: ByteArray? = null): List<ShareMetadata>
-    fun pickUpShare(shareId: UUID): ByteArray
-    fun deleteShare(shareId: UUID)
-    fun openShareRequest(shareId: UUID, type: ShareRequestType): ShareRequest
-    fun listShareRequests(role: Role, state: ShareRequestState? = null): List<ShareRequest>
+    fun openShareRequest(
+        secretId: UUID,
+        recipientKey: ByteArray,
+        label: String,
+        secretCreatedAt: Instant,
+        requestType: ShareRequestType,
+        shareId: UUID?,
+        ciphertext: ByteArray?,
+    ): ShareRequest
+    fun listShareRequests(role: Role, requestType: ShareRequestType? = null, state: ShareRequestState? = null): List<ShareRequest>
     fun getShareRequest(requestId: UUID): ShareRequest
     fun respondToShareRequest(requestId: UUID, approved: Boolean, ciphertext: ByteArray? = null): ShareRequest
+    fun deleteShareRequest(requestId: UUID)
+    fun deleteShareRequests(senderKey: ByteArray? = null, secretId: UUID? = null)
 }

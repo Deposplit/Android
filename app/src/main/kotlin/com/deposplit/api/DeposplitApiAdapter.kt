@@ -3,7 +3,6 @@ package com.deposplit.api
 import com.deposplit.driving_ports.Identity
 import com.deposplit.driven_ports.ShareRelay
 import com.deposplit.value_objects.Role
-import com.deposplit.value_objects.ShareMetadata
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareRequestState
 import com.deposplit.value_objects.ShareRequestType
@@ -22,61 +21,38 @@ class ApiException(val statusCode: Int, body: String) : Exception("HTTP $statusC
 
 class DeposplitApiAdapter(
     private val auth: Identity,
-    private val baseUrl: String = "https://api.deposplit.com/v1",
+    private val baseUrl: String = "https://api.deposplit.com",
 ) : ShareRelay {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    override fun depositShare(
+    override fun openShareRequest(
         secretId: UUID,
-        label: String,
         recipientKey: ByteArray,
-        createdAt: Instant,
-        ciphertext: ByteArray,
-    ): ShareMetadata {
-        val body = json.encodeToString(
-            ShareDepositJson(
-                secretId = secretId.toString(),
-                label = label,
-                recipientKey = recipientKey.encodeBase64Url(),
-                createdAt = createdAt.toString(),
-                ciphertext = ciphertext.encodeBase64(),
-            )
-        )
-        return json.decodeFromString<ShareMetadataJson>(execute("POST", "/shares", body)).toDomain()
-    }
-
-    override fun listShares(role: Role, counterpartyKey: ByteArray?): List<ShareMetadata> {
-        val query = buildString {
-            append("?role=${role.name.lowercase()}")
-            if (counterpartyKey != null) append("&counterpartyKey=${counterpartyKey.encodeBase64Url()}")
-        }
-        return json.decodeFromString<List<ShareMetadataJson>>(execute("GET", "/shares$query"))
-            .map { it.toDomain() }
-    }
-
-    override fun pickUpShare(shareId: UUID): ByteArray {
-        val body = execute("GET", "/shares/$shareId")
-        return json.decodeFromString<PickUpShareResponseJson>(body).ciphertext.decodeBase64()
-    }
-
-    override fun deleteShare(shareId: UUID) {
-        execute("DELETE", "/shares/$shareId")
-    }
-
-    override fun openShareRequest(shareId: UUID, type: ShareRequestType): ShareRequest {
+        label: String,
+        secretCreatedAt: Instant,
+        requestType: ShareRequestType,
+        shareId: UUID?,
+        ciphertext: ByteArray?,
+    ): ShareRequest {
         val body = json.encodeToString(
             OpenShareRequestJson(
-                shareId = shareId.toString(),
-                requestType = type.name.lowercase(),
+                secretId = secretId.toString(),
+                recipientKey = recipientKey.encodeBase64Url(),
+                label = label,
+                secretCreatedAt = secretCreatedAt.toString(),
+                requestType = requestType.toWire(),
+                shareId = shareId?.toString(),
+                ciphertext = ciphertext?.encodeBase64(),
             )
         )
         return json.decodeFromString<ShareRequestJson>(execute("POST", "/share-requests", body)).toDomain()
     }
 
-    override fun listShareRequests(role: Role, state: ShareRequestState?): List<ShareRequest> {
+    override fun listShareRequests(role: Role, requestType: ShareRequestType?, state: ShareRequestState?): List<ShareRequest> {
         val query = buildString {
             append("?role=${role.name.lowercase()}")
+            if (requestType != null) append("&type=${requestType.toWire()}")
             if (state != null) append("&state=${state.name.lowercase()}")
         }
         return json.decodeFromString<List<ShareRequestJson>>(execute("GET", "/share-requests$query"))
@@ -96,6 +72,25 @@ class DeposplitApiAdapter(
         return json.decodeFromString<ShareRequestJson>(
             execute("PATCH", "/share-requests/$requestId", body)
         ).toDomain()
+    }
+
+    override fun deleteShareRequest(requestId: UUID) {
+        execute("DELETE", "/share-requests/$requestId")
+    }
+
+    override fun deleteShareRequests(senderKey: ByteArray?, secretId: UUID?) {
+        val query = buildString {
+            var first = true
+            if (senderKey != null) {
+                append("?senderKey=${senderKey.encodeBase64Url()}")
+                first = false
+            }
+            if (secretId != null) {
+                append(if (first) "?" else "&")
+                append("secretId=$secretId")
+            }
+        }
+        execute("DELETE", "/share-requests$query")
     }
 
     // ── HTTP ─────────────────────────────────────────────────────────────────
@@ -145,33 +140,15 @@ class DeposplitApiAdapter(
     // ── JSON wire types ───────────────────────────────────────────────────────
 
     @Serializable
-    private data class ShareDepositJson(
-        val secretId: String,
-        val label: String,
-        val recipientKey: String,
-        val createdAt: String,
-        val ciphertext: String,
-    )
-
-    @Serializable
-    private data class ShareMetadataJson(
-        val id: String,
-        val secretId: String,
-        val label: String,
-        val senderKey: String,
-        val recipientKey: String,
-        val createdAt: String,
-        val pickedUpAt: String? = null,
-    )
-
-    @Serializable
     private data class OpenShareRequestJson(
-        val shareId: String,
+        val secretId: String,
+        val recipientKey: String,
+        val label: String,
+        val secretCreatedAt: String,
         val requestType: String,
+        val shareId: String? = null,
+        val ciphertext: String? = null,
     )
-
-    @Serializable
-    private data class PickUpShareResponseJson(val ciphertext: String)
 
     @Serializable
     private data class RespondJson(val state: String, val ciphertext: String? = null)
@@ -179,9 +156,14 @@ class DeposplitApiAdapter(
     @Serializable
     private data class ShareRequestJson(
         val id: String,
-        val share: ShareMetadataJson,
+        val secretId: String,
+        val senderKey: String,
+        val recipientKey: String,
+        val label: String,
+        val secretCreatedAt: String,
         val requestType: String,
         val state: String,
+        val shareId: String? = null,
         val requestedAt: String,
         val respondedAt: String? = null,
         val ciphertext: String? = null,
@@ -189,20 +171,15 @@ class DeposplitApiAdapter(
 
     // ── Domain conversions ────────────────────────────────────────────────────
 
-    private fun ShareMetadataJson.toDomain() = ShareMetadata(
-        id = UUID.fromString(id),
-        secretId = UUID.fromString(secretId),
-        label = label,
-        senderKey = senderKey.decodeBase64Url(),
-        recipientKey = recipientKey.decodeBase64Url(),
-        createdAt = Instant.parse(createdAt),
-        pickedUpAt = pickedUpAt?.let { Instant.parse(it) },
-    )
-
     private fun ShareRequestJson.toDomain() = ShareRequest(
         id = UUID.fromString(id),
-        share = share.toDomain(),
+        secretId = UUID.fromString(secretId),
+        senderKey = senderKey.decodeBase64Url(),
+        recipientKey = recipientKey.decodeBase64Url(),
+        label = label,
+        secretCreatedAt = Instant.parse(secretCreatedAt),
         requestType = when (requestType) {
+            "pick_up" -> ShareRequestType.PICK_UP
             "retrieve" -> ShareRequestType.RETRIEVE
             "delete" -> ShareRequestType.DELETE
             else -> error("Unknown requestType: $requestType")
@@ -213,10 +190,17 @@ class DeposplitApiAdapter(
             "denied" -> ShareRequestState.DENIED
             else -> error("Unknown state: $state")
         },
+        shareId = shareId?.let { UUID.fromString(it) },
         requestedAt = Instant.parse(requestedAt),
         respondedAt = respondedAt?.let { Instant.parse(it) },
         ciphertext = ciphertext?.decodeBase64(),
     )
+
+    private fun ShareRequestType.toWire(): String = when (this) {
+        ShareRequestType.PICK_UP -> "pick_up"
+        ShareRequestType.RETRIEVE -> "retrieve"
+        ShareRequestType.DELETE -> "delete"
+    }
 
     companion object {
         private val secureRandom = SecureRandom()

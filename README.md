@@ -109,7 +109,7 @@ Android/
 │   │   │   │   ├── ContactRepository.kt Contact persistence interface
 │   │   │   │   ├── ShareRepository.kt   Local share storage interface
 │   │   │   │   ├── ShareMetadataRepository.kt  Local cache interface for distributed ShareMetadata
-│   │   │   │   └── ShareRelay.kt        Raw relay API interface (depositShare, listShares, pickUpShare, …)
+│   │   │   │   └── ShareRelay.kt        Raw relay API interface (openShareRequest, listShareRequests, getShareRequest, respondToShareRequest, deleteShareRequest, deleteShareRequests)
 │   │   │   ├── services/
 │   │   │   │   ├── IdentityService.kt   Implements Identity, ShareEncryption — BouncyCastle keypair generation,
 │   │   │   │   │                        Ed25519 signing, X25519+HKDF+ChaCha20-Poly1305 encrypt/decrypt; delegates persistence to IdentityStore
@@ -134,7 +134,7 @@ Android/
 │   │   │   │   ├── auth/
 │   │   │   │   │   └── AndroidIdentityStore.kt  Android Keystore AES-256-GCM wrapping of private keys; public keys + pseudonym in SharedPreferences
 │   │   │   │   ├── api/
-│   │   │   │   │   └── DeposplitApiAdapter.kt   HTTP adapter — all 7 API operations + request signing
+│   │   │   │   │   └── DeposplitApiAdapter.kt   HTTP adapter — implements ShareRelay; all /share-requests operations + request signing
 │   │   │   │   ├── contacts/
 │   │   │   │   │   └── LocalContactRepository.kt JSON file in filesDir
 │   │   │   │   ├── shares/
@@ -297,24 +297,23 @@ You need **three AVD instances** (or three physical devices on the same WiFi, us
 | 6 | AVD-C | Contacts → **Add contact** → paste Alice's keys; then TopAppBar QR icon → screenshot Carol's QR |
 | 7 | AVD-A | Add Bob as a contact; add Carol as a contact |
 | 8 | AVD-A | FAB (＋) → enter a label (e.g. "test secret"), a secret text, select Bob and Carol, choose threshold 2-of-2 → **Deposit** |
-| 9 | AVD-A | **My Shared Secrets** tab → one grouped card for the secret; expand it to see Bob and Carol as holders (delivery status: "Awaiting pickup") |
-| 10 | AVD-B | **Their Secret Shares** tab → Bob's inbox shows Alice's share → app automatically picks it up (`GET /shares/:shareId`), stores ciphertext locally, relay clears it |
-| 11 | AVD-C | **Their Secret Shares** tab → Carol's inbox shows Alice's share → app picks it up the same way |
-| 12 | AVD-A | **My Shared Secrets** tab → expand the card; both holders now show "Delivered" |
-| 13 | AVD-A | Expand the card → tap **Request Retrieval** (opens retrieve requests for Bob and Carol at once) |
-| 14 | AVD-B | **Requests** tab → a Retrieve request from Alice appears → app reads ciphertext from local storage → tap **Approve** (ciphertext sent in response body) |
-| 15 | AVD-C | **Requests** tab → a Retrieve request from Alice appears → tap **Approve** |
-| 16 | AVD-A | Expand the card → both holders show "Approved" → tap **Reconstruct** in `ShareDetailScreen` → biometric prompt → secret appears |
+| 9 | AVD-A | **My Shared Secrets** tab → one grouped card for the secret; expand it to see Bob and Carol as holders |
+| 10 | AVD-B | **Their Secret Shares** tab → Bob's inbox shows Alice's PickUp request → app automatically approves it, stores ciphertext locally, relay clears ciphertext |
+| 11 | AVD-C | **Their Secret Shares** tab → Carol's inbox shows Alice's PickUp request → app approves the same way |
+| 12 | AVD-A | Expand the card → tap **Request Retrieval** (opens Retrieve requests for Bob and Carol at once) |
+| 13 | AVD-B | **Requests** tab → a Retrieve request from Alice appears → app reads ciphertext from local storage → tap **Approve** (ciphertext sent in response body) |
+| 14 | AVD-C | **Requests** tab → a Retrieve request from Alice appears → tap **Approve** |
+| 15 | AVD-A | Expand the card → both holders show "Approved" → tap **Reconstruct** in `ShareDetailScreen` → biometric prompt → secret appears |
 
 The threshold logic (`Shamir.combine`) is already fully tested in the hexagon unit tests; the manual test above validates the full end-to-end path including encryption and transport.
 
 ### Flow 2 — Deny and re-request
 
-After step 8 above: Bob taps **Deny** → on Alice's side the Retrieve section shows "Denied" and a **Retry** button → Alice re-requests → Bob approves.
+After step 12 above: Bob taps **Deny** → on Alice's side the Retrieve section shows "Denied" and a **Retry** button → Alice re-requests → Bob approves.
 
 ### Flow 3 — Sender-initiated deletion
 
-Alice taps **Request Deletion** on a share (via `ShareDetailScreen`) → Bob's Requests tab shows a Delete request → Bob approves → the share disappears from Bob's **Their Secret Shares** tab.
+Alice taps **Request Deletion** on a share (via `ShareDetailScreen`) → Bob's Requests tab shows a Delete request → Bob approves → Bob's PickUp row is deleted (cascade-deleting any related Retrieve/Delete rows) → the share disappears from Bob's **Their Secret Shares** tab.
 
 ### Flow 4 — Recipient-initiated deletion
 

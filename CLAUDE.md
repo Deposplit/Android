@@ -54,8 +54,8 @@ driven_ports/
 ├── ContactRepository.kt           getAll, getById, getByEdKey, save, delete
 ├── ShareRepository.kt             getAll, getCiphertext, save, delete (local held-share storage)
 ├── ShareMetadataRepository.kt     getAll, save, delete (local cache of distributed ShareMetadata)
-└── ShareRelay.kt                  depositShare, listShares, pickUpShare, deleteShare, openShareRequest,
-                                   listShareRequests, getShareRequest, respondToShareRequest
+└── ShareRelay.kt                  openShareRequest, listShareRequests, getShareRequest, respondToShareRequest,
+                                   deleteShareRequest, deleteShareRequests
 services/
 ├── IdentityService.kt             Implements Identity, ShareEncryption — BouncyCastle keypair generation,
 │                                  Ed25519 signing, X25519+HKDF+ChaCha20-Poly1305 encrypt/decrypt; delegates persistence
@@ -67,9 +67,9 @@ services/
 │                                  implemented by IdentityService
 └── ShareService.kt                Implements ShareManagement — Shamir.split/combine + ShareEncryption.encrypt/decrypt +
                                    ShareRelay + ShareRepository + ShareMetadataRepository + ContactRepository;
-                                   deposit() writes metadata to local cache; listDistributed() reads cache;
-                                   syncDistributed() refreshes field updates (e.g. pickedUpAt) from relay —
-                                   never deletes; only reconstruct() and explicit delete flows remove entries
+                                   deposit() opens a PickUp request + writes metadata to local cache;
+                                   listDistributed() reads cache; syncDistributed() refreshes from relay (upserts, never deletes);
+                                   syncInbox() auto-approves pending PickUp requests; reconstruct() deletes PickUp rows (cascades)
 value_objects/
 ├── Contact.kt                     Contact data class + VerificationLevel enum (UNVERIFIED, VERIFIED)
 ├── HeldShare.kt                   HeldShare data class
@@ -187,7 +187,7 @@ This produces named build variants (`emulatorDebug`, `deviceDebug`, `stagingDebu
 - Share encryption uses **X25519 + HKDF-SHA-256 + ChaCha20-Poly1305**. Wire format: `nonce(12 bytes) || ciphertext+tag`. See `deposplit.com/CLAUDE.md` → *Transport Encryption* for the full construction.
 - The X25519 and Ed25519 private keys are stored in the Android Keystore (wrapped with AES-256-GCM under the `deposplit_master` alias) and never leave the device as raw key material.
 - Session persistence uses plain `SharedPreferences` (just an "is registered" flag). Do not add `EncryptedSharedPreferences` without a concrete reason; `security-crypto` is not a dependency.
-- **Local share storage** (`LocalShareRepository`): held shares (ciphertext + metadata) are stored as JSON in `filesDir/shares.json`, keyed by share ID. The relay is polled for new inbox items on each load; each new share is picked up (`GET /shares/:shareId`), stored locally, and the relay clears its ciphertext. Ciphertext is standard base64 in the JSON wire format; sender keys are base64url (consistent with the contact and API conventions).
+- **Local share storage** (`LocalShareRepository`): held shares (ciphertext + metadata) are stored as JSON in `filesDir/shares.json`, keyed by share ID. On `syncInbox()` the relay is polled for pending PickUp requests; each is approved (which delivers the ciphertext once and clears the relay row) and stored locally. Ciphertext is standard base64 in the JSON wire format; sender keys are base64url (consistent with the contact and API conventions).
 
 ## what follows was moved from ../deposplit.com/CLAUDE.md to ./CLAUDE.md
 

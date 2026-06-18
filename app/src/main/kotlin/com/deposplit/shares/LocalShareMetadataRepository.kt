@@ -21,10 +21,8 @@ class LocalShareMetadataRepository(context: Context) : ShareMetadataRepository {
         val id: String,
         val secretId: String,
         val label: String,
-        val senderKey: String,
         val recipientKey: String,
-        val createdAt: String,
-        val pickedUpAt: String? = null,
+        val secretCreatedAt: String,
     )
 
     @Synchronized
@@ -60,19 +58,15 @@ class LocalShareMetadataRepository(context: Context) : ShareMetadataRepository {
         id = UUID.fromString(id),
         secretId = UUID.fromString(secretId),
         label = label,
-        senderKey = Base64.getUrlDecoder().decode(senderKey),
         recipientKey = Base64.getUrlDecoder().decode(recipientKey),
-        createdAt = Instant.parse(createdAt),
-        pickedUpAt = pickedUpAt?.let { Instant.parse(it) },
+        secretCreatedAt = Instant.parse(secretCreatedAt),
     )
 
     private fun ShareMetadata.toWire() = ShareMetadataWire(
         id = id.toString(),
         secretId = secretId.toString(),
         label = label,
-        senderKey = Base64.getUrlEncoder().withoutPadding().encodeToString(senderKey),
         recipientKey = Base64.getUrlEncoder().withoutPadding().encodeToString(recipientKey),
-        createdAt = createdAt.toString(),
-        pickedUpAt = pickedUpAt?.toString(),
+        secretCreatedAt = secretCreatedAt.toString(),
     )
 }

@@ -78,9 +78,9 @@ fun RecipientRequestsTab(
         ) {
             items(uiState.requests, key = { it.id }) { request ->
                 val senderName = uiState.contacts
-                    .find { it.edPublicKey.contentEquals(request.share.senderKey) }
+                    .find { it.edPublicKey.contentEquals(request.senderKey) }
                     ?.pseudonym
-                    ?: keyPreview(request.share.senderKey)
+                    ?: keyPreview(request.senderKey)
                 RequestItem(
                     request = request,
                     senderName = senderName,

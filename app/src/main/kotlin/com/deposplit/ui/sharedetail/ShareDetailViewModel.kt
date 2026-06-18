@@ -62,7 +62,7 @@ class ShareDetailViewModel(
                 }
             }
                 .onSuccess { (share, allRequests, contacts) ->
-                    val forThisShare = allRequests.filter { it.share.id == shareId }
+                    val forThisShare = allRequests.filter { it.shareId == shareId }
                     val retrieveReq = forThisShare
                         .filter { it.requestType == ShareRequestType.RETRIEVE }
                         .maxByOrNull { it.requestedAt }
@@ -70,7 +70,7 @@ class ShareDetailViewModel(
                         .filter { it.requestType == ShareRequestType.DELETE }
                         .maxByOrNull { it.requestedAt }
                     val approvedCount = allRequests.count {
-                        it.share.secretId == share.secretId &&
+                        it.secretId == share.secretId &&
                             it.requestType == ShareRequestType.RETRIEVE &&
                             it.state == ShareRequestState.APPROVED &&
                             it.ciphertext != null

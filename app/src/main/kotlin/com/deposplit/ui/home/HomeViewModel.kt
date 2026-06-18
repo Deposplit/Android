@@ -18,13 +18,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.time.Instant
 import java.util.UUID
 
 data class HolderStatus(
     val shareId: UUID,
     val recipientName: String,
-    val pickedUpAt: Instant?,
     val retrieveRequest: ShareRequest?,
 )
 
@@ -167,19 +165,18 @@ class HomeViewModel(
             val holders = shares.map { share ->
                 val name = contacts.find { it.edPublicKey.contentEquals(share.recipientKey) }?.pseudonym ?: "?"
                 val latestRetrieve = allRequests
-                    .filter { it.share.id == share.id && it.requestType == ShareRequestType.RETRIEVE }
+                    .filter { it.shareId == share.id && it.requestType == ShareRequestType.RETRIEVE }
                     .maxByOrNull { it.requestedAt }
                 HolderStatus(
                     shareId = share.id,
                     recipientName = name,
-                    pickedUpAt = share.pickedUpAt,
                     retrieveRequest = latestRetrieve,
                 )
             }
             SecretGroup(
                 secretId = secretId,
                 label = first.label,
-                createdAt = first.createdAt,
+                createdAt = first.secretCreatedAt,
                 holders = holders,
             )
         }

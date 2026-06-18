@@ -391,14 +391,6 @@ private fun HolderRow(holder: HolderStatus, onClick: () -> Unit) {
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(holder.recipientName, style = MaterialTheme.typography.bodyMedium)
-            Text(
-                text = if (holder.pickedUpAt != null)
-                    stringResource(R.string.home_holder_delivered)
-                else
-                    stringResource(R.string.home_holder_awaiting_pickup),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
         holder.retrieveRequest?.let { req ->
             val (labelRes, color) = when (req.state) {
