@@ -105,23 +105,33 @@ private fun RequestItem(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                val isRetrieve = request.requestType == ShareRequestType.RETRIEVE
-                Surface(
-                    color = if (isRetrieve) MaterialTheme.colorScheme.primaryContainer
-                    else MaterialTheme.colorScheme.errorContainer,
-                    shape = MaterialTheme.shapes.small,
-                ) {
+                val (badgeText, badgeBackground, badgeContent) = when (request.requestType) {
+                    ShareRequestType.PICK_UP -> Triple(
+                        stringResource(R.string.share_request_pick_up),
+                        MaterialTheme.colorScheme.secondaryContainer,
+                        MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                    ShareRequestType.RETRIEVE -> Triple(
+                        stringResource(R.string.share_request_retrieve),
+                        MaterialTheme.colorScheme.primaryContainer,
+                        MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                    ShareRequestType.DELETE -> Triple(
+                        stringResource(R.string.share_request_delete),
+                        MaterialTheme.colorScheme.errorContainer,
+                        MaterialTheme.colorScheme.onErrorContainer,
+                    )
+                }
+                Surface(color = badgeBackground, shape = MaterialTheme.shapes.small) {
                     Text(
-                        text = if (isRetrieve) stringResource(R.string.share_request_retrieve)
-                               else stringResource(R.string.share_request_delete),
+                        text = badgeText,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (isRetrieve) MaterialTheme.colorScheme.onPrimaryContainer
-                        else MaterialTheme.colorScheme.onErrorContainer,
+                        color = badgeContent,
                     )
                 }
                 Text(
-                    text = request.share.label,
+                    text = request.label,
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
                 )

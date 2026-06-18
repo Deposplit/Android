@@ -85,6 +85,7 @@
     <string name="requests_error_respond">Failed to respond</string>
 
     <!-- Share request types and states -->
+    <string name="share_request_pick_up">Pick Up</string>
     <string name="share_request_retrieve">Retrieve</string>
     <string name="share_request_delete">Delete</string>
     <string name="share_request_state_pending">Pending</string>

@@ -134,7 +134,7 @@ fun ShareDetailScreen(shareId: UUID, onNavigateBack: () -> Unit) {
 
                 LabeledValue(stringResource(R.string.share_detail_recipient_label), recipientName)
                 Spacer(Modifier.height(4.dp))
-                LabeledValue(stringResource(R.string.share_detail_deposited_label), formatDate(uiState.share!!.createdAt))
+                LabeledValue(stringResource(R.string.share_detail_deposited_label), formatDate(uiState.share!!.secretCreatedAt))
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
