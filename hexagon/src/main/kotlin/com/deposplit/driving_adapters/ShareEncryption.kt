@@ -22,7 +22,7 @@
  * THE SOFTWARE.
  */
 
-package com.deposplit.services
+package com.deposplit.driving_adapters
 
 interface ShareEncryption {
     /** Encrypts [plaintext] to [recipientXPublicKey] via X25519+HKDF-SHA-256+ChaCha20-Poly1305. Returns nonce(12) || ciphertext+tag. */

@@ -1,4 +1,4 @@
-package com.deposplit.services
+package com.deposplit.driving_adapters
 
 import com.deposplit.driven_ports.ContactRepository
 import com.deposplit.driven_ports.ShareMetadataRepository

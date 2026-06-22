@@ -22,7 +22,7 @@
  * THE SOFTWARE.
  */
 
-package com.deposplit.services
+package com.deposplit.driving_adapters
 
 import com.deposplit.driven_ports.IdentityStore
 import com.deposplit.driving_ports.Identity

@@ -7,9 +7,9 @@ import com.deposplit.contacts.LocalContactRepository
 import com.deposplit.driving_ports.ContactManagement
 import com.deposplit.driving_ports.Identity
 import com.deposplit.driving_ports.ShareManagement
-import com.deposplit.services.ContactService
-import com.deposplit.services.IdentityService
-import com.deposplit.services.ShareService
+import com.deposplit.driving_adapters.ContactService
+import com.deposplit.driving_adapters.IdentityService
+import com.deposplit.driving_adapters.ShareService
 import com.deposplit.shares.LocalShareMetadataRepository
 import com.deposplit.shares.LocalShareRepository
 
