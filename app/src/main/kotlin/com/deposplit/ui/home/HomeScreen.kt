@@ -19,9 +19,11 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -31,6 +33,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -107,19 +110,23 @@ fun HomeScreen(
                         Icon(Icons.Default.QrCode, contentDescription = stringResource(R.string.home_action_qr_code))
                     }
                     IconButton(onClick = onNavigateToContacts) {
-                        Icon(Icons.Default.Person, contentDescription = stringResource(R.string.contacts_title))
+                        Icon(Icons.Default.Group, contentDescription = stringResource(R.string.contacts_title))
                     }
                     IconButton(onClick = {
                         if (selectedTab == 2) requestsViewModel.load() else viewModel.load()
                     }) {
-                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.action_refresh))
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = stringResource(R.string.action_refresh),
+                            tint = if (uiState.syncWarning) MaterialTheme.colorScheme.error else LocalContentColor.current,
+                        )
                     }
                 },
             )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onNavigateToDeposit) {
-                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.home_action_new_secret))
+                Icon(Icons.Default.Share, contentDescription = stringResource(R.string.home_action_new_secret))
             }
         },
     ) { padding ->
@@ -128,6 +135,28 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(padding),
         ) {
+            if (uiState.syncWarning) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(
+                        Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Text(
+                        text = stringResource(R.string.home_sync_warning),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+
             TabRow(selectedTabIndex = selectedTab) {
                 Tab(
                     selected = selectedTab == 0,
@@ -144,28 +173,6 @@ fun HomeScreen(
                     onClick = { selectedTab = 2 },
                     text = { Text(stringResource(R.string.home_tab_requests)) },
                 )
-            }
-
-            if (selectedTab != 2 && uiState.syncWarning) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Icon(
-                        Icons.Default.Warning,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(14.dp),
-                    )
-                    Text(
-                        text = stringResource(R.string.home_sync_warning),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
             }
 
             if (selectedTab == 2) {

@@ -20,12 +20,13 @@
     <!-- Home -->
     <string name="home_action_qr_code">Mein QR-Code</string>
     <string name="home_action_new_secret">Neues Geheimnis</string>
-    <string name="home_tab_distributed">Verteilt</string>
+    <string name="home_tab_distributed">Aufgeteilt &amp; verteilt</string>
     <string name="home_tab_held">Verwahrt</string>
     <string name="home_tab_requests">Anfragen</string>
-    <string name="home_empty_distributed">Noch keine Geheimnisse verteilt</string>
-    <string name="home_empty_held">Keine Teile verwahrt</string>
+    <string name="home_empty_distributed">Noch keine Geheimnisse aufgeteilt &amp; verteilt</string>
+    <string name="home_empty_held">Noch keine Geheimnisse verwahrt</string>
     <string name="home_error_fallback">Laden fehlgeschlagen</string>
+    <string name="home_sync_warning">Relay nicht erreichbar</string>
 
     <!-- Contacts -->
     <string name="contacts_title">Kontakte</string>
@@ -50,7 +51,7 @@
     <string name="add_contact_error_save">Speichern fehlgeschlagen</string>
 
     <!-- Deposit -->
-    <string name="deposit_title">Neues Geheimnis</string>
+    <string name="deposit_title">Geheimnis aufteilen &amp; verteilen</string>
     <string name="deposit_label_label">Bezeichnung</string>
     <string name="deposit_label_placeholder">z. B. BitLocker-Schlüssel</string>
     <string name="deposit_secret_label">Geheimnis</string>
@@ -58,7 +59,7 @@
     <string name="deposit_no_contacts">Noch keine Kontakte — zuerst Kontakte hinzufügen</string>
     <string name="deposit_threshold_title">Zum Rekonstruieren benötigt</string>
     <string name="deposit_threshold_format">%1$d von %2$d</string>
-    <string name="deposit_button">Aufteilen &amp; Verteilen</string>
+    <string name="deposit_button">Aufteilen &amp; verteilen</string>
     <string name="deposit_error_required">Pflichtfeld</string>
     <string name="deposit_error_select_at_least_2">Mindestens 2 Empfänger auswählen</string>
     <string name="deposit_error_load_contacts">Kontakte konnten nicht geladen werden</string>

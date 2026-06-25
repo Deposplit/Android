@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -77,7 +78,7 @@ fun ContactsScreen(onNavigateBack: () -> Unit, onNavigateToAddContact: () -> Uni
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onNavigateToAddContact) {
-                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.contacts_action_add))
+                Icon(Icons.Default.PersonAdd, contentDescription = stringResource(R.string.contacts_action_add))
             }
         },
     ) { padding ->
