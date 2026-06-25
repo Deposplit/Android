@@ -53,7 +53,7 @@ driven_ports/
 ├── IdentityStore.kt               isRegistered, save, pseudonym, edPublicKey, edPrivateKey, xPublicKey, xPrivateKey
 ├── ContactRepository.kt           getAll, getById, getByEdKey, save, delete
 ├── ShareRepository.kt             getAll, getCiphertext, save, delete (local held-share storage)
-├── ShareMetadataRepository.kt     getAll, save, delete (local cache of distributed ShareMetadata)
+├── ShareMetadataRepository.kt     getAll, save, delete (local store of distributed ShareMetadata)
 └── ShareRelay.kt                  openShareRequest, listShareRequests, getShareRequest, respondToShareRequest,
                                    deleteShareRequest, deleteShareRequests
 services/
@@ -67,8 +67,8 @@ services/
 │                                  implemented by IdentityService
 └── ShareService.kt                Implements ShareManagement — Shamir.split/combine + ShareEncryption.encrypt/decrypt +
                                    ShareRelay + ShareRepository + ShareMetadataRepository + ContactRepository;
-                                   deposit() opens a PickUp request + writes metadata to local cache;
-                                   listDistributed() reads cache; syncDistributed() refreshes from relay (upserts, never deletes);
+                                   deposit() opens a PickUp request + writes metadata to local store;
+                                   listDistributed() reads from local store; syncDistributed() syncs field updates from relay (upserts, never deletes);
                                    syncInbox() auto-approves pending PickUp requests; reconstruct() deletes PickUp rows (cascades)
 value_objects/
 ├── Contact.kt                     Contact data class + VerificationLevel enum (UNVERIFIED, VERIFIED)
@@ -92,7 +92,7 @@ contacts/
 └── LocalContactRepository.kt  JSON file in filesDir; @Synchronized; kotlinx.serialization wire types
 shares/
 ├── LocalShareRepository.kt         JSON file in filesDir (shares.json); @Synchronized; stores HeldShare (ciphertext + metadata) keyed by share ID
-└── LocalShareMetadataRepository.kt JSON file in filesDir (distributed_shares.json); @Synchronized; cache of distributed ShareMetadata keyed by share ID
+└── LocalShareMetadataRepository.kt JSON file in filesDir (distributed_shares.json); @Synchronized; local store of distributed ShareMetadata keyed by share ID
 ui/
 ├── signin/       SignInViewModel + SignInScreen              — pseudonym input + Register button
 ├── home/         HomeViewModel + HomeScreen                 — My Shared Secrets / Their Secret Shares / Requests tabs

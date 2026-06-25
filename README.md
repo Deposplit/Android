@@ -108,7 +108,7 @@ Android/
 │   │   │   │   ├── IdentityStore.kt     Credential store interface (save/load keys + pseudonym)
 │   │   │   │   ├── ContactRepository.kt Contact persistence interface
 │   │   │   │   ├── ShareRepository.kt   Local share storage interface
-│   │   │   │   ├── ShareMetadataRepository.kt  Local cache interface for distributed ShareMetadata
+│   │   │   │   ├── ShareMetadataRepository.kt  Local store interface for distributed ShareMetadata
 │   │   │   │   └── ShareRelay.kt        Raw relay API interface (openShareRequest, listShareRequests, getShareRequest, respondToShareRequest, deleteShareRequest, deleteShareRequests)
 │   │   │   ├── services/
 │   │   │   │   ├── IdentityService.kt   Implements Identity, ShareEncryption — BouncyCastle keypair generation,
@@ -116,8 +116,8 @@ Android/
 │   │   │   │   ├── ContactService.kt    Implements ContactManagement — key-size validation, VerificationLevel, UUID/timestamp
 │   │   │   │   ├── ShareEncryption.kt   Intra-hexagon interface: encrypt(plaintext, recipientXPublicKey),
 │   │   │   │   │                        decrypt(noncePlusCiphertext, recipientXPublicKey) — consumed by ShareService
-│   │   │   │   └── ShareService.kt      Implements ShareManagement — SSS split/combine + ShareEncryption.encrypt/decrypt + relay + ShareMetadataRepository cache;
-│   │   │   │                            deposit() writes to cache; listDistributed() reads from cache; syncDistributed() upserts relay metadata (never deletes)
+│   │   │   │   └── ShareService.kt      Implements ShareManagement — SSS split/combine + ShareEncryption.encrypt/decrypt + relay + ShareMetadataRepository;
+│   │   │   │                            deposit() writes to local store; listDistributed() reads from local store; syncDistributed() syncs field updates from relay (upserts, never deletes)
 │   │   │   └── value_objects/
 │   │   │       ├── Contact.kt           Contact + VerificationLevel
 │   │   │       ├── HeldShare.kt         HeldShare (ciphertext + metadata, held by the recipient)
@@ -139,7 +139,7 @@ Android/
 │   │   │   │   │   └── LocalContactRepository.kt JSON file in filesDir
 │   │   │   │   ├── shares/
 │   │   │   │   │   ├── LocalShareRepository.kt         JSON file in filesDir (shares.json); ciphertext + metadata for held shares
-│   │   │   │   │   └── LocalShareMetadataRepository.kt JSON file in filesDir (distributed_shares.json); local cache of distributed ShareMetadata
+│   │   │   │   │   └── LocalShareMetadataRepository.kt JSON file in filesDir (distributed_shares.json); local store of distributed ShareMetadata
 │   │   │   │   └── ui/
 │   │   │   │       ├── signin/       SignInViewModel + SignInScreen
 │   │   │   │       ├── home/         HomeViewModel + HomeScreen (My Shared Secrets / Their Secret Shares / Requests tabs)
@@ -322,8 +322,8 @@ On AVD-B, Bob taps the delete icon on Alice's share in the **Their Secret Shares
 ### Flow 5 — Offline / error states
 
 Kill the Web app/service → open or refresh the app:
-- **My Shared Secrets** and **Their Secret Shares** tabs render from local cache; a small warning banner ("Couldn't sync — showing cached data") replaces the blocking error.
-- **Requests** tab still polls the relay directly and will show an error (no local cache).
+- **My Shared Secrets** and **Their Secret Shares** tabs render from device storage; a small warning banner ("Relay not reachable") replaces the blocking error.
+- **Requests** tab queries the relay for pending events, which aren't stored locally, and will show an error.
 
 Restart the Web app/service → navigate away and back (or re-open the app) → warning clears, data refreshes from relay.
 
