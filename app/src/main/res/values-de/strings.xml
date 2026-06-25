@@ -10,11 +10,11 @@
     <string name="action_cancel">Abbrechen</string>
 
     <!-- Sign in -->
-    <string name="signin_subtitle">Wähle einen Namen für dich</string>
-    <string name="signin_name_label">Dein Name</string>
+    <string name="signin_subtitle">Ein Pseudonym wählen</string>
+    <string name="signin_name_label">Dein Pseudonym</string>
     <string name="signin_name_placeholder">z. B. Alice</string>
-    <string name="signin_button">Los geht\'s</string>
-    <string name="signin_error_empty_name">Bitte gib einen Namen ein.</string>
+    <string name="signin_button">Loslegen</string>
+    <string name="signin_error_empty_name">Bitte gib ein Pseudonym ein.</string>
     <string name="signin_error_fallback">Einrichtung fehlgeschlagen</string>
 
     <!-- Home -->
