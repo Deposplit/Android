@@ -13,13 +13,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,53 +44,68 @@ fun RecipientRequestsTab(
     onRetry: () -> Unit,
     onRespond: (UUID, Boolean) -> Unit,
 ) {
-    when {
-        uiState.isLoading -> Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
-        ) { CircularProgressIndicator() }
-
-        uiState.error != null -> Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        if (uiState.error != null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Icon(
+                    Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(14.dp),
+                )
                 Text(
                     text = stringResource(uiState.error!!),
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f),
                 )
-                Spacer(Modifier.height(12.dp))
-                Button(onClick = onRetry) { Text(stringResource(R.string.action_retry)) }
+                TextButton(onClick = onRetry) {
+                    Text(stringResource(R.string.action_retry), style = MaterialTheme.typography.labelSmall)
+                }
             }
         }
+        when {
+            uiState.isLoading -> Box(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) { CircularProgressIndicator() }
 
-        uiState.requests.isEmpty() -> Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = stringResource(R.string.requests_empty),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+            uiState.error != null && uiState.requests.isEmpty() -> Spacer(Modifier.weight(1f))
 
-        else -> LazyColumn(
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            items(uiState.requests, key = { it.id }) { request ->
-                val senderName = uiState.contacts
-                    .find { it.edPublicKey.contentEquals(request.senderKey) }
-                    ?.pseudonym
-                    ?: keyPreview(request.senderKey)
-                RequestItem(
-                    request = request,
-                    senderName = senderName,
-                    isResponding = request.id in uiState.respondingIds,
-                    onRespond = { approved -> onRespond(request.id, approved) },
+            uiState.requests.isEmpty() -> Box(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = stringResource(R.string.requests_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+
+            else -> LazyColumn(
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(uiState.requests, key = { it.id }) { request ->
+                    val senderName = uiState.contacts
+                        .find { it.edPublicKey.contentEquals(request.senderKey) }
+                        ?.pseudonym
+                        ?: keyPreview(request.senderKey)
+                    RequestItem(
+                        request = request,
+                        senderName = senderName,
+                        isResponding = request.id in uiState.respondingIds,
+                        onRespond = { approved -> onRespond(request.id, approved) },
+                    )
+                }
             }
         }
     }
