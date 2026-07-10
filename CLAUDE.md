@@ -123,6 +123,10 @@ Adapters may only depend on `:hexagon` ports and Android/infrastructure librarie
 
 Deploying to a device or emulator requires Android Studio (or `adb install`).
 
+## Continuous Integration
+
+`.github/workflows/test.yml` runs `./gradlew test` (both `:hexagon` and `:app` JVM unit tests) on `ubuntu-latest` for every push and for pull requests targeting `main` — JDK 25/Temurin via `actions/setup-java`, no Android SDK setup step needed (GitHub's `ubuntu-latest` images ship one). `.github/dependabot.yml` covers the `github-actions` and `gradle` ecosystems on a weekly schedule; the latter picks up `build.gradle.kts` in the root, `app`, and `hexagon` modules, plus `gradle/libs.versions.toml`.
+
 ## Environment configuration (base URL)
 
 `BuildConfig.BASE_URL` and `BuildConfig.SKIP_BIOMETRIC` are set via `buildConfigField` in `app/build.gradle.kts`. The `release` build type hard-codes safe production values for both; the `debug` build type reads overrides from `local.properties` (already gitignored) and falls back to safe defaults.

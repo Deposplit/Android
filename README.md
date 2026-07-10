@@ -255,6 +255,10 @@ The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`. Install
 
 On first launch the app shows the sign-in screen. Enter a pseudonym (display name only — stored locally, never sent to the Web app/service). Tapping **Register** generates Ed25519 and X25519 keypairs via BouncyCastle, stores the private keys in the Android Keystore, and navigates to the home screen.
 
+### Continuous Integration
+
+A GitHub Actions workflow (`.github/workflows/test.yml`) runs `./gradlew test` on every push and on pull requests targeting `main`. Dependabot (`.github/dependabot.yml`) keeps GitHub Actions and Gradle dependencies (including the `gradle/libs.versions.toml` version catalog) current on a weekly schedule.
+
 ---
 
 ## Testing against a local Web app/service
