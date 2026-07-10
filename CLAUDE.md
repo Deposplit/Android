@@ -14,7 +14,7 @@ Consequences:
 
 ### Java / Kotlin versions
 
-- Kotlin 2.3.20, JVM 21 bytecode target
+- Kotlin 2.4.0, JVM 21 bytecode target
 - The host JDK is Java 25 (Temurin). Use `compileOptions` / `java { sourceCompatibility / targetCompatibility }` for the target — `jvmToolchain(N)` requires an installed JDK of version N and will fail if only 25 is present.
 - Gradle wrapper version: see `gradle/wrapper/gradle-wrapper.properties`
 - AGP version: see `gradle/libs.versions.toml` (`agp`)
