@@ -36,11 +36,11 @@ class QrScanViewModel(private val contactManagement: ContactManagement) : ViewMo
         viewModelScope.launch {
             runCatching {
                 val payload = decodeQrPayload(raw)
-                require(payload.v == 1) { "Unknown QR payload version: ${payload.v}" }
+                require(payload.v in 1..2) { "Unknown QR payload version: ${payload.v}" }
                 val decoder = Base64.getUrlDecoder()
                 val edKey = decoder.decode(payload.ed)
                 val xKey = decoder.decode(payload.x)
-                contactManagement.addFromQr(payload.pseudonym, edKey, xKey)
+                contactManagement.addFromQr(payload.pseudonym, edKey, xKey, payload.relay)
             }.onSuccess {
                 _effects.send(Effect.NavigateBack)
             }.onFailure {

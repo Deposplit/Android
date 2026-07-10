@@ -60,6 +60,13 @@
     <string name="add_contact_error_ed_length">Must be 32 bytes (Ed25519 public key)</string>
     <string name="add_contact_error_x_length">Must be 32 bytes (X25519 public key)</string>
     <string name="add_contact_error_save">Failed to save</string>
+    <string name="add_contact_relay_label">Relay override (optional, BYOR)</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_relay_description">Default relay used for contacts without a BYOR override, and advertised in your own QR code.</string>
+    <string name="settings_relay_label">Default relay URL</string>
+    <string name="settings_relay_reset">Reset to default</string>
 
     <!-- Deposit -->
     <string name="deposit_title">Split &amp; Share Secret</string>

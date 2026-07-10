@@ -54,8 +54,12 @@ driven_ports/
 ├── ContactRepository.kt           getAll, getById, getByEdKey, save, delete
 ├── ShareRepository.kt             getAll, getCiphertext, save, delete (local held-share storage)
 ├── ShareMetadataRepository.kt     getAll, save, delete (local store of distributed ShareMetadata)
-└── ShareRelay.kt                  openShareRequest, listShareRequests, getShareRequest, respondToShareRequest,
-                                   deleteShareRequest, deleteShareRequests
+├── ShareRelay.kt                  openShareRequest(..., senderSignature), listShareRequests, getShareRequest,
+│                                  respondToShareRequest(..., recipientSignature), deleteShareRequest, deleteShareRequests
+├── ShareRelayResolver.kt          resolve(relayBaseUrl: String?): ShareRelay — BYOR factory/cache, not a fan-out
+│                                  mechanism; null resolves to the device's default relay (RelaySettings)
+└── RelaySettings.kt               getDefaultRelayBaseUrl, setDefaultRelayBaseUrl — device's runtime-configurable
+                                   default relay, used by ShareRelayResolver and embedded in outgoing QR codes
 services/
 ├── IdentityService.kt             Implements Identity, ShareEncryption — BouncyCastle keypair generation,
 │                                  Ed25519 signing, X25519+HKDF+ChaCha20-Poly1305 encrypt/decrypt; delegates persistence
@@ -71,9 +75,13 @@ services/
                                    listDistributed() reads from local store; syncDistributed() syncs field updates from relay (upserts, never deletes);
                                    syncInbox() auto-approves pending PickUp requests; reconstruct() deletes PickUp rows (cascades)
 value_objects/
-├── Contact.kt                     Contact data class + VerificationLevel enum (UNVERIFIED, VERIFIED)
+├── Contact.kt                     Contact data class (incl. relayBaseUrl BYOR override) + VerificationLevel enum
 ├── HeldShare.kt                   HeldShare data class
-└── Share.kt                       Role, ShareRequestType, ShareRequestState, ShareMetadata, ShareRequest
+├── Share.kt                       Role, ShareRequestType, ShareRequestState, ShareMetadata, ShareRequest
+│                                  (incl. senderSignature/recipientSignature)
+├── PayloadCanonical.kt            forOpen/forRespond — canonical byte constructions signed for
+│                                  senderSignature/recipientSignature; mirrors deposplit.com's PayloadCanonical
+└── SignatureVerificationException.kt  Thrown by respond()/reconstruct() on an unverifiable signature
 ```
 
 Tests: `:hexagon/src/test/kotlin/com/deposplit/shamir/ShamirTest.kt` — round-trip, cross-platform vectors, input validation. Uses `kotlin.test` (JUnit 4 backend via `kotlin-test-junit`).
@@ -81,13 +89,20 @@ Tests: `:hexagon/src/test/kotlin/com/deposplit/shamir/ShamirTest.kt` — round-t
 ### `:app/src/main/kotlin/com/deposplit/`
 
 ```
-DeposplitApp.kt              Application subclass; owns authAdapter + contactManagement + shareManagement
-MainActivity.kt              Single activity; NavHost root (sign_in / home / contacts / add_contact / deposit / share_detail / qr_display / qr_scan)
+DeposplitApp.kt              Application subclass; owns authAdapter + contactManagement + shareManagement + relaySettings
+MainActivity.kt              Single activity; NavHost root (sign_in / home / contacts / add_contact / deposit / share_detail / qr_display / qr_scan / settings)
 auth/
 └── AndroidIdentityStore.kt  Adapter implementing IdentityStore — Android Keystore AES-256-GCM wrapping of private keys; public keys + pseudonym in SharedPreferences
 api/
-└── DeposplitApiAdapter.kt   HTTP adapter implementing ShareRelay: HttpURLConnection, Ed25519 request signing,
-                             JSON via kotlinx.serialization
+├── DeposplitApiAdapter.kt   HTTP adapter implementing ShareRelay: HttpURLConnection, Ed25519 request signing,
+│                            JSON via kotlinx.serialization; senderSignature/recipientSignature wired through
+├── DeposplitRelayResolver.kt  Implements ShareRelayResolver — memoizes one DeposplitApiAdapter per resolved base
+│                            URL; null resolves via RelaySettings.getDefaultRelayBaseUrl()
+└── RelayDefaults.kt         FALLBACK_BASE_URL constant ("https://api.deposplit.com") — plain Kotlin, decoupled
+                             from build-variant machinery (replaces the old BuildConfig.BASE_URL)
+settings/
+└── SharedPreferencesRelaySettings.kt  Implements RelaySettings — same "deposplit" SharedPreferences file
+                             AndroidIdentityStore uses
 contacts/
 └── LocalContactRepository.kt  JSON file in filesDir; @Synchronized; kotlinx.serialization wire types
 shares/
@@ -104,7 +119,8 @@ ui/
 ├── deposit/      DepositViewModel + DepositScreen           — contactManagement.listContacts + shareManagement.deposit(...)
 ├── requests/     RequestsViewModel + RecipientRequestsTab   — approve/deny incoming requests
 ├── sharedetail/  ShareDetailViewModel + ShareDetailScreen   — open RETRIEVE/DELETE + shareManagement.reconstruct(...)
-├── qr/           QrPayload, QrDisplay{ViewModel,Screen}, QrScan{ViewModel,Screen}
+├── qr/           QrPayload (v2, incl. relay field), QrDisplay{ViewModel,Screen}, QrScan{ViewModel,Screen}
+├── settings/     SettingsViewModel + SettingsScreen         — edit/reset the default relay (RelaySettings)
 └── theme/        Material 3 colour, type, theme
 ```
 
@@ -127,24 +143,16 @@ Deploying to a device or emulator requires Android Studio (or `adb install`).
 
 `.github/workflows/test.yml` runs `./gradlew test` (both `:hexagon` and `:app` JVM unit tests) on `ubuntu-latest` for every push and for pull requests targeting `main` — JDK 25/Temurin via `actions/setup-java`, no Android SDK setup step needed (GitHub's `ubuntu-latest` images ship one). `.github/dependabot.yml` covers the `github-actions` and `gradle` ecosystems on a weekly schedule; the latter picks up `build.gradle.kts` in the root, `app`, and `hexagon` modules, plus `gradle/libs.versions.toml`.
 
-## Environment configuration (base URL)
+## Environment configuration (default relay, BYOR)
 
-`BuildConfig.BASE_URL` and `BuildConfig.SKIP_BIOMETRIC` are set via `buildConfigField` in `app/build.gradle.kts`. The `release` build type hard-codes safe production values for both; the `debug` build type reads overrides from `local.properties` (already gitignored) and falls back to safe defaults.
+The relay endpoint is no longer a compile-time `BuildConfig` field — BYOR (see `deposplit.com/CLAUDE.md`) needs a per-contact relay override anyway, so the "default relay" (used for any contact without one) is a **runtime-configurable setting** instead, resolved through the same mechanism:
 
-| `local.properties` key | Type | Debug default | Release |
-|---|---|---|---|
-| `BASE_URL` | `String` | `http://10.0.2.2:9000` | `https://api.deposplit.com` (fixed) |
-| `SKIP_BIOMETRIC` | `Boolean` | `false` | `false` (fixed) |
+- `RelaySettings` (`:hexagon` driven port) — `getDefaultRelayBaseUrl()` / `setDefaultRelayBaseUrl(url: String?)`.
+- `SharedPreferencesRelaySettings` (`app/.../settings/`) — persists to the same `"deposplit"` SharedPreferences file `AndroidIdentityStore` already uses; falls back to `RelayDefaults.FALLBACK_BASE_URL` (`app/.../api/RelayDefaults.kt`, hardcoded `https://api.deposplit.com`) when unset.
+- `ShareRelayResolver` / `DeposplitRelayResolver` (`app/.../api/`) — resolves a `Contact.relayBaseUrl` override to its own `DeposplitApiAdapter`, or falls back to `RelaySettings` when the override is `null`; memoizes one adapter per distinct base URL.
+- **Settings screen** (`ui/settings/SettingsScreen.kt` + `SettingsViewModel.kt`, gear icon on `HomeScreen`) — the user-facing way to change the default relay. For local dev (emulator/physical device), point it at `http://10.0.2.2:9000` (emulator) or your LAN IP — no rebuild needed, unlike the old `local.properties`-based `BASE_URL`.
 
-Gradle reads `local.properties` at sync time — rebuild the app after editing. Android Studio may regenerate `local.properties` when you change the SDK path, but it only rewrites `sdk.dir`; custom keys survive.
-
-### Changing the debug URL (e.g. physical device on LAN)
-
-Add to `Android/local.properties`:
-
-```
-BASE_URL=http://192.168.x.x:9000
-```
+`BuildConfig.SKIP_BIOMETRIC` is unrelated and still configured via `local.properties` — see below.
 
 ### Skipping biometric during development
 
@@ -154,33 +162,7 @@ Emulators often have no enrolled biometric, which blocks the Reconstruct flow. A
 SKIP_BIOMETRIC=true
 ```
 
-When set, `ShareDetailScreen` shows the Reconstruct button unconditionally and calls `viewModel.reconstruct()` directly, bypassing `BiometricGate`. The release build always enforces biometric regardless of this key.
-
-### Alternative: product flavors with `buildConfigField`
-
-If you ever need a persistent named environment (e.g. `staging` pointing at `https://staging.api.deposplit.com`) rather than a per-developer override, prefer **product flavors** over `local.properties`:
-
-```kotlin
-// app/build.gradle.kts
-flavorDimensions += "env"
-productFlavors {
-    create("emulator") {
-        dimension = "env"
-        buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:9000\"")
-    }
-    create("device") {
-        dimension = "env"
-        // developer fills in their LAN IP here and does not commit it
-        buildConfigField("String", "BASE_URL", "\"http://192.168.x.x:9000\"")
-    }
-    create("staging") {
-        dimension = "env"
-        buildConfigField("String", "BASE_URL", "\"https://staging.api.deposplit.com\"")
-    }
-}
-```
-
-This produces named build variants (`emulatorDebug`, `deviceDebug`, `stagingDebug`, `stagingRelease`, …) selectable from the Android Studio Build Variants panel and from `./gradlew assembleEmulatorDebug`. The tradeoff: each new flavor multiplies the variant matrix; for solo development, `local.properties` is simpler.
+When set, `ShareDetailScreen` shows the Reconstruct button unconditionally and calls `viewModel.reconstruct()` directly, bypassing `BiometricGate`. The release build always enforces biometric regardless of this key. Gradle reads `local.properties` at sync time — rebuild the app after editing.
 
 ## Key decisions to preserve
 

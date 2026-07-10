@@ -13,7 +13,7 @@ class ContactService(
 
     override fun listContacts(): List<Contact> = contactRepository.getAll()
 
-    override fun addManually(pseudonym: String, edPublicKey: ByteArray, xPublicKey: ByteArray) {
+    override fun addManually(pseudonym: String, edPublicKey: ByteArray, xPublicKey: ByteArray, relayBaseUrl: String?) {
         require(pseudonym.isNotBlank()) { "Pseudonym must not be blank" }
         require(edPublicKey.size == 32) { "Ed25519 public key must be 32 bytes" }
         require(xPublicKey.size == 32) { "X25519 public key must be 32 bytes" }
@@ -26,11 +26,12 @@ class ContactService(
                 verificationLevel = VerificationLevel.UNVERIFIED,
                 verifiedAt = null,
                 addedAt = Instant.now(),
+                relayBaseUrl = relayBaseUrl,
             )
         )
     }
 
-    override fun addFromQr(pseudonym: String, edPublicKey: ByteArray, xPublicKey: ByteArray) {
+    override fun addFromQr(pseudonym: String, edPublicKey: ByteArray, xPublicKey: ByteArray, relayBaseUrl: String?) {
         require(pseudonym.isNotBlank()) { "Pseudonym must not be blank" }
         require(edPublicKey.size == 32) { "Ed25519 public key must be 32 bytes" }
         require(xPublicKey.size == 32) { "X25519 public key must be 32 bytes" }
@@ -44,6 +45,7 @@ class ContactService(
                 verificationLevel = VerificationLevel.VERIFIED,
                 verifiedAt = now,
                 addedAt = now,
+                relayBaseUrl = relayBaseUrl,
             )
         )
     }

@@ -22,6 +22,7 @@ class AddContactViewModel(private val contactManagement: ContactManagement) : Vi
         val pseudonym: String = "",
         val edPublicKey: String = "",
         val xPublicKey: String = "",
+        val relayBaseUrl: String = "",
         @StringRes val pseudonymError: Int? = null,
         @StringRes val edKeyError: Int? = null,
         @StringRes val xKeyError: Int? = null,
@@ -41,6 +42,7 @@ class AddContactViewModel(private val contactManagement: ContactManagement) : Vi
     fun onPseudonymChange(value: String) = _uiState.update { it.copy(pseudonym = value, pseudonymError = null) }
     fun onEdKeyChange(value: String) = _uiState.update { it.copy(edPublicKey = value, edKeyError = null) }
     fun onXKeyChange(value: String) = _uiState.update { it.copy(xPublicKey = value, xKeyError = null) }
+    fun onRelayBaseUrlChange(value: String) = _uiState.update { it.copy(relayBaseUrl = value) }
 
     fun save() {
         val state = _uiState.value
@@ -68,7 +70,12 @@ class AddContactViewModel(private val contactManagement: ContactManagement) : Vi
         viewModelScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    contactManagement.addManually(state.pseudonym.trim(), edKeyBytes!!, xKeyBytes!!)
+                    contactManagement.addManually(
+                        state.pseudonym.trim(),
+                        edKeyBytes!!,
+                        xKeyBytes!!,
+                        state.relayBaseUrl.trim().ifBlank { null },
+                    )
                 }
             }
                 .onSuccess { _effects.send(Effect.NavigateBack) }

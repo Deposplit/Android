@@ -31,6 +31,10 @@ data class ShareRequest(
     val requestedAt: Instant,
     val respondedAt: Instant?,
     val ciphertext: ByteArray?,
+    // Ed25519 signature over PayloadCanonical.forOpen — see that object for what's signed.
+    val senderSignature: ByteArray,
+    // Ed25519 signature over PayloadCanonical.forRespond; null while pending.
+    val recipientSignature: ByteArray?,
 ) {
     override fun equals(other: Any?) = other is ShareRequest && id == other.id
     override fun hashCode() = id.hashCode()

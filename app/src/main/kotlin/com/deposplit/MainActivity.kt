@@ -13,6 +13,7 @@ import com.deposplit.ui.deposit.DepositScreen
 import com.deposplit.ui.home.HomeScreen
 import com.deposplit.ui.qr.QrDisplayScreen
 import com.deposplit.ui.qr.QrScanScreen
+import com.deposplit.ui.settings.SettingsScreen
 import com.deposplit.ui.sharedetail.ShareDetailScreen
 import com.deposplit.ui.signin.SignInScreen
 import com.deposplit.ui.theme.DeposplitTheme
@@ -26,6 +27,7 @@ private const val ROUTE_DEPOSIT = "deposit"
 private const val ROUTE_SHARE_DETAIL = "share_detail/{shareId}"
 private const val ROUTE_QR_DISPLAY = "qr_display"
 private const val ROUTE_QR_SCAN = "qr_scan"
+private const val ROUTE_SETTINGS = "settings"
 
 class MainActivity : FragmentActivity() {
 
@@ -57,7 +59,11 @@ class MainActivity : FragmentActivity() {
                                 navController.navigate("share_detail/$shareId")
                             },
                             onNavigateToQrDisplay = { navController.navigate(ROUTE_QR_DISPLAY) },
+                            onNavigateToSettings = { navController.navigate(ROUTE_SETTINGS) },
                         )
+                    }
+                    composable(ROUTE_SETTINGS) {
+                        SettingsScreen(onNavigateBack = { navController.popBackStack() })
                     }
                     composable(ROUTE_DEPOSIT) {
                         DepositScreen(onNavigateBack = { navController.popBackStack() })

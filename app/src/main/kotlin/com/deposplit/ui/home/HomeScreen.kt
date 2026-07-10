@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
@@ -79,6 +80,7 @@ fun HomeScreen(
     onNavigateToDeposit: () -> Unit,
     onNavigateToShareDetail: (UUID) -> Unit,
     onNavigateToQrDisplay: () -> Unit,
+    onNavigateToSettings: () -> Unit,
 ) {
     val app = LocalContext.current.applicationContext as DeposplitApp
     val viewModel: HomeViewModel = viewModel(
@@ -111,6 +113,9 @@ fun HomeScreen(
                     }
                     IconButton(onClick = onNavigateToContacts) {
                         Icon(Icons.Default.Group, contentDescription = stringResource(R.string.contacts_title))
+                    }
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
                     }
                     IconButton(onClick = {
                         if (selectedTab == 2) requestsViewModel.load() else viewModel.load()

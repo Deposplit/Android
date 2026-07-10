@@ -31,4 +31,11 @@ interface Identity {
     fun edPublicKey(): ByteArray
     fun xPublicKey(): ByteArray
     fun sign(message: ByteArray): ByteArray
+
+    /**
+     * Verifies an Ed25519 [signature] over [message] against [publicKey] (someone else's, not
+     * this identity's own). Used to independently re-verify the senderSignature/recipientSignature
+     * that ride with a ShareRequest row — see [com.deposplit.value_objects.PayloadCanonical].
+     */
+    fun verify(message: ByteArray, signature: ByteArray, publicKey: ByteArray): Boolean
 }

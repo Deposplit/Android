@@ -103,6 +103,14 @@ fun AddContactScreen(onNavigateBack: () -> Unit) {
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = uiState.relayBaseUrl,
+                onValueChange = viewModel::onRelayBaseUrlChange,
+                label = { Text(stringResource(R.string.add_contact_relay_label)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
             Spacer(Modifier.height(24.dp))
             Button(
                 onClick = viewModel::save,

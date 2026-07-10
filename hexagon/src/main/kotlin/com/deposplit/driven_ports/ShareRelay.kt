@@ -16,10 +16,16 @@ interface ShareRelay {
         requestType: ShareRequestType,
         shareId: UUID?,
         ciphertext: ByteArray?,
+        senderSignature: ByteArray,
     ): ShareRequest
     fun listShareRequests(role: Role, requestType: ShareRequestType? = null, state: ShareRequestState? = null): List<ShareRequest>
     fun getShareRequest(requestId: UUID): ShareRequest
-    fun respondToShareRequest(requestId: UUID, approved: Boolean, ciphertext: ByteArray? = null): ShareRequest
+    fun respondToShareRequest(
+        requestId: UUID,
+        approved: Boolean,
+        ciphertext: ByteArray? = null,
+        recipientSignature: ByteArray,
+    ): ShareRequest
     fun deleteShareRequest(requestId: UUID)
     fun deleteShareRequests(senderKey: ByteArray? = null, secretId: UUID? = null)
 }

@@ -80,6 +80,15 @@ class IdentityService(private val identityStore: IdentityStore) : Identity, Shar
         return signer.generateSignature()
     }
 
+    override fun verify(message: ByteArray, signature: ByteArray, publicKey: ByteArray): Boolean = try {
+        val verifier = Ed25519Signer()
+        verifier.init(false, Ed25519PublicKeyParameters(publicKey, 0))
+        verifier.update(message, 0, message.size)
+        verifier.verifySignature(signature)
+    } catch (e: Exception) {
+        false
+    }
+
     override fun encrypt(plaintext: ByteArray, recipientXPublicKey: ByteArray): ByteArray {
         val sk = X25519PrivateKeyParameters(identityStore.xPrivateKey())
         val nonce = ByteArray(NONCE_BYTES).also { secureRandom.nextBytes(it) }

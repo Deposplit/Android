@@ -34,6 +34,7 @@ class DeposplitApiAdapter(
         requestType: ShareRequestType,
         shareId: UUID?,
         ciphertext: ByteArray?,
+        senderSignature: ByteArray,
     ): ShareRequest {
         val body = json.encodeToString(
             OpenShareRequestJson(
@@ -44,6 +45,7 @@ class DeposplitApiAdapter(
                 requestType = requestType.toWire(),
                 shareId = shareId?.toString(),
                 ciphertext = ciphertext?.encodeBase64(),
+                senderSignature = senderSignature.encodeBase64Url(),
             )
         )
         return json.decodeFromString<ShareRequestJson>(execute("POST", "/share-requests", body)).toDomain()
@@ -62,11 +64,17 @@ class DeposplitApiAdapter(
     override fun getShareRequest(requestId: UUID): ShareRequest =
         json.decodeFromString<ShareRequestJson>(execute("GET", "/share-requests/$requestId")).toDomain()
 
-    override fun respondToShareRequest(requestId: UUID, approved: Boolean, ciphertext: ByteArray?): ShareRequest {
+    override fun respondToShareRequest(
+        requestId: UUID,
+        approved: Boolean,
+        ciphertext: ByteArray?,
+        recipientSignature: ByteArray,
+    ): ShareRequest {
         val body = json.encodeToString(
             RespondJson(
                 state = if (approved) "approved" else "denied",
                 ciphertext = ciphertext?.encodeBase64(),
+                recipientSignature = recipientSignature.encodeBase64Url(),
             )
         )
         return json.decodeFromString<ShareRequestJson>(
@@ -148,10 +156,11 @@ class DeposplitApiAdapter(
         val requestType: String,
         val shareId: String? = null,
         val ciphertext: String? = null,
+        val senderSignature: String,
     )
 
     @Serializable
-    private data class RespondJson(val state: String, val ciphertext: String? = null)
+    private data class RespondJson(val state: String, val ciphertext: String? = null, val recipientSignature: String)
 
     @Serializable
     private data class ShareRequestJson(
@@ -167,6 +176,8 @@ class DeposplitApiAdapter(
         val requestedAt: String,
         val respondedAt: String? = null,
         val ciphertext: String? = null,
+        val senderSignature: String,
+        val recipientSignature: String? = null,
     )
 
     // ── Domain conversions ────────────────────────────────────────────────────
@@ -194,6 +205,8 @@ class DeposplitApiAdapter(
         requestedAt = Instant.parse(requestedAt),
         respondedAt = respondedAt?.let { Instant.parse(it) },
         ciphertext = ciphertext?.decodeBase64(),
+        senderSignature = senderSignature.decodeBase64Url(),
+        recipientSignature = recipientSignature?.decodeBase64Url(),
     )
 
     private fun ShareRequestType.toWire(): String = when (this) {

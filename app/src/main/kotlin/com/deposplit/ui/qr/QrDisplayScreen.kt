@@ -37,7 +37,7 @@ fun QrDisplayScreen(onNavigateBack: () -> Unit) {
     val app = LocalContext.current.applicationContext as DeposplitApp
     val viewModel: QrDisplayViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { QrDisplayViewModel(app.authAdapter) }
+            initializer { QrDisplayViewModel(app.authAdapter, app.relaySettings) }
         }
     )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()

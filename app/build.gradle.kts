@@ -28,13 +28,10 @@ android {
 
     buildTypes {
         debug {
-            val url = localProps.getProperty("BASE_URL") ?: "http://10.0.2.2:9000"
-            buildConfigField("String", "BASE_URL", "\"$url\"")
             val skipBiometric = localProps.getProperty("SKIP_BIOMETRIC")?.toBooleanStrictOrNull() ?: false
             buildConfigField("Boolean", "SKIP_BIOMETRIC", "$skipBiometric")
         }
         release {
-            buildConfigField("String", "BASE_URL", "\"https://api.deposplit.com\"")
             buildConfigField("Boolean", "SKIP_BIOMETRIC", "false")
             isMinifyEnabled = false
             proguardFiles(
