@@ -26,6 +26,7 @@ class LocalContactRepository(context: Context) : ContactRepository {
         val verificationLevel: String,
         val verifiedAt: String?,
         val addedAt: String,
+        val relayBaseUrl: String? = null,
     )
 
     @Synchronized
@@ -67,6 +68,7 @@ class LocalContactRepository(context: Context) : ContactRepository {
         verificationLevel = VerificationLevel.valueOf(verificationLevel),
         verifiedAt = verifiedAt?.let { Instant.parse(it) },
         addedAt = Instant.parse(addedAt),
+        relayBaseUrl = relayBaseUrl,
     )
 
     private fun Contact.toWire() = ContactWire(
@@ -77,5 +79,6 @@ class LocalContactRepository(context: Context) : ContactRepository {
         verificationLevel = verificationLevel.name,
         verifiedAt = verifiedAt?.toString(),
         addedAt = addedAt.toString(),
+        relayBaseUrl = relayBaseUrl,
     )
 }
