@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deposplit.R
 import com.deposplit.driving_ports.ContactManagement
+import com.deposplit.value_objects.VerificationLevel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -40,7 +41,10 @@ class QrScanViewModel(private val contactManagement: ContactManagement) : ViewMo
                 val decoder = Base64.getUrlDecoder()
                 val edKey = decoder.decode(payload.ed)
                 val xKey = decoder.decode(payload.x)
-                contactManagement.addFromQr(payload.pseudonym, edKey, xKey, payload.relay)
+                // A QR scan defaults to in-person co-presence, the strongest assurance the current
+                // scan flow can claim (CLAUDE.md item 6). A remote/video-call scan is a weaker
+                // claim, but there's no UI step here to downgrade it yet.
+                contactManagement.addFromQr(payload.pseudonym, edKey, xKey, VerificationLevel.VERY_HIGH, payload.relay)
             }.onSuccess {
                 _effects.send(Effect.NavigateBack)
             }.onFailure {

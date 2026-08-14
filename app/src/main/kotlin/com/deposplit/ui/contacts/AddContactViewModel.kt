@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deposplit.R
 import com.deposplit.driving_ports.ContactManagement
+import com.deposplit.value_objects.VerificationLevel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,11 +24,17 @@ class AddContactViewModel(private val contactManagement: ContactManagement) : Vi
         val edPublicKey: String = "",
         val xPublicKey: String = "",
         val relayBaseUrl: String = "",
+        // .VERY_HIGH is deliberately excluded: physical co-presence can't be asserted by typing
+        // a key in by hand — that's what the in-person QR scan flow is for. See CLAUDE.md item 6.
+        val verificationLevel: VerificationLevel = VerificationLevel.VERY_LOW,
         @StringRes val pseudonymError: Int? = null,
         @StringRes val edKeyError: Int? = null,
         @StringRes val xKeyError: Int? = null,
         val isSaving: Boolean = false,
-    )
+    ) {
+        val selectableLevels: List<VerificationLevel> =
+            VerificationLevel.entries.filter { it != VerificationLevel.VERY_HIGH }
+    }
 
     sealed interface Effect {
         data object NavigateBack : Effect
@@ -43,6 +50,7 @@ class AddContactViewModel(private val contactManagement: ContactManagement) : Vi
     fun onEdKeyChange(value: String) = _uiState.update { it.copy(edPublicKey = value, edKeyError = null) }
     fun onXKeyChange(value: String) = _uiState.update { it.copy(xPublicKey = value, xKeyError = null) }
     fun onRelayBaseUrlChange(value: String) = _uiState.update { it.copy(relayBaseUrl = value) }
+    fun onVerificationLevelChange(value: VerificationLevel) = _uiState.update { it.copy(verificationLevel = value) }
 
     fun save() {
         val state = _uiState.value
@@ -74,6 +82,7 @@ class AddContactViewModel(private val contactManagement: ContactManagement) : Vi
                         state.pseudonym.trim(),
                         edKeyBytes!!,
                         xKeyBytes!!,
+                        state.verificationLevel,
                         state.relayBaseUrl.trim().ifBlank { null },
                     )
                 }

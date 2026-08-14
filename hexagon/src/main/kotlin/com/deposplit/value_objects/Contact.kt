@@ -3,7 +3,12 @@ package com.deposplit.value_objects
 import java.time.Instant
 import java.util.UUID
 
-enum class VerificationLevel { UNVERIFIED, VERIFIED }
+// Four-level ordinal verification model — see deposplit.com/CLAUDE.md "What is next" item 6.
+// Derived from a trusted-channel x proof-of-life lattice; the two incomparable middle cells are
+// merged into LOW, so the order is simply the count of independent assurances present (0/1/2),
+// or 3 for physical co-presence. Kotlin enums are Comparable by declaration (ordinal) order, so
+// this order is load-bearing — do not reorder the cases.
+enum class VerificationLevel { VERY_LOW, LOW, HIGH, VERY_HIGH }
 
 data class Contact(
     val id: UUID,

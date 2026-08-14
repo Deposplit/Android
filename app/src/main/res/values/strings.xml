@@ -44,11 +44,19 @@
     <string name="contacts_action_scan_qr">Scan QR code</string>
     <string name="contacts_action_add">Add contact</string>
     <string name="contacts_empty">No contacts yet</string>
-    <string name="contacts_verified">Verified</string>
-    <string name="contacts_unverified">Unverified</string>
     <string name="contacts_delete_description">Delete %1$s</string>
     <string name="contacts_error_load">Failed to load</string>
     <string name="contacts_error_delete">Failed to delete</string>
+
+    <!-- Verification level (deposplit.com/CLAUDE.md "What is next" item 6) -->
+    <string name="verification_level_very_low">Very Low</string>
+    <string name="verification_level_low">Low</string>
+    <string name="verification_level_high">High</string>
+    <string name="verification_level_very_high">Very High</string>
+    <string name="verification_level_very_low_guidance">Untrusted channel, no live proof — e.g. e-mail, LinkedIn, a business card.</string>
+    <string name="verification_level_low_guidance">One assurance, not both — e.g. a Signal message from a known contact, or a video call where they show their QR.</string>
+    <string name="verification_level_high_guidance">Both assurances — e.g. a verified-safety-number video call where they show their QR.</string>
+    <string name="verification_level_very_high_guidance">Physical co-presence — you scanned their QR code in person.</string>
 
     <!-- Add contact -->
     <string name="add_contact_title">Add Contact</string>
@@ -61,6 +69,8 @@
     <string name="add_contact_error_x_length">Must be 32 bytes (X25519 public key)</string>
     <string name="add_contact_error_save">Failed to save</string>
     <string name="add_contact_relay_label">Relay override (optional, BYOR)</string>
+    <string name="add_contact_verification_label">Verification Level</string>
+    <string name="add_contact_verification_footer">How sure are you this is really them? Count your independent assurances: a trusted channel, and/or live proof you saw them.</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>

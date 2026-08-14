@@ -145,18 +145,14 @@ private fun ContactItem(contact: Contact, onDelete: () -> Unit) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(contact.pseudonym, style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = if (contact.verificationLevel == VerificationLevel.VERIFIED)
-                        stringResource(R.string.contacts_verified)
-                    else
-                        stringResource(R.string.contacts_unverified),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (contact.verificationLevel == VerificationLevel.VERIFIED)
-                        MaterialTheme.colorScheme.primary
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (contact.verificationLevel != VerificationLevel.VERY_LOW) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = contact.verificationLevel.displayName(),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = contact.verificationLevel.badgeColor(),
+                    )
+                }
             }
             IconButton(onClick = onDelete) {
                 Icon(

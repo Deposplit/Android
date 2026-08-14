@@ -40,6 +40,8 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.deposplit.DeposplitApp
 import com.deposplit.R
+import com.deposplit.ui.contacts.badgeColor
+import com.deposplit.ui.contacts.displayName
 import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.VerificationLevel
 import java.util.UUID
@@ -205,17 +207,13 @@ private fun ContactRow(contact: Contact, selected: Boolean, onToggle: () -> Unit
         Checkbox(checked = selected, onCheckedChange = { onToggle() })
         Column(modifier = Modifier.weight(1f)) {
             Text(contact.pseudonym, style = MaterialTheme.typography.bodyLarge)
-            Text(
-                text = if (contact.verificationLevel == VerificationLevel.VERIFIED)
-                    stringResource(R.string.contacts_verified)
-                else
-                    stringResource(R.string.contacts_unverified),
-                style = MaterialTheme.typography.bodySmall,
-                color = if (contact.verificationLevel == VerificationLevel.VERIFIED)
-                    MaterialTheme.colorScheme.primary
-                else
-                    MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            if (contact.verificationLevel != VerificationLevel.VERY_LOW) {
+                Text(
+                    text = contact.verificationLevel.displayName(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = contact.verificationLevel.badgeColor(),
+                )
+            }
         }
     }
 }

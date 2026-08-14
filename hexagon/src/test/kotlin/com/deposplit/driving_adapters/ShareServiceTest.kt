@@ -157,7 +157,7 @@ class ShareServiceTest {
         pseudonym = "alice",
         edPublicKey = aliceKeys.publicKey,
         xPublicKey = ByteArray(32) { 0x01 },
-        verificationLevel = VerificationLevel.VERIFIED,
+        verificationLevel = VerificationLevel.VERY_HIGH,
         verifiedAt = null,
         addedAt = Instant.now(),
     )

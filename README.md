@@ -341,6 +341,7 @@ On the emulator: **Settings → General management → Language** → add German
 - The **Reconstruct** button is hidden until ≥ 2 approved retrieve shares exist for the same `secretId`.
 - The biometric prompt on API 30+ offers "or use PIN"; on API 29 it shows biometric only (the combined `BIOMETRIC_STRONG | DEVICE_CREDENTIAL` authenticator is not supported on API 29).
 - 2-of-3 threshold: splitting across three contacts and having only 2 approve should still reconstruct the secret successfully.
+- Contacts added by manual key entry default to `VerificationLevel.VERY_LOW` and can be raised to `LOW`/`HIGH` via the level picker (`VERY_HIGH` is not offered — it requires physical co-presence); contacts added by QR scan default to `VERY_HIGH` (shown with a colored level label; no label at `VERY_LOW`).
 
 ---
 

@@ -33,11 +33,19 @@
     <string name="contacts_action_scan_qr">QR-Code scannen</string>
     <string name="contacts_action_add">Kontakt hinzufügen</string>
     <string name="contacts_empty">Noch keine Kontakte</string>
-    <string name="contacts_verified">Verifiziert</string>
-    <string name="contacts_unverified">Nicht verifiziert</string>
     <string name="contacts_delete_description">%1$s löschen</string>
     <string name="contacts_error_load">Laden fehlgeschlagen</string>
     <string name="contacts_error_delete">Löschen fehlgeschlagen</string>
+
+    <!-- Verifizierungsstufe (deposplit.com/CLAUDE.md "What is next" Punkt 6) -->
+    <string name="verification_level_very_low">Sehr niedrig</string>
+    <string name="verification_level_low">Niedrig</string>
+    <string name="verification_level_high">Hoch</string>
+    <string name="verification_level_very_high">Sehr hoch</string>
+    <string name="verification_level_very_low_guidance">Nicht vertrauenswürdiger Kanal, kein Live-Nachweis — z. B. E-Mail, LinkedIn, eine Visitenkarte.</string>
+    <string name="verification_level_low_guidance">Eine Bestätigung, nicht beide — z. B. eine Signal-Nachricht von einem bekannten Kontakt oder ein Videoanruf, bei dem der QR-Code gezeigt wird.</string>
+    <string name="verification_level_high_guidance">Beide Bestätigungen — z. B. ein Videoanruf mit verifizierter Sicherheitsnummer, bei dem der QR-Code gezeigt wird.</string>
+    <string name="verification_level_very_high_guidance">Physische Anwesenheit — du hast den QR-Code persönlich gescannt.</string>
 
     <!-- Add contact -->
     <string name="add_contact_title">Kontakt hinzufügen</string>
@@ -49,6 +57,8 @@
     <string name="add_contact_error_ed_length">Muss 32 Bytes lang sein (öffentlicher Ed25519-Schlüssel)</string>
     <string name="add_contact_error_x_length">Muss 32 Bytes lang sein (öffentlicher X25519-Schlüssel)</string>
     <string name="add_contact_error_save">Speichern fehlgeschlagen</string>
+    <string name="add_contact_verification_label">Verifizierungsstufe</string>
+    <string name="add_contact_verification_footer">Wie sicher bist du, dass es wirklich diese Person ist? Zähle deine unabhängigen Bestätigungen: ein vertrauenswürdiger Kanal und/oder ein Live-Nachweis, dass du sie gesehen hast.</string>
 
     <!-- Deposit -->
     <string name="deposit_title">Geheimnis aufteilen &amp; verteilen</string>
