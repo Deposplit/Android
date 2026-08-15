@@ -35,12 +35,25 @@ class DepositViewModel(
         @StringRes val labelError: Int? = null,
         @StringRes val secretError: Int? = null,
         @StringRes val selectionError: Int? = null,
+        val pendingWarnings: List<SplitTimeWarning> = emptyList(),
     ) {
         val selectedCount: Int get() = selectedContactIds.size
     }
 
     sealed interface Effect {
         data object NavigateBack : Effect
+    }
+
+    // Non-blocking "Are you sure?" warnings across item 11's three soft axes — operational
+    // burden, confidentiality tail, and availability tail. Thresholds/wording are UI tuning, not
+    // load-bearing spec — see deposplit.com/CLAUDE.md "What is next" item 11.
+    sealed interface SplitTimeWarning {
+        data class OperationalLarge(val n: Int) : SplitTimeWarning
+        data class OperationalMedium(val n: Int) : SplitTimeWarning
+        data class ConfidentialityLow(val k: Int, val n: Int) : SplitTimeWarning
+        data class ConfidentialityMedium(val k: Int, val n: Int) : SplitTimeWarning
+        data object AvailabilityNone : SplitTimeWarning
+        data object AvailabilityOne : SplitTimeWarning
     }
 
     private val _uiState = MutableStateFlow(UiState())
@@ -85,7 +98,7 @@ class DepositViewModel(
         state.copy(threshold = (state.threshold - 1).coerceAtLeast(2))
     }
 
-    fun deposit() {
+    fun onDepositClick() {
         val state = _uiState.value
         val labelError = if (state.label.isBlank()) R.string.deposit_error_required else null
         val secretError = if (state.secret.isBlank()) R.string.deposit_error_required else null
@@ -96,6 +109,25 @@ class DepositViewModel(
             return
         }
 
+        val warnings = splitTimeWarnings(state.threshold, state.selectedCount)
+        if (warnings.isNotEmpty()) {
+            _uiState.update { it.copy(pendingWarnings = warnings) }
+        } else {
+            deposit()
+        }
+    }
+
+    fun confirmDespiteWarnings() {
+        _uiState.update { it.copy(pendingWarnings = emptyList()) }
+        deposit()
+    }
+
+    fun dismissWarnings() {
+        _uiState.update { it.copy(pendingWarnings = emptyList()) }
+    }
+
+    private fun deposit() {
+        val state = _uiState.value
         _uiState.update { it.copy(isDepositing = true, error = null) }
 
         viewModelScope.launch {
@@ -110,5 +142,23 @@ class DepositViewModel(
                 .onSuccess { _effects.send(Effect.NavigateBack) }
                 .onFailure { _uiState.update { it.copy(isDepositing = false, error = R.string.deposit_error_fallback) } }
         }
+    }
+
+    private fun splitTimeWarnings(k: Int, n: Int): List<SplitTimeWarning> {
+        if (n <= 0) return emptyList()
+        val warnings = mutableListOf<SplitTimeWarning>()
+        when {
+            n >= 20 -> warnings.add(SplitTimeWarning.OperationalLarge(n))
+            n >= 10 -> warnings.add(SplitTimeWarning.OperationalMedium(n))
+        }
+        when {
+            k < n / 3 -> warnings.add(SplitTimeWarning.ConfidentialityLow(k, n))
+            k < n / 2 -> warnings.add(SplitTimeWarning.ConfidentialityMedium(k, n))
+        }
+        when {
+            k == n -> warnings.add(SplitTimeWarning.AvailabilityNone)
+            k == n - 1 -> warnings.add(SplitTimeWarning.AvailabilityOne)
+        }
+        return warnings
     }
 }

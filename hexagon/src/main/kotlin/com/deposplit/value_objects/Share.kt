@@ -7,14 +7,15 @@ enum class Role { SENDER, RECIPIENT }
 enum class ShareRequestType { PICK_UP, RETRIEVE, DELETE }
 enum class ShareRequestState { PENDING, APPROVED, DENIED }
 
+// Per-share record on the sender's device — one per holder of a Secret. Normalized to reference
+// its parent Secret (by secretId) rather than duplicating label/secretCreatedAt — see
+// deposplit.com/CLAUDE.md "What is next" item 11.
 data class ShareMetadata(
     val id: UUID,           // PickUp request ID
     val secretId: UUID,
-    val label: String,
     // The holder's stable local contact id — not their Ed25519 key — so this record survives a
     // holder key rotation/recovery (see deposplit.com/CLAUDE.md "What is next" item 7).
     val contactId: UUID,
-    val secretCreatedAt: Instant,
 ) {
     override fun equals(other: Any?) = other is ShareMetadata && id == other.id
     override fun hashCode() = id.hashCode()

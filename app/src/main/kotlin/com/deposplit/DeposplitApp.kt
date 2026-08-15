@@ -12,6 +12,7 @@ import com.deposplit.driving_adapters.ContactService
 import com.deposplit.driving_adapters.IdentityService
 import com.deposplit.driving_adapters.ShareService
 import com.deposplit.settings.SharedPreferencesRelaySettings
+import com.deposplit.shares.LocalSecretRepository
 import com.deposplit.shares.LocalShareMetadataRepository
 import com.deposplit.shares.LocalShareRepository
 
@@ -37,12 +38,14 @@ class DeposplitApp : Application() {
         val contactRepository = LocalContactRepository(this)
         val shareRepository = LocalShareRepository(this)
         val shareMetadataRepository = LocalShareMetadataRepository(this)
+        val secretRepository = LocalSecretRepository(this)
         contactManagement = ContactService(contactRepository)
         shareManagement = ShareService(
             relayResolver = DeposplitRelayResolver(auth = identityService, relaySettings = relaySettings),
             encryption = identityService,
             shareRepository = shareRepository,
             shareMetadataRepository = shareMetadataRepository,
+            secretRepository = secretRepository,
             contactRepository = contactRepository,
             identity = identityService,
         )

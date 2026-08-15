@@ -101,13 +101,14 @@ Android/
 │   │   │   ├── driving_ports/
 │   │   │   │   ├── Identity.kt          Port: isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign
 │   │   │   │   ├── ContactManagement.kt Port: listContacts, addManually, addFromQr, deleteContact
-│   │   │   │   └── ShareManagement.kt   Port: deposit, syncDistributed, listDistributed, listSentRequests, requestAll,
-│   │   │   │                            openRequest, reconstruct, syncInbox, listHeld, listPendingRequests,
-│   │   │   │                            respond, deleteHeldShare, deleteAllHeldFromSender
+│   │   │   │   └── ShareManagement.kt   Port: deposit, listSecrets, syncDistributed, listDistributed, listSentRequests, requestAll,
+│   │   │   │                            openRequest, reconstruct (pure read, real k), discardSecret, forceForgetSecret, syncInbox,
+│   │   │   │                            listHeld, listPendingRequests, respond, deleteHeldShare, deleteAllHeldFromSender
 │   │   │   ├── driven_ports/
 │   │   │   │   ├── IdentityStore.kt     Credential store interface (save/load keys + pseudonym)
 │   │   │   │   ├── ContactRepository.kt Contact persistence interface
 │   │   │   │   ├── ShareRepository.kt   Local share storage interface
+│   │   │   │   ├── SecretRepository.kt  Local store interface for sender-side Secret aggregates (item 11)
 │   │   │   │   ├── ShareMetadataRepository.kt  Local store interface for distributed ShareMetadata
 │   │   │   │   └── ShareRelay.kt        Raw relay API interface (openShareRequest, listShareRequests, getShareRequest, respondToShareRequest, deleteShareRequest, deleteShareRequests)
 │   │   │   ├── services/
@@ -116,12 +117,16 @@ Android/
 │   │   │   │   ├── ContactService.kt    Implements ContactManagement — key-size validation, VerificationLevel, UUID/timestamp
 │   │   │   │   ├── ShareEncryption.kt   Intra-hexagon interface: encrypt(plaintext, recipientXPublicKey),
 │   │   │   │   │                        decrypt(noncePlusCiphertext, recipientXPublicKey) — consumed by ShareService
-│   │   │   │   └── ShareService.kt      Implements ShareManagement — SSS split/combine + ShareEncryption.encrypt/decrypt + relay + ShareMetadataRepository;
-│   │   │   │                            deposit() writes to local store; listDistributed() reads from local store; syncDistributed() syncs field updates from relay (upserts, never deletes)
+│   │   │   │   └── ShareService.kt      Implements ShareManagement — SSS split/combine + ShareEncryption.encrypt/decrypt + relay + ShareMetadataRepository + SecretRepository;
+│   │   │   │                            deposit() writes ShareMetadata + a Secret to local store; listDistributed()/listSecrets() read from local store;
+│   │   │   │                            syncDistributed() syncs field updates from relay (upserts, never deletes) then reconciles DISCARDING secrets;
+│   │   │   │                            reconstruct() is a pure read (item 11); discardSecret()/forceForgetSecret() are the new teardown primitives
 │   │   │   └── value_objects/
 │   │   │       ├── Contact.kt           Contact + VerificationLevel
 │   │   │       ├── HeldShare.kt         HeldShare (plaintext share + metadata, held by the recipient)
-│   │   │       └── Share.kt             Role, ShareRequestType, ShareRequestState, ShareMetadata, ShareRequest
+│   │   │       ├── Secret.kt            Secret (id, label, k, n, secretCreatedAt, state) + SecretState — sender-side per-secret
+│   │   │       │                        aggregate, see CLAUDE.md item 11
+│   │   │       └── Share.kt             Role, ShareRequestType, ShareRequestState, ShareMetadata (id/secretId/contactId only), ShareRequest
 │   │   └── test/kotlin/com/deposplit/shamir/
 │   │       └── ShamirTest.kt            SSS unit tests
 │   └── build.gradle.kts
@@ -139,14 +144,17 @@ Android/
 │   │   │   │   │   └── LocalContactRepository.kt JSON file in filesDir
 │   │   │   │   ├── shares/
 │   │   │   │   │   ├── LocalShareRepository.kt         JSON file in filesDir (shares.json); plaintext share + metadata for held shares
+│   │   │   │   │   ├── LocalSecretRepository.kt        JSON file in filesDir (secrets.json); local store of sender-side Secret aggregates
 │   │   │   │   │   └── LocalShareMetadataRepository.kt JSON file in filesDir (distributed_shares.json); local store of distributed ShareMetadata
 │   │   │   │   └── ui/
 │   │   │   │       ├── signin/       SignInViewModel + SignInScreen
-│   │   │   │       ├── home/         HomeViewModel + HomeScreen (My Shared Secrets / Their Secret Shares / Requests tabs)
+│   │   │   │       ├── home/         HomeViewModel + HomeScreen (My Shared Secrets / Their Secret Shares / Requests tabs);
+│   │   │   │       │                 SecretGroup (wraps a Secret) + SecretHealth badge, discard/force-forget actions (item 11)
 │   │   │   │       ├── contacts/     Contacts{ViewModel,Screen}, AddContact{ViewModel,Screen}
-│   │   │   │       ├── deposit/      Deposit{ViewModel,Screen} — contactManagement.listContacts + shareManagement.deposit
+│   │   │   │       ├── deposit/      Deposit{ViewModel,Screen} — contactManagement.listContacts + shareManagement.deposit;
+│   │   │   │       │                 SplitTimeWarning + confirmation dialog before an oversized/thin-margin deposit (item 11)
 │   │   │   │       ├── requests/     RequestsViewModel + RecipientRequestsTab
-│   │   │   │       ├── sharedetail/  ShareDetail{ViewModel,Screen} — open requests + reconstruct
+│   │   │   │       ├── sharedetail/  ShareDetail{ViewModel,Screen} — open requests + reconstruct; loads the parent Secret for label/k
 │   │   │   │       ├── qr/           QrPayload, QrDisplay{ViewModel,Screen}, QrScan{ViewModel,Screen}
 │   │   │   │       ├── biometric/    BiometricGate — availability probe + suspend authenticate(...)
 │   │   │   │       └── theme/        Material 3 colour/type/theme

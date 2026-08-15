@@ -84,7 +84,7 @@ fun ShareDetailScreen(shareId: UUID, onNavigateBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(uiState.share?.label ?: stringResource(R.string.share_detail_title_fallback)) },
+                title = { Text(uiState.secret?.label ?: stringResource(R.string.share_detail_title_fallback)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
@@ -118,7 +118,7 @@ fun ShareDetailScreen(shareId: UUID, onNavigateBack: () -> Unit) {
                 }
             }
 
-            uiState.share != null -> Column(
+            uiState.share != null && uiState.secret != null -> Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
@@ -134,7 +134,7 @@ fun ShareDetailScreen(shareId: UUID, onNavigateBack: () -> Unit) {
 
                 LabeledValue(stringResource(R.string.share_detail_recipient_label), recipientName)
                 Spacer(Modifier.height(4.dp))
-                LabeledValue(stringResource(R.string.share_detail_deposited_label), formatDate(uiState.share!!.secretCreatedAt))
+                LabeledValue(stringResource(R.string.share_detail_deposited_label), formatDate(uiState.secret!!.secretCreatedAt))
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
@@ -156,7 +156,8 @@ fun ShareDetailScreen(shareId: UUID, onNavigateBack: () -> Unit) {
                     onOpen = viewModel::openDeleteRequest,
                 )
 
-                if (uiState.approvedRetrieveCount >= 2 || uiState.reconstructedSecret != null) {
+                val neededRetrieves = uiState.secret?.k ?: Int.MAX_VALUE
+                if (uiState.approvedRetrieveCount >= neededRetrieves || uiState.reconstructedSecret != null) {
                     HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
                     Text(stringResource(R.string.share_detail_reconstruct_title), style = MaterialTheme.typography.titleSmall)

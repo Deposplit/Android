@@ -39,6 +39,18 @@
     <string name="home_error_fallback">Failed to load</string>
     <string name="home_sync_warning">Relay not reachable</string>
 
+    <!-- Secret lifecycle (deposplit.com/CLAUDE.md "What is next" item 11) -->
+    <string name="home_health_caution">Margin of one — re-split soon</string>
+    <string name="home_health_critical">Reconstruct + re-split now</string>
+    <string name="home_health_lost">Unrecoverable</string>
+    <string name="home_health_discarding">Discarding</string>
+    <string name="home_discard_button">Discard</string>
+    <string name="home_discard_title">Discard this secret?</string>
+    <string name="home_discard_body">Requests deletion from all %1$d holder(s). Each must approve — this only removes it from your device\'s list once every holder confirms (or you force-forget it).</string>
+    <string name="home_discard_confirm">Discard</string>
+    <string name="home_discarding_label">Discarding…</string>
+    <string name="home_force_forget_button">Force Forget</string>
+
     <!-- Contacts -->
     <string name="contacts_title">Contacts</string>
     <string name="contacts_action_scan_qr">Scan QR code</string>
@@ -92,6 +104,14 @@
     <string name="deposit_error_select_at_least_2">Select at least 2 recipients</string>
     <string name="deposit_error_load_contacts">Failed to load contacts</string>
     <string name="deposit_error_fallback">Deposit failed</string>
+    <string name="deposit_warning_title">Are you sure?</string>
+    <string name="deposit_warning_deposit_anyway">Deposit Anyway</string>
+    <string name="deposit_warning_operational_large">Distributing to %1$d people is a lot to manage — you\'ll need to exchange keys, approve every pickup, and keep track of all of them.</string>
+    <string name="deposit_warning_operational_medium">Distributing to %1$d people is more holders than usual to keep track of.</string>
+    <string name="deposit_warning_confidentiality_low">Only %1$d of %2$d holders need to cooperate to reconstruct this secret — a small group could do so without your knowledge.</string>
+    <string name="deposit_warning_confidentiality_medium">%1$d of %2$d is a relatively low threshold — a minority of holders could reconstruct this secret together.</string>
+    <string name="deposit_warning_availability_none">Every single holder must be available — if even one loses their share, this secret becomes unrecoverable.</string>
+    <string name="deposit_warning_availability_one">This tolerates the loss of only one holder before the secret becomes unrecoverable.</string>
 
     <!-- Requests -->
     <string name="requests_empty">No pending requests</string>

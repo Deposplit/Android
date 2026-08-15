@@ -7,6 +7,7 @@ import com.deposplit.R
 import com.deposplit.driving_ports.ContactManagement
 import com.deposplit.driving_ports.ShareManagement
 import com.deposplit.value_objects.Contact
+import com.deposplit.value_objects.Secret
 import com.deposplit.value_objects.ShareMetadata
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareRequestState
@@ -28,6 +29,7 @@ class ShareDetailViewModel(
 
     data class UiState(
         val share: ShareMetadata? = null,
+        val secret: Secret? = null,
         val contacts: List<Contact> = emptyList(),
         val retrieveRequest: ShareRequest? = null,
         val deleteRequest: ShareRequest? = null,
@@ -39,6 +41,13 @@ class ShareDetailViewModel(
         val reconstructedSecret: String? = null,
         @StringRes val error: Int? = null,
         @StringRes val actionError: Int? = null,
+    )
+
+    private data class LoadResult(
+        val share: ShareMetadata,
+        val secret: Secret,
+        val allRequests: List<ShareRequest>,
+        val contacts: List<Contact>,
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -56,12 +65,14 @@ class ShareDetailViewModel(
                     val shares = shareManagement.listDistributed()
                     val share = shares.find { it.id == shareId }
                         ?: error("Share not found")
+                    val secret = shareManagement.listSecrets().find { it.id == share.secretId }
+                        ?: error("Secret not found")
                     val allRequests = shareManagement.listSentRequests()
                     val contacts = contactManagement.listContacts()
-                    Triple(share, allRequests, contacts)
+                    LoadResult(share, secret, allRequests, contacts)
                 }
             }
-                .onSuccess { (share, allRequests, contacts) ->
+                .onSuccess { (share, secret, allRequests, contacts) ->
                     val forThisShare = allRequests.filter { it.shareId == shareId }
                     val retrieveReq = forThisShare
                         .filter { it.requestType == ShareRequestType.RETRIEVE }
@@ -79,6 +90,7 @@ class ShareDetailViewModel(
                         it.copy(
                             isLoading = false,
                             share = share,
+                            secret = secret,
                             contacts = contacts,
                             retrieveRequest = retrieveReq,
                             deleteRequest = deleteReq,
@@ -129,9 +141,7 @@ class ShareDetailViewModel(
                     _uiState.update { it.copy(isReconstructing = false, reconstructedSecret = secret) }
                 }
                 .onFailure {
-                    _uiState.update {
-                        it.copy(isReconstructing = false, actionError = R.string.share_detail_error_reconstruct)
-                    }
+                    _uiState.update { it.copy(isReconstructing = false, actionError = R.string.share_detail_error_reconstruct) }
                 }
         }
     }

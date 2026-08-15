@@ -7,8 +7,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
-import java.time.Instant
-import java.util.Base64
 import java.util.UUID
 
 class LocalShareMetadataRepository(context: Context) : ShareMetadataRepository {
@@ -20,9 +18,7 @@ class LocalShareMetadataRepository(context: Context) : ShareMetadataRepository {
     private data class ShareMetadataWire(
         val id: String,
         val secretId: String,
-        val label: String,
         val contactId: String,
-        val secretCreatedAt: String,
     )
 
     @Synchronized
@@ -57,16 +53,12 @@ class LocalShareMetadataRepository(context: Context) : ShareMetadataRepository {
     private fun ShareMetadataWire.toDomain() = ShareMetadata(
         id = UUID.fromString(id),
         secretId = UUID.fromString(secretId),
-        label = label,
         contactId = UUID.fromString(contactId),
-        secretCreatedAt = Instant.parse(secretCreatedAt),
     )
 
     private fun ShareMetadata.toWire() = ShareMetadataWire(
         id = id.toString(),
         secretId = secretId.toString(),
-        label = label,
         contactId = contactId.toString(),
-        secretCreatedAt = secretCreatedAt.toString(),
     )
 }

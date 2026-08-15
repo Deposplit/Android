@@ -2,6 +2,7 @@ package com.deposplit.driving_adapters
 
 import com.deposplit.driven_ports.ContactRepository
 import com.deposplit.driven_ports.IdentityStore
+import com.deposplit.driven_ports.SecretRepository
 import com.deposplit.driven_ports.ShareMetadataRepository
 import com.deposplit.driven_ports.ShareRelay
 import com.deposplit.driven_ports.ShareRelayResolver
@@ -10,6 +11,7 @@ import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.HeldShare
 import com.deposplit.value_objects.PayloadCanonical
 import com.deposplit.value_objects.Role
+import com.deposplit.value_objects.Secret
 import com.deposplit.value_objects.ShareMetadata
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareRequestState
@@ -100,6 +102,16 @@ private class FakeShareMetadataRepository : ShareMetadataRepository {
     override fun delete(shareId: UUID) { metas.removeAll { it.id == shareId } }
 }
 
+private class FakeSecretRepository : SecretRepository {
+    private val secrets = mutableListOf<Secret>()
+    override fun getAll() = secrets.toList()
+    override fun save(secret: Secret) {
+        secrets.removeAll { it.id == secret.id }
+        secrets.add(secret)
+    }
+    override fun delete(secretId: UUID) { secrets.removeAll { it.id == secretId } }
+}
+
 private object NoOpShareEncryption : ShareEncryption {
     override fun encrypt(plaintext: ByteArray, recipientXPublicKey: ByteArray) = plaintext
     override fun decrypt(noncePlusCiphertext: ByteArray, recipientXPublicKey: ByteArray) = noncePlusCiphertext
@@ -172,6 +184,7 @@ class ShareServiceTest {
             encryption = NoOpShareEncryption,
             shareRepository = shareRepo,
             shareMetadataRepository = FakeShareMetadataRepository(),
+            secretRepository = FakeSecretRepository(),
             contactRepository = FakeContactRepository(listOf(aliceContact)),
             identity = bobIdentity,
         )
@@ -303,6 +316,7 @@ class ShareServiceTest {
             encryption = NoOpShareEncryption,
             shareRepository = shareRepo,
             shareMetadataRepository = FakeShareMetadataRepository(),
+            secretRepository = FakeSecretRepository(),
             contactRepository = FakeContactRepository(listOf(aliceContact, charlieContact)),
             identity = bobIdentity,
         )
@@ -340,6 +354,7 @@ class ShareServiceTest {
             encryption = NoOpShareEncryption,
             shareRepository = shareRepo,
             shareMetadataRepository = FakeShareMetadataRepository(),
+            secretRepository = FakeSecretRepository(),
             contactRepository = FakeContactRepository(listOf(aliceContact, charlieContact)),
             identity = bobIdentity,
         )

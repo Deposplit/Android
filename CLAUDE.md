@@ -46,13 +46,15 @@ shamir/
 driving_ports/
 ├── Identity.kt                    isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign
 ├── ContactManagement.kt           listContacts, addManually, addFromQr, deleteContact
-└── ShareManagement.kt             deposit, listDistributed, listSentRequests, requestAll, openRequest, reconstruct,
+└── ShareManagement.kt             deposit, listSecrets, listDistributed, listSentRequests, requestAll, openRequest,
+                                   reconstruct (pure read, enforces real k), discardSecret, forceForgetSecret,
                                    syncInbox, listHeld, listPendingRequests, respond, deleteHeldShare,
                                    deleteAllHeldFromSender
 driven_ports/
 ├── IdentityStore.kt               isRegistered, save, pseudonym, edPublicKey, edPrivateKey, xPublicKey, xPrivateKey
 ├── ContactRepository.kt           getAll, getById, getByEdKey, save, delete
 ├── ShareRepository.kt             getAll, getPlaintextShare, save, delete (local held-share storage)
+├── SecretRepository.kt            getAll, save, delete (local store of sender-side Secret aggregates)
 ├── ShareMetadataRepository.kt     getAll, save, delete (local store of distributed ShareMetadata)
 ├── ShareRelay.kt                  openShareRequest(..., senderSignature), listShareRequests, getShareRequest,
 │                                  respondToShareRequest(..., recipientSignature), deleteShareRequest, deleteShareRequests
@@ -70,15 +72,21 @@ services/
 │                                  decrypt(noncePlusCiphertext, recipientXPublicKey) — consumed by ShareService,
 │                                  implemented by IdentityService
 └── ShareService.kt                Implements ShareManagement — Shamir.split/combine + ShareEncryption.encrypt/decrypt +
-                                   ShareRelay + ShareRepository + ShareMetadataRepository + ContactRepository;
-                                   deposit() opens a PickUp request + writes metadata to local store;
-                                   listDistributed() reads from local store; syncDistributed() syncs field updates from relay (upserts, never deletes);
-                                   syncInbox() auto-approves pending PickUp requests; reconstruct() deletes PickUp rows (cascades)
+                                   ShareRelay + ShareRepository + ShareMetadataRepository + SecretRepository + ContactRepository;
+                                   deposit() opens a PickUp request + writes ShareMetadata + a Secret to local store;
+                                   listDistributed() reads from local store; syncDistributed() syncs field updates from relay
+                                   (upserts, never deletes), then reconcileDiscarding() cleans up DISCARDING secrets whose
+                                   holder deletes have been approved; syncInbox() auto-approves pending PickUp requests;
+                                   reconstruct() is a pure read (enforces Secret.k, no teardown — see item 11);
+                                   discardSecret() fans out delete requests + flips Secret to DISCARDING;
+                                   forceForgetSecret() is the local-only escape hatch
 value_objects/
 ├── Contact.kt                     Contact data class (incl. relayBaseUrl BYOR override) + VerificationLevel enum
 ├── HeldShare.kt                   HeldShare data class
-├── Share.kt                       Role, ShareRequestType, ShareRequestState, ShareMetadata, ShareRequest
-│                                  (incl. senderSignature/recipientSignature)
+├── Secret.kt                      Secret data class (id, label, k, n, secretCreatedAt, state) + SecretState enum
+│                                  (ACTIVE/DISCARDING) — sender-side per-secret aggregate, see CLAUDE.md item 11
+├── Share.kt                       Role, ShareRequestType, ShareRequestState, ShareMetadata (id/secretId/contactId only —
+│                                  label/secretCreatedAt live on Secret), ShareRequest (incl. senderSignature/recipientSignature)
 ├── PayloadCanonical.kt            forOpen/forRespond — canonical byte constructions signed for
 │                                  senderSignature/recipientSignature; mirrors deposplit.com's PayloadCanonical
 └── SignatureVerificationException.kt  Thrown by respond()/reconstruct() on an unverifiable signature
@@ -107,18 +115,22 @@ contacts/
 └── LocalContactRepository.kt  JSON file in filesDir; @Synchronized; kotlinx.serialization wire types
 shares/
 ├── LocalShareRepository.kt         JSON file in filesDir (shares.json); @Synchronized; stores HeldShare (plaintext share + metadata) keyed by share ID
+├── LocalSecretRepository.kt        JSON file in filesDir (secrets.json); @Synchronized; local store of sender-side Secret aggregates
 └── LocalShareMetadataRepository.kt JSON file in filesDir (distributed_shares.json); @Synchronized; local store of distributed ShareMetadata keyed by share ID
 ui/
 ├── signin/       SignInViewModel + SignInScreen              — pseudonym input + Register button
 ├── home/         HomeViewModel + HomeScreen                 — My Shared Secrets / Their Secret Shares / Requests tabs
-│                                                              SecretGroup + HolderStatus (sender view); HeldShareDisplay + HeldSortOrder (recipient view)
-│                                                              requestAll, setHeldSortOrder, deleteSingleShare, deleteAllFromSender
+│                                                              SecretGroup (wraps a Secret) + HolderStatus (sender view); HeldShareDisplay + HeldSortOrder (recipient view)
+│                                                              SecretHealth (graduated n_live-vs-k badge, item 11) computed on SecretGroup
+│                                                              requestAll, discardSecret, forceForgetSecret, setHeldSortOrder, deleteSingleShare, deleteAllFromSender
 ├── contacts/     ContactsViewModel + ContactsScreen (contactManagement.listContacts/deleteContact),
 │               AddContactViewModel + AddContactScreen (contactManagement.addManually),
 │               QrScanViewModel uses contactManagement.addFromQr
-├── deposit/      DepositViewModel + DepositScreen           — contactManagement.listContacts + shareManagement.deposit(...)
+├── deposit/      DepositViewModel + DepositScreen           — contactManagement.listContacts + shareManagement.deposit(...);
+│               SplitTimeWarning sealed interface + onDepositClick/confirmDespiteWarnings (item 11 non-blocking split-time warnings)
 ├── requests/     RequestsViewModel + RecipientRequestsTab   — approve/deny incoming requests
-├── sharedetail/  ShareDetailViewModel + ShareDetailScreen   — open RETRIEVE/DELETE + shareManagement.reconstruct(...)
+├── sharedetail/  ShareDetailViewModel + ShareDetailScreen   — open RETRIEVE/DELETE + shareManagement.reconstruct(...);
+│               loads both the ShareMetadata and its parent Secret (for label/k)
 ├── qr/           QrPayload (v2, incl. relay field), QrDisplay{ViewModel,Screen}, QrScan{ViewModel,Screen}
 ├── settings/     SettingsViewModel + SettingsScreen         — edit/reset the default relay (RelaySettings)
 └── theme/        Material 3 colour, type, theme

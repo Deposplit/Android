@@ -64,6 +64,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.deposplit.DeposplitApp
 import com.deposplit.R
+import com.deposplit.value_objects.SecretState
 import com.deposplit.value_objects.ShareRequestState
 import com.deposplit.ui.requests.RecipientRequestsTab
 import com.deposplit.ui.requests.RequestsViewModel
@@ -97,6 +98,7 @@ fun HomeScreen(
     val requestsUiState by requestsViewModel.uiState.collectAsStateWithLifecycle()
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var pendingDelete by remember { mutableStateOf<HeldShareDisplay?>(null) }
+    var pendingDiscard by remember { mutableStateOf<SecretGroup?>(null) }
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.load()
@@ -228,14 +230,16 @@ fun HomeScreen(
                                 contentPadding = PaddingValues(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                items(uiState.groupedSecrets, key = { it.secretId }) { group ->
+                                items(uiState.groupedSecrets, key = { it.secret.id }) { group ->
                                     SecretGroupCard(
                                         group = group,
-                                        isExpanded = uiState.expandedSecretId == group.secretId,
-                                        isRequestingAll = group.secretId in uiState.requestingAllIds,
-                                        onToggle = { viewModel.toggleExpand(group.secretId) },
-                                        onRequestAll = { viewModel.requestAll(group.secretId) },
+                                        isExpanded = uiState.expandedSecretId == group.secret.id,
+                                        isRequestingAll = group.secret.id in uiState.requestingAllIds,
+                                        onToggle = { viewModel.toggleExpand(group.secret.id) },
+                                        onRequestAll = { viewModel.requestAll(group.secret.id) },
                                         onHolderClick = onNavigateToShareDetail,
+                                        onDiscard = { pendingDiscard = group },
+                                        onForceForget = { viewModel.forceForgetSecret(group.secret.id) },
                                     )
                                 }
                             }
@@ -325,6 +329,27 @@ fun HomeScreen(
             },
         )
     }
+
+    pendingDiscard?.let { group ->
+        AlertDialog(
+            onDismissRequest = { pendingDiscard = null },
+            title = { Text(stringResource(R.string.home_discard_title)) },
+            text = { Text(stringResource(R.string.home_discard_body, group.holders.size)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.discardSecret(group.secret.id)
+                    pendingDiscard = null
+                }) {
+                    Text(stringResource(R.string.home_discard_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDiscard = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
 }
 
 @Composable
@@ -335,6 +360,8 @@ private fun SecretGroupCard(
     onToggle: () -> Unit,
     onRequestAll: () -> Unit,
     onHolderClick: (UUID) -> Unit,
+    onDiscard: () -> Unit,
+    onForceForget: () -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth(), onClick = onToggle) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -344,13 +371,16 @@ private fun SecretGroupCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(group.label, style = MaterialTheme.typography.titleMedium)
+                    Text(group.secret.label, style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = formatDate(group.createdAt),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = formatDate(group.secret.secretCreatedAt),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        HealthBadge(group.health)
+                    }
                 }
                 Icon(
                     imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
@@ -367,28 +397,64 @@ private fun SecretGroupCard(
                     HolderRow(holder = holder, onClick = { onHolderClick(holder.shareId) })
                 }
                 Spacer(Modifier.height(12.dp))
-                val canRequest = group.holders.any {
+                val isDiscarding = group.secret.state == SecretState.DISCARDING
+                val canRequest = !isDiscarding && group.holders.any {
                     val state = it.retrieveRequest?.state
                     state != ShareRequestState.PENDING && state != ShareRequestState.APPROVED
                 }
-                Button(
-                    onClick = onRequestAll,
-                    enabled = canRequest && !isRequestingAll,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    if (isRequestingAll) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary,
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Button(
+                        onClick = onRequestAll,
+                        enabled = canRequest && !isRequestingAll,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        if (isRequestingAll) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                            )
+                        } else {
+                            Text(stringResource(R.string.home_request_all))
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                if (isDiscarding) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = stringResource(R.string.home_discarding_label),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.tertiary,
                         )
-                    } else {
-                        Text(stringResource(R.string.home_request_all))
+                        TextButton(onClick = onForceForget) {
+                            Text(stringResource(R.string.home_force_forget_button))
+                        }
+                    }
+                } else {
+                    TextButton(onClick = onDiscard) {
+                        Text(stringResource(R.string.home_discard_button), color = MaterialTheme.colorScheme.error)
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun HealthBadge(health: SecretHealth) {
+    val (labelRes, color) = when (health) {
+        SecretHealth.HEALTHY -> return
+        SecretHealth.DISCARDING -> R.string.home_health_discarding to MaterialTheme.colorScheme.tertiary
+        SecretHealth.CAUTION -> R.string.home_health_caution to MaterialTheme.colorScheme.tertiary
+        SecretHealth.CRITICAL -> R.string.home_health_critical to MaterialTheme.colorScheme.error
+        SecretHealth.LOST -> R.string.home_health_lost to MaterialTheme.colorScheme.error
+    }
+    Text(
+        text = stringResource(labelRes),
+        style = MaterialTheme.typography.labelSmall,
+        color = color,
+    )
 }
 
 @Composable

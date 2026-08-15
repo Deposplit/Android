@@ -28,6 +28,18 @@
     <string name="home_error_fallback">Laden fehlgeschlagen</string>
     <string name="home_sync_warning">Relay nicht erreichbar</string>
 
+    <!-- Lebenszyklus des Geheimnisses (deposplit.com/CLAUDE.md "What is next" Punkt 11) -->
+    <string name="home_health_caution">Nur ein Puffer von eins — bald neu aufteilen</string>
+    <string name="home_health_critical">Jetzt rekonstruieren + neu aufteilen</string>
+    <string name="home_health_lost">Nicht wiederherstellbar</string>
+    <string name="home_health_discarding">Wird verworfen</string>
+    <string name="home_discard_button">Verwerfen</string>
+    <string name="home_discard_title">Dieses Geheimnis verwerfen?</string>
+    <string name="home_discard_body">Fordert die Löschung von allen %1$d Verwahrer(n) an. Jeder muss zustimmen — dies entfernt es erst dann von der Geräteliste, wenn alle bestätigt haben (oder du es zwangsweise vergisst).</string>
+    <string name="home_discard_confirm">Verwerfen</string>
+    <string name="home_discarding_label">Wird verworfen …</string>
+    <string name="home_force_forget_button">Zwangsweise vergessen</string>
+
     <!-- Contacts -->
     <string name="contacts_title">Kontakte</string>
     <string name="contacts_action_scan_qr">QR-Code scannen</string>
@@ -74,6 +86,14 @@
     <string name="deposit_error_select_at_least_2">Mindestens 2 Empfänger auswählen</string>
     <string name="deposit_error_load_contacts">Kontakte konnten nicht geladen werden</string>
     <string name="deposit_error_fallback">Hinterlegen fehlgeschlagen</string>
+    <string name="deposit_warning_title">Bist du sicher?</string>
+    <string name="deposit_warning_deposit_anyway">Trotzdem hinterlegen</string>
+    <string name="deposit_warning_operational_large">%1$d Personen zu beteiligen ist viel Aufwand — du musst Schlüssel austauschen, jede Abholung bestätigen und den Überblick über alle behalten.</string>
+    <string name="deposit_warning_operational_medium">%1$d Personen zu beteiligen bedeutet mehr Verwahrer als üblich im Blick zu behalten.</string>
+    <string name="deposit_warning_confidentiality_low">Nur %1$d von %2$d Verwahrern müssen zusammenarbeiten, um dieses Geheimnis zu rekonstruieren — eine kleine Gruppe könnte dies ohne dein Wissen tun.</string>
+    <string name="deposit_warning_confidentiality_medium">%1$d von %2$d ist ein relativ niedriger Schwellenwert — eine Minderheit der Verwahrer könnte dieses Geheimnis gemeinsam rekonstruieren.</string>
+    <string name="deposit_warning_availability_none">Jeder einzelne Verwahrer muss verfügbar sein — verliert auch nur einer seinen Anteil, ist dieses Geheimnis nicht wiederherstellbar.</string>
+    <string name="deposit_warning_availability_one">Dies verkraftet den Verlust von nur einem Verwahrer, bevor das Geheimnis nicht wiederherstellbar wird.</string>
 
     <!-- Requests -->
     <string name="requests_empty">Keine offenen Anfragen</string>

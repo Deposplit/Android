@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -25,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -177,7 +179,7 @@ fun DepositScreen(onNavigateBack: () -> Unit) {
             Spacer(Modifier.height(24.dp))
 
             Button(
-                onClick = viewModel::deposit,
+                onClick = viewModel::onDepositClick,
                 enabled = !uiState.isDepositing,
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -195,6 +197,41 @@ fun DepositScreen(onNavigateBack: () -> Unit) {
             Spacer(Modifier.height(16.dp))
         }
     }
+
+    if (uiState.pendingWarnings.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissWarnings,
+            title = { Text(stringResource(R.string.deposit_warning_title)) },
+            text = {
+                Column {
+                    uiState.pendingWarnings.forEachIndexed { index, warning ->
+                        if (index > 0) Spacer(Modifier.height(8.dp))
+                        Text(warningText(warning))
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::confirmDespiteWarnings) {
+                    Text(stringResource(R.string.deposit_warning_deposit_anyway))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissWarnings) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun warningText(warning: DepositViewModel.SplitTimeWarning): String = when (warning) {
+    is DepositViewModel.SplitTimeWarning.OperationalLarge -> stringResource(R.string.deposit_warning_operational_large, warning.n)
+    is DepositViewModel.SplitTimeWarning.OperationalMedium -> stringResource(R.string.deposit_warning_operational_medium, warning.n)
+    is DepositViewModel.SplitTimeWarning.ConfidentialityLow -> stringResource(R.string.deposit_warning_confidentiality_low, warning.k, warning.n)
+    is DepositViewModel.SplitTimeWarning.ConfidentialityMedium -> stringResource(R.string.deposit_warning_confidentiality_medium, warning.k, warning.n)
+    DepositViewModel.SplitTimeWarning.AvailabilityNone -> stringResource(R.string.deposit_warning_availability_none)
+    DepositViewModel.SplitTimeWarning.AvailabilityOne -> stringResource(R.string.deposit_warning_availability_one)
 }
 
 @Composable
