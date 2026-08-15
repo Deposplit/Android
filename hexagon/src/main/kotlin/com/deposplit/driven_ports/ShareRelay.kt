@@ -16,6 +16,8 @@ interface ShareRelay {
         requestType: ShareRequestType,
         shareId: UUID?,
         ciphertext: ByteArray?,
+        k: Int? = null,
+        n: Int? = null,
         senderSignature: ByteArray,
     ): ShareRequest
     fun listShareRequests(role: Role, requestType: ShareRequestType? = null, state: ShareRequestState? = null): List<ShareRequest>

@@ -1,5 +1,8 @@
 package com.deposplit.ui.settings
 
+import android.content.Context
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,8 +14,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -34,13 +39,21 @@ import com.deposplit.R
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(onNavigateBack: () -> Unit) {
-    val app = LocalContext.current.applicationContext as DeposplitApp
+    val context = LocalContext.current
+    val app = context.applicationContext as DeposplitApp
     val viewModel: SettingsViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { SettingsViewModel(app.relaySettings) }
+            initializer { SettingsViewModel(app.relaySettings, app.catalogManagement) }
         }
     )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri != null) writeCatalogExport(context, uri, viewModel.exportCatalogBytes())
+    }
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) readCatalogImport(context, uri)?.let { viewModel.importCatalogBytes(it) }
+    }
 
     Scaffold(
         topBar = {
@@ -75,6 +88,39 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                     Text(stringResource(R.string.settings_relay_reset))
                 }
             }
+            Spacer(Modifier.height(24.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(16.dp))
+            Text(stringResource(R.string.settings_catalog_title), style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                stringResource(R.string.settings_catalog_description),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(12.dp))
+            Row {
+                OutlinedButton(onClick = { exportLauncher.launch("deposplit-catalog.json") }) {
+                    Text(stringResource(R.string.settings_catalog_export))
+                }
+                OutlinedButton(onClick = { importLauncher.launch(arrayOf("application/json")) }, modifier = Modifier.padding(start = 8.dp)) {
+                    Text(stringResource(R.string.settings_catalog_import))
+                }
+            }
+            if (uiState.catalogMessage != null) {
+                Spacer(Modifier.height(8.dp))
+                val text = uiState.catalogMessageArg?.let { stringResource(uiState.catalogMessage!!, it) } ?: stringResource(uiState.catalogMessage!!)
+                Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }
+
+private fun writeCatalogExport(context: Context, uri: android.net.Uri, bytes: ByteArray) {
+    runCatching {
+        context.contentResolver.openOutputStream(uri)?.use { it.write(bytes) }
+    }
+}
+
+private fun readCatalogImport(context: Context, uri: android.net.Uri): ByteArray? =
+    runCatching { context.contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()

@@ -26,14 +26,16 @@ class LocalShareRepository(context: Context) : ShareRepository {
         val createdAt: String,
         val pickedUpAt: String,
         val plaintextShare: String,
+        val k: Int,
+        val n: Int,
     )
 
     @Synchronized
     override fun getAll(): List<HeldShare> = load().map { it.toDomain() }
 
     @Synchronized
-    override fun getPlaintextShare(shareId: UUID): ByteArray? =
-        load().find { it.id == shareId.toString() }
+    override fun getPlaintextShare(secretId: UUID): ByteArray? =
+        load().find { it.secretId == secretId.toString() }
             ?.plaintextShare
             ?.let { Base64.getDecoder().decode(it) }
 
@@ -72,6 +74,8 @@ class LocalShareRepository(context: Context) : ShareRepository {
         createdAt = Instant.parse(createdAt),
         pickedUpAt = Instant.parse(pickedUpAt),
         plaintextShare = Base64.getDecoder().decode(plaintextShare),
+        k = k,
+        n = n,
     )
 
     private fun HeldShare.toWire() = HeldShareWire(
@@ -83,5 +87,7 @@ class LocalShareRepository(context: Context) : ShareRepository {
         createdAt = createdAt.toString(),
         pickedUpAt = pickedUpAt.toString(),
         plaintextShare = Base64.getEncoder().encodeToString(plaintextShare),
+        k = k,
+        n = n,
     )
 }

@@ -54,5 +54,23 @@ class ContactService(
         )
     }
 
+    override fun updateContact(contactId: UUID, edPublicKey: ByteArray?, xPublicKey: ByteArray?, verificationLevel: VerificationLevel?) {
+        val existing = contactRepository.getById(contactId) ?: error("Contact not found for id $contactId")
+        val changingKeys = edPublicKey != null || xPublicKey != null
+        require(!changingKeys || verificationLevel != null) {
+            "A verification level must be chosen fresh whenever a contact's keys change"
+        }
+        edPublicKey?.let { require(it.size == 32) { "Ed25519 public key must be 32 bytes" } }
+        xPublicKey?.let { require(it.size == 32) { "X25519 public key must be 32 bytes" } }
+        contactRepository.save(
+            existing.copy(
+                edPublicKey = edPublicKey ?: existing.edPublicKey,
+                xPublicKey = xPublicKey ?: existing.xPublicKey,
+                verificationLevel = verificationLevel ?: existing.verificationLevel,
+                verifiedAt = if (verificationLevel != null) Instant.now() else existing.verifiedAt,
+            )
+        )
+    }
+
     override fun deleteContact(contactId: UUID) = contactRepository.delete(contactId)
 }

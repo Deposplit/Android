@@ -46,8 +46,16 @@
     <string name="contacts_action_add">Kontakt hinzufügen</string>
     <string name="contacts_empty">Noch keine Kontakte</string>
     <string name="contacts_delete_description">%1$s löschen</string>
+    <string name="contacts_relink_description">%1$s neu verknüpfen (Schlüssel geändert)</string>
     <string name="contacts_error_load">Laden fehlgeschlagen</string>
     <string name="contacts_error_delete">Löschen fehlgeschlagen</string>
+
+    <!-- Relink contact (item 8 — identity recovery) -->
+    <string name="relink_title">%1$s neu verknüpfen</string>
+    <string name="relink_scanned_message">Neue Schlüssel für %1$s gescannt.</string>
+    <string name="relink_level_footer">Bei einem Schlüsselwechsel muss die Vertrauensstufe immer neu gewählt werden — sie kann nie von der alten übernommen werden.</string>
+    <string name="relink_confirm">Neuverknüpfung bestätigen</string>
+    <string name="relink_error_fallback">Neuverknüpfung fehlgeschlagen</string>
 
     <!-- Verifizierungsstufe (deposplit.com/CLAUDE.md "What is next" Punkt 6) -->
     <string name="verification_level_very_low">Sehr niedrig</string>
@@ -106,6 +114,7 @@
     <!-- Share request types and states -->
     <string name="share_request_retrieve">Abrufen</string>
     <string name="share_request_delete">Löschen</string>
+    <string name="share_request_recovery">Wiederherstellung</string>
     <string name="share_request_state_pending">Offen</string>
     <string name="share_request_state_approved">Angenommen</string>
     <string name="share_request_state_denied">Abgelehnt</string>

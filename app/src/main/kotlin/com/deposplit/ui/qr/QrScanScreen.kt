@@ -133,7 +133,7 @@ fun QrScanScreen(onNavigateBack: () -> Unit) {
 }
 
 @Composable
-private fun CameraViewfinder(onQrDecoded: (String) -> Unit) {
+fun CameraViewfinder(onQrDecoded: (String) -> Unit) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val executor = remember { Executors.newSingleThreadExecutor() }

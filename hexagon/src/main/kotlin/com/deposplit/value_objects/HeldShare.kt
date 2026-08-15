@@ -18,6 +18,10 @@ data class HeldShare(
     // The decrypted share, plaintext at rest — see item 7: a single holder's share is
     // information-theoretically empty on its own, so this is safe to store unencrypted.
     val plaintextShare: ByteArray,
+    // SSS threshold/share-count, carried on the pick_up that produced this share — reported back
+    // during identity recovery (item 8) so a recovering owner can rebuild her Secret record.
+    val k: Int,
+    val n: Int,
 ) {
     override fun equals(other: Any?) = other is HeldShare && id == other.id
     override fun hashCode() = id.hashCode()

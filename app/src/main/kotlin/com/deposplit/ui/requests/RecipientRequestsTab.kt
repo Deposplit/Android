@@ -140,6 +140,14 @@ private fun RequestItem(
                         MaterialTheme.colorScheme.errorContainer,
                         MaterialTheme.colorScheme.onErrorContainer,
                     )
+                    // Never surfaced here — recoveryMetadata is a self-approved push, consumed
+                    // silently by syncInbox's processRecoveryMetadata, not routed through
+                    // listPendingRequests.
+                    ShareRequestType.RECOVERY_METADATA -> Triple(
+                        stringResource(R.string.share_request_recovery),
+                        MaterialTheme.colorScheme.secondaryContainer,
+                        MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
                 }
                 Surface(color = badgeBackground, shape = MaterialTheme.shapes.small) {
                     Text(

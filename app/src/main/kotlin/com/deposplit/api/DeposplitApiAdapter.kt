@@ -34,6 +34,8 @@ class DeposplitApiAdapter(
         requestType: ShareRequestType,
         shareId: UUID?,
         ciphertext: ByteArray?,
+        k: Int?,
+        n: Int?,
         senderSignature: ByteArray,
     ): ShareRequest {
         val body = json.encodeToString(
@@ -45,6 +47,8 @@ class DeposplitApiAdapter(
                 requestType = requestType.toWire(),
                 shareId = shareId?.toString(),
                 ciphertext = ciphertext?.encodeBase64(),
+                k = k,
+                n = n,
                 senderSignature = senderSignature.encodeBase64Url(),
             )
         )
@@ -156,6 +160,8 @@ class DeposplitApiAdapter(
         val requestType: String,
         val shareId: String? = null,
         val ciphertext: String? = null,
+        val k: Int? = null,
+        val n: Int? = null,
         val senderSignature: String,
     )
 
@@ -176,6 +182,8 @@ class DeposplitApiAdapter(
         val requestedAt: String,
         val respondedAt: String? = null,
         val ciphertext: String? = null,
+        val k: Int? = null,
+        val n: Int? = null,
         val senderSignature: String,
         val recipientSignature: String? = null,
     )
@@ -193,6 +201,7 @@ class DeposplitApiAdapter(
             "pick_up" -> ShareRequestType.PICK_UP
             "retrieve" -> ShareRequestType.RETRIEVE
             "delete" -> ShareRequestType.DELETE
+            "recovery_metadata" -> ShareRequestType.RECOVERY_METADATA
             else -> error("Unknown requestType: $requestType")
         },
         state = when (state) {
@@ -205,6 +214,8 @@ class DeposplitApiAdapter(
         requestedAt = Instant.parse(requestedAt),
         respondedAt = respondedAt?.let { Instant.parse(it) },
         ciphertext = ciphertext?.decodeBase64(),
+        k = k,
+        n = n,
         senderSignature = senderSignature.decodeBase64Url(),
         recipientSignature = recipientSignature?.decodeBase64Url(),
     )
@@ -213,6 +224,7 @@ class DeposplitApiAdapter(
         ShareRequestType.PICK_UP -> "pick_up"
         ShareRequestType.RETRIEVE -> "retrieve"
         ShareRequestType.DELETE -> "delete"
+        ShareRequestType.RECOVERY_METADATA -> "recovery_metadata"
     }
 
     companion object {

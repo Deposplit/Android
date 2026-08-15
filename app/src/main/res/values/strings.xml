@@ -57,8 +57,16 @@
     <string name="contacts_action_add">Add contact</string>
     <string name="contacts_empty">No contacts yet</string>
     <string name="contacts_delete_description">Delete %1$s</string>
+    <string name="contacts_relink_description">Relink %1$s (key changed)</string>
     <string name="contacts_error_load">Failed to load</string>
     <string name="contacts_error_delete">Failed to delete</string>
+
+    <!-- Relink contact (item 8 — identity recovery) -->
+    <string name="relink_title">Relink %1$s</string>
+    <string name="relink_scanned_message">Scanned new keys for %1$s.</string>
+    <string name="relink_level_footer">A key change always requires re-choosing a verification level fresh — it can never inherit the old one.</string>
+    <string name="relink_confirm">Confirm Relink</string>
+    <string name="relink_error_fallback">Failed to relink contact</string>
 
     <!-- Verification level (deposplit.com/CLAUDE.md "What is next" item 6) -->
     <string name="verification_level_very_low">Very Low</string>
@@ -89,6 +97,12 @@
     <string name="settings_relay_description">Default relay used for contacts without a BYOR override, and advertised in your own QR code.</string>
     <string name="settings_relay_label">Default relay URL</string>
     <string name="settings_relay_reset">Reset to default</string>
+    <string name="settings_catalog_title">Catalog Backup</string>
+    <string name="settings_catalog_description">Contacts, verification levels, and secret metadata only — never shares or private keys.</string>
+    <string name="settings_catalog_export">Export…</string>
+    <string name="settings_catalog_import">Import…</string>
+    <string name="settings_catalog_imported">Imported %1$s new contact(s).</string>
+    <string name="settings_catalog_import_error">Failed to import catalog</string>
 
     <!-- Deposit -->
     <string name="deposit_title">Split &amp; Share Secret</string>
@@ -125,6 +139,7 @@
     <string name="share_request_pick_up">Pick Up</string>
     <string name="share_request_retrieve">Retrieve</string>
     <string name="share_request_delete">Delete</string>
+    <string name="share_request_recovery">Recovery</string>
     <string name="share_request_state_pending">Pending</string>
     <string name="share_request_state_approved">Approved</string>
     <string name="share_request_state_denied">Denied</string>

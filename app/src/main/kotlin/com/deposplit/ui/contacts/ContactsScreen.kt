@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.QrCodeScanner
@@ -49,7 +50,12 @@ import com.deposplit.value_objects.VerificationLevel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ContactsScreen(onNavigateBack: () -> Unit, onNavigateToAddContact: () -> Unit, onNavigateToScanQr: () -> Unit) {
+fun ContactsScreen(
+    onNavigateBack: () -> Unit,
+    onNavigateToAddContact: () -> Unit,
+    onNavigateToScanQr: () -> Unit,
+    onNavigateToRelinkContact: (Contact) -> Unit,
+) {
     val app = LocalContext.current.applicationContext as DeposplitApp
     val viewModel: ContactsViewModel = viewModel(
         factory = viewModelFactory {
@@ -129,6 +135,7 @@ fun ContactsScreen(onNavigateBack: () -> Unit, onNavigateToAddContact: () -> Uni
                     ContactItem(
                         contact = contact,
                         onDelete = { viewModel.delete(contact.id) },
+                        onRelink = { onNavigateToRelinkContact(contact) },
                     )
                 }
             }
@@ -137,7 +144,7 @@ fun ContactsScreen(onNavigateBack: () -> Unit, onNavigateToAddContact: () -> Uni
 }
 
 @Composable
-private fun ContactItem(contact: Contact, onDelete: () -> Unit) {
+private fun ContactItem(contact: Contact, onDelete: () -> Unit, onRelink: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -153,6 +160,12 @@ private fun ContactItem(contact: Contact, onDelete: () -> Unit) {
                         color = contact.verificationLevel.badgeColor(),
                     )
                 }
+            }
+            IconButton(onClick = onRelink) {
+                Icon(
+                    Icons.Default.Autorenew,
+                    contentDescription = stringResource(R.string.contacts_relink_description, contact.pseudonym),
+                )
             }
             IconButton(onClick = onDelete) {
                 Icon(

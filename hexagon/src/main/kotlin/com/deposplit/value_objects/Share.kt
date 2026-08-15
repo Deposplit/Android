@@ -4,7 +4,10 @@ import java.time.Instant
 import java.util.UUID
 
 enum class Role { SENDER, RECIPIENT }
-enum class ShareRequestType { PICK_UP, RETRIEVE, DELETE }
+
+// RECOVERY_METADATA is a holder-initiated metadata-only push during identity recovery — not
+// consent-gated, unlike the other three. See deposplit.com/CLAUDE.md "What is next" item 8.
+enum class ShareRequestType { PICK_UP, RETRIEVE, DELETE, RECOVERY_METADATA }
 enum class ShareRequestState { PENDING, APPROVED, DENIED }
 
 // Per-share record on the sender's device — one per holder of a Secret. Normalized to reference
@@ -34,6 +37,10 @@ data class ShareRequest(
     val requestedAt: Instant,
     val respondedAt: Instant?,
     val ciphertext: ByteArray?,
+    // SSS threshold/share-count — populated for PICK_UP/RECOVERY_METADATA, null for
+    // RETRIEVE/DELETE. See deposplit.com/CLAUDE.md "What is next" items 8 and 11.
+    val k: Int? = null,
+    val n: Int? = null,
     // Ed25519 signature over PayloadCanonical.forOpen — see that object for what's signed.
     val senderSignature: ByteArray,
     // Ed25519 signature over PayloadCanonical.forRespond; null while pending.

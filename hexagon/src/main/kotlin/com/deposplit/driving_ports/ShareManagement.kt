@@ -34,4 +34,11 @@ interface ShareManagement {
     fun respond(requestId: UUID, approved: Boolean)
     fun deleteHeldShare(shareId: UUID)
     fun deleteAllHeldFromSender(contactId: UUID)
+
+    // ─── Identity recovery (item 8) — holder side ────────────────────────────
+    // Pushes a metadata-only report (no share bytes) for every HeldShare held from contactId back
+    // to that contact, so a recovering owner can rebuild her ShareMetadata/Secret records. Call
+    // after ContactManagement.updateContact has relinked the re-presented identity to the
+    // existing contact.
+    fun pushRecoveryMetadata(contactId: UUID)
 }

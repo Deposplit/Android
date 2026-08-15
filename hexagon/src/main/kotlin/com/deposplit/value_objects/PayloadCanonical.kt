@@ -29,9 +29,15 @@ object PayloadCanonical {
         ShareRequestType.PICK_UP -> "pick_up"
         ShareRequestType.RETRIEVE -> "retrieve"
         ShareRequestType.DELETE -> "delete"
+        ShareRequestType.RECOVERY_METADATA -> "recovery_metadata"
     }
 
-    /** Signed by the sender when opening a share request (`senderSignature`). */
+    /**
+     * Signed by the sender when opening a share request (`senderSignature`).
+     *
+     * `k`/`n` (item 8) are appended at the end of the sequence, keeping the existing field order
+     * — and this construction's cross-platform byte-vector test — undisturbed.
+     */
     fun forOpen(
         secretId: UUID,
         requestType: ShareRequestType,
@@ -40,6 +46,8 @@ object PayloadCanonical {
         secretCreatedAt: Instant,
         shareId: UUID?,
         ciphertext: ByteArray?,
+        k: Int? = null,
+        n: Int? = null,
     ): ByteArray = listOf(
         secretId.toString(),
         requestType.toWire(),
@@ -48,6 +56,8 @@ object PayloadCanonical {
         secretCreatedAt.toEpochMilli().toString(),
         shareId?.toString() ?: "",
         ciphertext?.let { base64Std.encodeToString(it) } ?: "",
+        k?.toString() ?: "",
+        n?.toString() ?: "",
     ).joinToString("\n").toByteArray(Charsets.UTF_8)
 
     /** Signed by the recipient when responding to a share request (`recipientSignature`). */

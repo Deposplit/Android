@@ -9,6 +9,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.deposplit.ui.contacts.AddContactScreen
 import com.deposplit.ui.contacts.ContactsScreen
+import com.deposplit.ui.contacts.RelinkContactScreen
 import com.deposplit.ui.deposit.DepositScreen
 import com.deposplit.ui.home.HomeScreen
 import com.deposplit.ui.qr.QrDisplayScreen
@@ -23,6 +24,7 @@ private const val ROUTE_SIGN_IN = "sign_in"
 private const val ROUTE_HOME = "home"
 private const val ROUTE_CONTACTS = "contacts"
 private const val ROUTE_ADD_CONTACT = "add_contact"
+private const val ROUTE_RELINK_CONTACT = "relink_contact/{contactId}"
 private const val ROUTE_DEPOSIT = "deposit"
 private const val ROUTE_SHARE_DETAIL = "share_detail/{shareId}"
 private const val ROUTE_QR_DISPLAY = "qr_display"
@@ -73,11 +75,21 @@ class MainActivity : FragmentActivity() {
                             onNavigateBack = { navController.popBackStack() },
                             onNavigateToAddContact = { navController.navigate(ROUTE_ADD_CONTACT) },
                             onNavigateToScanQr = { navController.navigate(ROUTE_QR_SCAN) },
+                            onNavigateToRelinkContact = { contact -> navController.navigate("relink_contact/${contact.id}") },
                         )
                     }
                     composable(ROUTE_ADD_CONTACT) {
                         AddContactScreen(
                             onNavigateBack = { navController.popBackStack() }
+                        )
+                    }
+                    composable(ROUTE_RELINK_CONTACT) { backStackEntry ->
+                        val contactId = UUID.fromString(
+                            backStackEntry.arguments?.getString("contactId")
+                        )
+                        RelinkContactScreen(
+                            contactId = contactId,
+                            onNavigateBack = { navController.popBackStack() },
                         )
                     }
                     composable(ROUTE_QR_DISPLAY) {

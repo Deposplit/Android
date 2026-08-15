@@ -5,9 +5,11 @@ import com.deposplit.api.DeposplitRelayResolver
 import com.deposplit.auth.AndroidIdentityStore
 import com.deposplit.contacts.LocalContactRepository
 import com.deposplit.driven_ports.RelaySettings
+import com.deposplit.driving_ports.CatalogManagement
 import com.deposplit.driving_ports.ContactManagement
 import com.deposplit.driving_ports.Identity
 import com.deposplit.driving_ports.ShareManagement
+import com.deposplit.driving_adapters.CatalogService
 import com.deposplit.driving_adapters.ContactService
 import com.deposplit.driving_adapters.IdentityService
 import com.deposplit.driving_adapters.ShareService
@@ -25,6 +27,9 @@ class DeposplitApp : Application() {
         private set
 
     lateinit var shareManagement: ShareManagement
+        private set
+
+    lateinit var catalogManagement: CatalogManagement
         private set
 
     lateinit var relaySettings: RelaySettings
@@ -48,6 +53,11 @@ class DeposplitApp : Application() {
             secretRepository = secretRepository,
             contactRepository = contactRepository,
             identity = identityService,
+        )
+        catalogManagement = CatalogService(
+            contactRepository = contactRepository,
+            secretRepository = secretRepository,
+            shareMetadataRepository = shareMetadataRepository,
         )
     }
 }
