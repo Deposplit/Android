@@ -37,6 +37,10 @@ class LocalContactRepository(context: Context) : ContactRepository {
         load().find { Base64.getUrlDecoder().decode(it.edPublicKey).contentEquals(edPublicKey) }?.toDomain()
 
     @Synchronized
+    override fun getById(id: UUID): Contact? =
+        load().find { it.id == id.toString() }?.toDomain()
+
+    @Synchronized
     override fun save(contact: Contact) {
         val contacts = load().toMutableList()
         val idx = contacts.indexOfFirst { it.id == contact.id.toString() }

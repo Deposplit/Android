@@ -21,7 +21,7 @@ class LocalShareMetadataRepository(context: Context) : ShareMetadataRepository {
         val id: String,
         val secretId: String,
         val label: String,
-        val recipientKey: String,
+        val contactId: String,
         val secretCreatedAt: String,
     )
 
@@ -58,7 +58,7 @@ class LocalShareMetadataRepository(context: Context) : ShareMetadataRepository {
         id = UUID.fromString(id),
         secretId = UUID.fromString(secretId),
         label = label,
-        recipientKey = Base64.getUrlDecoder().decode(recipientKey),
+        contactId = UUID.fromString(contactId),
         secretCreatedAt = Instant.parse(secretCreatedAt),
     )
 
@@ -66,7 +66,7 @@ class LocalShareMetadataRepository(context: Context) : ShareMetadataRepository {
         id = id.toString(),
         secretId = secretId.toString(),
         label = label,
-        recipientKey = Base64.getUrlEncoder().withoutPadding().encodeToString(recipientKey),
+        contactId = contactId.toString(),
         secretCreatedAt = secretCreatedAt.toString(),
     )
 }

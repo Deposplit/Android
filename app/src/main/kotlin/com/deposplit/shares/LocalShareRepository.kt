@@ -21,19 +21,20 @@ class LocalShareRepository(context: Context) : ShareRepository {
         val id: String,
         val secretId: String,
         val label: String,
-        val senderKey: String,
+        val contactId: String,
+        val senderPseudonym: String,
         val createdAt: String,
         val pickedUpAt: String,
-        val ciphertext: String,
+        val plaintextShare: String,
     )
 
     @Synchronized
     override fun getAll(): List<HeldShare> = load().map { it.toDomain() }
 
     @Synchronized
-    override fun getCiphertext(shareId: UUID): ByteArray? =
+    override fun getPlaintextShare(shareId: UUID): ByteArray? =
         load().find { it.id == shareId.toString() }
-            ?.ciphertext
+            ?.plaintextShare
             ?.let { Base64.getDecoder().decode(it) }
 
     @Synchronized
@@ -66,19 +67,21 @@ class LocalShareRepository(context: Context) : ShareRepository {
         id = UUID.fromString(id),
         secretId = UUID.fromString(secretId),
         label = label,
-        senderKey = Base64.getUrlDecoder().decode(senderKey),
+        contactId = UUID.fromString(contactId),
+        senderPseudonym = senderPseudonym,
         createdAt = Instant.parse(createdAt),
         pickedUpAt = Instant.parse(pickedUpAt),
-        ciphertext = Base64.getDecoder().decode(ciphertext),
+        plaintextShare = Base64.getDecoder().decode(plaintextShare),
     )
 
     private fun HeldShare.toWire() = HeldShareWire(
         id = id.toString(),
         secretId = secretId.toString(),
         label = label,
-        senderKey = Base64.getUrlEncoder().withoutPadding().encodeToString(senderKey),
+        contactId = contactId.toString(),
+        senderPseudonym = senderPseudonym,
         createdAt = createdAt.toString(),
         pickedUpAt = pickedUpAt.toString(),
-        ciphertext = Base64.getEncoder().encodeToString(ciphertext),
+        plaintextShare = Base64.getEncoder().encodeToString(plaintextShare),
     )
 }

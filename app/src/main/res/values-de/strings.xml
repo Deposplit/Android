@@ -92,6 +92,7 @@
 
     <!-- Share detail -->
     <string name="share_detail_title_fallback">Teil</string>
+    <string name="share_detail_unknown_contact">Unbekannter Kontakt</string>
     <string name="share_detail_recipient_label">Empfänger</string>
     <string name="share_detail_deposited_label">Hinterlegt</string>
     <string name="share_detail_retrieve_button">Abruf anfragen</string>

@@ -120,7 +120,7 @@ Android/
 │   │   │   │                            deposit() writes to local store; listDistributed() reads from local store; syncDistributed() syncs field updates from relay (upserts, never deletes)
 │   │   │   └── value_objects/
 │   │   │       ├── Contact.kt           Contact + VerificationLevel
-│   │   │       ├── HeldShare.kt         HeldShare (ciphertext + metadata, held by the recipient)
+│   │   │       ├── HeldShare.kt         HeldShare (plaintext share + metadata, held by the recipient)
 │   │   │       └── Share.kt             Role, ShareRequestType, ShareRequestState, ShareMetadata, ShareRequest
 │   │   └── test/kotlin/com/deposplit/shamir/
 │   │       └── ShamirTest.kt            SSS unit tests
@@ -138,7 +138,7 @@ Android/
 │   │   │   │   ├── contacts/
 │   │   │   │   │   └── LocalContactRepository.kt JSON file in filesDir
 │   │   │   │   ├── shares/
-│   │   │   │   │   ├── LocalShareRepository.kt         JSON file in filesDir (shares.json); ciphertext + metadata for held shares
+│   │   │   │   │   ├── LocalShareRepository.kt         JSON file in filesDir (shares.json); plaintext share + metadata for held shares
 │   │   │   │   │   └── LocalShareMetadataRepository.kt JSON file in filesDir (distributed_shares.json); local store of distributed ShareMetadata
 │   │   │   │   └── ui/
 │   │   │   │       ├── signin/       SignInViewModel + SignInScreen
@@ -302,10 +302,10 @@ You need **three AVD instances** (or three physical devices on the same WiFi, us
 | 7 | AVD-A | Add Bob as a contact; add Carol as a contact |
 | 8 | AVD-A | FAB (＋) → enter a label (e.g. "test secret"), a secret text, select Bob and Carol, choose threshold 2-of-2 → **Deposit** |
 | 9 | AVD-A | **My Shared Secrets** tab → one grouped card for the secret; expand it to see Bob and Carol as holders |
-| 10 | AVD-B | **Their Secret Shares** tab → Bob's inbox shows Alice's PickUp request → app automatically approves it, stores ciphertext locally, relay clears ciphertext |
+| 10 | AVD-B | **Their Secret Shares** tab → Bob's inbox shows Alice's PickUp request → app automatically approves it, decrypts the share, and stores it as plaintext locally; relay clears the ciphertext |
 | 11 | AVD-C | **Their Secret Shares** tab → Carol's inbox shows Alice's PickUp request → app approves the same way |
 | 12 | AVD-A | Expand the card → tap **Request Retrieval** (opens Retrieve requests for Bob and Carol at once) |
-| 13 | AVD-B | **Requests** tab → a Retrieve request from Alice appears → app reads ciphertext from local storage → tap **Approve** (ciphertext sent in response body) |
+| 13 | AVD-B | **Requests** tab → a Retrieve request from Alice appears → app re-encrypts the locally-stored plaintext to Alice's current key → tap **Approve** (ciphertext sent in response body) |
 | 14 | AVD-C | **Requests** tab → a Retrieve request from Alice appears → tap **Approve** |
 | 15 | AVD-A | Expand the card → both holders show "Approved" → tap **Reconstruct** in `ShareDetailScreen` → biometric prompt → secret appears |
 

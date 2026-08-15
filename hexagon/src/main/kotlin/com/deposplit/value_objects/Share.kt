@@ -11,7 +11,9 @@ data class ShareMetadata(
     val id: UUID,           // PickUp request ID
     val secretId: UUID,
     val label: String,
-    val recipientKey: ByteArray,
+    // The holder's stable local contact id — not their Ed25519 key — so this record survives a
+    // holder key rotation/recovery (see deposplit.com/CLAUDE.md "What is next" item 7).
+    val contactId: UUID,
     val secretCreatedAt: Instant,
 ) {
     override fun equals(other: Any?) = other is ShareMetadata && id == other.id

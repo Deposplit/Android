@@ -23,5 +23,5 @@ interface ShareManagement {
     fun listPendingRequests(): List<ShareRequest>
     fun respond(requestId: UUID, approved: Boolean)
     fun deleteHeldShare(shareId: UUID)
-    fun deleteAllHeldFromSender(senderKey: ByteArray)
+    fun deleteAllHeldFromSender(contactId: UUID)
 }

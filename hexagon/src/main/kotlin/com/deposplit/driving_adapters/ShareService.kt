@@ -42,9 +42,6 @@ class ShareService(
 
     private fun relayForContact(contact: Contact): ShareRelay = relayResolver.resolve(contact.relayBaseUrl)
 
-    private fun relayForKey(edPublicKey: ByteArray): ShareRelay =
-        relayResolver.resolve(contactRepository.getByEdKey(edPublicKey)?.relayBaseUrl)
-
     // Finds a row by id across every known relay — the caller (UI) has no relay context for a
     // bare requestId, only the fan-out list already used to discover it. Returns the relay it was
     // found on too, so the caller can act on it through the *same* relay rather than re-resolving
@@ -86,7 +83,7 @@ class ShareService(
             val req = relayForContact(contact).openShareRequest(
                 secretId, contact.edPublicKey, label, createdAt, ShareRequestType.PICK_UP, null, ciphertext, senderSignature,
             )
-            shareMetadataRepository.save(ShareMetadata(req.id, secretId, label, contact.edPublicKey, createdAt))
+            shareMetadataRepository.save(ShareMetadata(req.id, secretId, label, contact.id, createdAt))
         }
     }
 
@@ -94,7 +91,10 @@ class ShareService(
         allRelays().forEach { relay ->
             runCatching { relay.listShareRequests(Role.SENDER, ShareRequestType.PICK_UP) }.getOrDefault(emptyList())
                 .forEach { req ->
-                    shareMetadataRepository.save(ShareMetadata(req.id, req.secretId, req.label, req.recipientKey, req.secretCreatedAt))
+                    // A row for a holder we no longer have a contact record for can't be
+                    // re-anchored to a contactId — skip rather than drop the holder's identity.
+                    val contact = contactRepository.getByEdKey(req.recipientKey) ?: return@forEach
+                    shareMetadataRepository.save(ShareMetadata(req.id, req.secretId, req.label, contact.id, req.secretCreatedAt))
                 }
         }
     }
@@ -112,15 +112,16 @@ class ShareService(
             runCatching { relay.listShareRequests(Role.SENDER, ShareRequestType.RETRIEVE) }.getOrDefault(emptyList())
         }
         for (meta in deposited) {
+            val contact = contactRepository.getById(meta.contactId) ?: continue
             val hasActive = existing.any {
                 it.shareId == meta.id &&
                     (it.state == ShareRequestState.PENDING || it.state == ShareRequestState.APPROVED)
             }
             if (!hasActive) runCatching {
-                val canon = PayloadCanonical.forOpen(meta.secretId, ShareRequestType.RETRIEVE, meta.recipientKey, meta.label, meta.secretCreatedAt, meta.id, null)
+                val canon = PayloadCanonical.forOpen(meta.secretId, ShareRequestType.RETRIEVE, contact.edPublicKey, meta.label, meta.secretCreatedAt, meta.id, null)
                 val senderSignature = identity.sign(canon)
-                relayForKey(meta.recipientKey).openShareRequest(
-                    meta.secretId, meta.recipientKey, meta.label, meta.secretCreatedAt, ShareRequestType.RETRIEVE, meta.id, null, senderSignature,
+                relayForContact(contact).openShareRequest(
+                    meta.secretId, contact.edPublicKey, meta.label, meta.secretCreatedAt, ShareRequestType.RETRIEVE, meta.id, null, senderSignature,
                 )
             }
         }
@@ -129,10 +130,12 @@ class ShareService(
     override fun openRequest(shareId: UUID, type: ShareRequestType): ShareRequest {
         val meta = shareMetadataRepository.getAll().find { it.id == shareId }
             ?: error("No local share record for id $shareId")
-        val canon = PayloadCanonical.forOpen(meta.secretId, type, meta.recipientKey, meta.label, meta.secretCreatedAt, shareId, null)
+        val contact = contactRepository.getById(meta.contactId)
+            ?: error("Contact not found for id ${meta.contactId}")
+        val canon = PayloadCanonical.forOpen(meta.secretId, type, contact.edPublicKey, meta.label, meta.secretCreatedAt, shareId, null)
         val senderSignature = identity.sign(canon)
-        return relayForKey(meta.recipientKey).openShareRequest(
-            meta.secretId, meta.recipientKey, meta.label, meta.secretCreatedAt, type, shareId, null, senderSignature,
+        return relayForContact(contact).openShareRequest(
+            meta.secretId, contact.edPublicKey, meta.label, meta.secretCreatedAt, type, shareId, null, senderSignature,
         )
     }
 
@@ -176,21 +179,24 @@ class ShareService(
             }.getOrDefault(emptyList())
             // Unknown sender or unverified senderSignature: skip silently, do not auto-approve.
             for (req in pending.filter(::verifyOpen)) {
-                if (shareRepository.getCiphertext(req.id) == null) {
+                val senderContact = contactRepository.getByEdKey(req.senderKey) ?: continue
+                if (shareRepository.getPlaintextShare(req.id) == null) {
                     runCatching {
                         val canon = PayloadCanonical.forRespond(req.id, approved = true, ciphertext = null)
                         val recipientSignature = identity.sign(canon)
                         val responded = relay.respondToShareRequest(req.id, true, recipientSignature = recipientSignature)
                         responded.ciphertext?.let { ct ->
+                            val plaintext = encryption.decrypt(ct, senderContact.xPublicKey)
                             shareRepository.save(
                                 HeldShare(
                                     id = req.id,
                                     secretId = req.secretId,
                                     label = req.label,
-                                    senderKey = req.senderKey,
+                                    contactId = senderContact.id,
+                                    senderPseudonym = senderContact.pseudonym,
                                     createdAt = req.secretCreatedAt,
                                     pickedUpAt = Instant.now(),
-                                    ciphertext = ct,
+                                    plaintextShare = plaintext,
                                 )
                             )
                         }
@@ -218,7 +224,12 @@ class ShareService(
         }
         val ciphertext = if (approved && request.requestType == ShareRequestType.RETRIEVE) {
             val pickUpId = request.shareId ?: error("Retrieve request $requestId has no shareId")
-            shareRepository.getCiphertext(pickUpId) ?: error("Share $pickUpId not in local storage")
+            val plaintext = shareRepository.getPlaintextShare(pickUpId) ?: error("Share $pickUpId not in local storage")
+            // Re-encrypt to the requester's *current* X25519 key — looked up live, not pinned at
+            // deposit time. This is what lets reconstruction survive a sender key rotation/
+            // recovery (item 7's core reason for existing).
+            val requesterContact = contactRepository.getByEdKey(request.senderKey) ?: error("Contact not found for requester")
+            encryption.encrypt(plaintext, requesterContact.xPublicKey)
         } else null
         val canon = PayloadCanonical.forRespond(requestId, approved, ciphertext)
         val recipientSignature = identity.sign(canon)
@@ -230,9 +241,9 @@ class ShareService(
 
     override fun deleteHeldShare(shareId: UUID) = shareRepository.delete(shareId)
 
-    override fun deleteAllHeldFromSender(senderKey: ByteArray) {
+    override fun deleteAllHeldFromSender(contactId: UUID) {
         shareRepository.getAll()
-            .filter { it.senderKey.contentEquals(senderKey) }
+            .filter { it.contactId == contactId }
             .forEach { shareRepository.delete(it.id) }
     }
 }

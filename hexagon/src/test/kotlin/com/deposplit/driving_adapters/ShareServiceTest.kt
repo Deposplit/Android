@@ -80,6 +80,7 @@ private class InMemoryIdentityStoreForShareServiceTest : IdentityStore {
 private class FakeContactRepository(private val contacts: List<Contact>) : ContactRepository {
     override fun getAll() = contacts
     override fun getByEdKey(edPublicKey: ByteArray) = contacts.find { it.edPublicKey.contentEquals(edPublicKey) }
+    override fun getById(id: UUID) = contacts.find { it.id == id }
     override fun save(contact: Contact) {}
     override fun delete(contactId: UUID) {}
 }
@@ -87,7 +88,7 @@ private class FakeContactRepository(private val contacts: List<Contact>) : Conta
 private class FakeShareRepository : ShareRepository {
     private val shares = mutableListOf<HeldShare>()
     override fun getAll() = shares.toList()
-    override fun getCiphertext(shareId: UUID) = shares.find { it.id == shareId }?.ciphertext
+    override fun getPlaintextShare(shareId: UUID) = shares.find { it.id == shareId }?.plaintextShare
     override fun save(share: HeldShare) { shares.add(share) }
     override fun delete(shareId: UUID) { shares.removeAll { it.id == shareId } }
 }

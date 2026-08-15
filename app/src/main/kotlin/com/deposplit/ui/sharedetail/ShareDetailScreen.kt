@@ -128,9 +128,9 @@ fun ShareDetailScreen(shareId: UUID, onNavigateBack: () -> Unit) {
                 Spacer(Modifier.height(16.dp))
 
                 val recipientName = uiState.contacts
-                    .find { it.edPublicKey.contentEquals(uiState.share!!.recipientKey) }
+                    .find { it.id == uiState.share!!.contactId }
                     ?.pseudonym
-                    ?: keyPreview(uiState.share!!.recipientKey)
+                    ?: stringResource(R.string.share_detail_unknown_contact)
 
                 LabeledValue(stringResource(R.string.share_detail_recipient_label), recipientName)
                 Spacer(Modifier.height(4.dp))
@@ -326,6 +326,3 @@ private val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM
 
 private fun formatDate(instant: Instant): String =
     dateFormatter.format(instant.atZone(ZoneId.systemDefault()))
-
-private fun keyPreview(key: ByteArray): String =
-    key.take(4).joinToString("") { "%02x".format(it.toInt() and 0xff) } + "…"

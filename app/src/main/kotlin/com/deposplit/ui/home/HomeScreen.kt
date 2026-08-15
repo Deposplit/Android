@@ -288,7 +288,7 @@ fun HomeScreen(
 
     pendingDelete?.let { display ->
         val senderCount = uiState.heldShares.count {
-            it.share.senderKey.contentEquals(display.share.senderKey)
+            it.share.contactId == display.share.contactId
         }
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
@@ -300,7 +300,7 @@ fun HomeScreen(
                         Spacer(Modifier.height(8.dp))
                         TextButton(
                             onClick = {
-                                viewModel.deleteAllFromSender(display.share.senderKey)
+                                viewModel.deleteAllFromSender(display.share.contactId)
                                 pendingDelete = null
                             },
                             modifier = Modifier.fillMaxWidth(),

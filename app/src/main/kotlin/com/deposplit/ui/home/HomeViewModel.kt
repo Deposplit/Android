@@ -148,9 +148,9 @@ class HomeViewModel(
         }
     }
 
-    fun deleteAllFromSender(senderKey: ByteArray) {
+    fun deleteAllFromSender(contactId: UUID) {
         viewModelScope.launch {
-            withContext(Dispatchers.IO) { shareManagement.deleteAllHeldFromSender(senderKey) }
+            withContext(Dispatchers.IO) { shareManagement.deleteAllHeldFromSender(contactId) }
             load()
         }
     }
@@ -164,7 +164,7 @@ class HomeViewModel(
         .map { (secretId, shares) ->
             val first = shares.first()
             val holders = shares.map { share ->
-                val name = contacts.find { it.edPublicKey.contentEquals(share.recipientKey) }?.pseudonym ?: "?"
+                val name = contacts.find { it.id == share.contactId }?.pseudonym ?: "?"
                 val latestRetrieve = allRequests
                     .filter { it.shareId == share.id && it.requestType == ShareRequestType.RETRIEVE }
                     .maxByOrNull { it.requestedAt }
@@ -189,7 +189,7 @@ class HomeViewModel(
         order: HeldSortOrder,
     ): List<HeldShareDisplay> = held
         .map { share ->
-            val name = contacts.find { it.edPublicKey.contentEquals(share.senderKey) }?.pseudonym ?: "?"
+            val name = contacts.find { it.id == share.contactId }?.pseudonym ?: share.senderPseudonym
             HeldShareDisplay(share = share, senderName = name)
         }
         .sortedWith(sortComparator(order))

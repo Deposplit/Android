@@ -5,7 +5,7 @@ import java.util.UUID
 
 interface ShareRepository {
     fun getAll(): List<HeldShare>
-    fun getCiphertext(shareId: UUID): ByteArray?
+    fun getPlaintextShare(shareId: UUID): ByteArray?
     fun save(share: HeldShare)
     fun delete(shareId: UUID)
 }

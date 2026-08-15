@@ -52,7 +52,7 @@ driving_ports/
 driven_ports/
 ├── IdentityStore.kt               isRegistered, save, pseudonym, edPublicKey, edPrivateKey, xPublicKey, xPrivateKey
 ├── ContactRepository.kt           getAll, getById, getByEdKey, save, delete
-├── ShareRepository.kt             getAll, getCiphertext, save, delete (local held-share storage)
+├── ShareRepository.kt             getAll, getPlaintextShare, save, delete (local held-share storage)
 ├── ShareMetadataRepository.kt     getAll, save, delete (local store of distributed ShareMetadata)
 ├── ShareRelay.kt                  openShareRequest(..., senderSignature), listShareRequests, getShareRequest,
 │                                  respondToShareRequest(..., recipientSignature), deleteShareRequest, deleteShareRequests
@@ -106,7 +106,7 @@ settings/
 contacts/
 └── LocalContactRepository.kt  JSON file in filesDir; @Synchronized; kotlinx.serialization wire types
 shares/
-├── LocalShareRepository.kt         JSON file in filesDir (shares.json); @Synchronized; stores HeldShare (ciphertext + metadata) keyed by share ID
+├── LocalShareRepository.kt         JSON file in filesDir (shares.json); @Synchronized; stores HeldShare (plaintext share + metadata) keyed by share ID
 └── LocalShareMetadataRepository.kt JSON file in filesDir (distributed_shares.json); @Synchronized; local store of distributed ShareMetadata keyed by share ID
 ui/
 ├── signin/       SignInViewModel + SignInScreen              — pseudonym input + Register button
@@ -173,7 +173,7 @@ When set, `ShareDetailScreen` shows the Reconstruct button unconditionally and c
 - Share encryption uses **X25519 + HKDF-SHA-256 + ChaCha20-Poly1305**. Wire format: `nonce(12 bytes) || ciphertext+tag`. See `deposplit.com/CLAUDE.md` → *Transport Encryption* for the full construction.
 - The X25519 and Ed25519 private keys are stored in the Android Keystore (wrapped with AES-256-GCM under the `deposplit_master` alias) and never leave the device as raw key material.
 - Session persistence uses plain `SharedPreferences` (just an "is registered" flag). Do not add `EncryptedSharedPreferences` without a concrete reason; `security-crypto` is not a dependency.
-- **Local share storage** (`LocalShareRepository`): held shares (ciphertext + metadata) are stored as JSON in `filesDir/shares.json`, keyed by share ID. On `syncInbox()` the relay is polled for pending PickUp requests; each is approved (which delivers the ciphertext once and clears the relay row) and stored locally. Ciphertext is standard base64 in the JSON wire format; sender keys are base64url (consistent with the contact and API conventions).
+- **Local share storage** (`LocalShareRepository`): held shares (plaintext share + metadata) are stored as JSON in `filesDir/shares.json`, keyed by share ID. On `syncInbox()` the relay is polled for pending PickUp requests; each is approved (which delivers the ciphertext once and clears the relay row), decrypted on-device with the holder's X25519 private key + the sender's current X25519 public key, and the resulting **plaintext** is what's stored locally — see `deposplit.com/CLAUDE.md` item 7 (holder-decrypts-at-pickup). The share is standard base64 in the JSON wire format; the sender is referenced by `contactId` (a stable local UUID), not by key, so the record survives a sender key rotation.
 
 ## what follows was moved from ../deposplit.com/CLAUDE.md to ./CLAUDE.md
 
