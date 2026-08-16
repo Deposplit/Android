@@ -33,7 +33,7 @@ class PayloadCanonicalVectorTest {
     private val privateKeySeed: ByteArray = ByteArray(32) { it.toByte() }
     private val expectedPublicKeyBase64Url = "A6EHv_POEL4dcN0Y50vAmWfk1jCbpQ1fHdyGZBJVMbg"
     private val expectedSignatureBase64Url =
-        "0B6IPdj4W_Nusz0CWKznDI6o0LYUASyzRUNNsO_tPFHhy3RaQFz1FVR7c9LVEYnafuzMYia6t6ATS1UXsepEBQ"
+        "49sMax0jpKfyXdIIiwi6xeKKyK5MZwGOur9I499SXiTneVBYc5Juv215DTDcHhpphU2YGZpqMYRZKNFVILw7AA"
 
     private val secretId: UUID = UUID.fromString("11111111-1111-1111-1111-111111111111")
     private val recipientKey: ByteArray = ByteArray(32) { 0x02 }
@@ -47,15 +47,15 @@ class PayloadCanonicalVectorTest {
 
     @Test
     fun `forOpen produces the fixed canonical bytes`() {
-        val canon = PayloadCanonical.forOpen(secretId, ShareRequestType.PICK_UP, recipientKey, label, secretCreatedAt, null, ciphertext, k, n)
+        val canon = PayloadCanonical.forOpen(secretId, ShareTransactionType.DEPOSIT, recipientKey, label, secretCreatedAt, null, ciphertext, k, n)
         val expected =
-            "11111111-1111-1111-1111-111111111111\npick_up\nAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI\ncross-platform test vector\n1767225600000\n\nAQIDBAU=\n2\n3"
+            "11111111-1111-1111-1111-111111111111\ndeposit\nAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI\ncross-platform test vector\n1767225600000\n\nAQIDBAU=\n2\n3"
         assertEquals(expected, String(canon, Charsets.UTF_8))
     }
 
     @Test
     fun `signing the canonical bytes with the fixed seed reproduces the fixed signature`() {
-        val canon = PayloadCanonical.forOpen(secretId, ShareRequestType.PICK_UP, recipientKey, label, secretCreatedAt, null, ciphertext, k, n)
+        val canon = PayloadCanonical.forOpen(secretId, ShareTransactionType.DEPOSIT, recipientKey, label, secretCreatedAt, null, ciphertext, k, n)
         val privKey = Ed25519PrivateKeyParameters(privateKeySeed, 0)
         val pubKey = privKey.generatePublicKey()
         assertEquals(expectedPublicKeyBase64Url, b64url.encodeToString(pubKey.encoded))
@@ -69,7 +69,7 @@ class PayloadCanonicalVectorTest {
 
     @Test
     fun `the fixed signature verifies against the fixed public key`() {
-        val canon = PayloadCanonical.forOpen(secretId, ShareRequestType.PICK_UP, recipientKey, label, secretCreatedAt, null, ciphertext, k, n)
+        val canon = PayloadCanonical.forOpen(secretId, ShareTransactionType.DEPOSIT, recipientKey, label, secretCreatedAt, null, ciphertext, k, n)
         val pubKeyBytes = Base64.getUrlDecoder().decode(expectedPublicKeyBase64Url)
         val sigBytes = Base64.getUrlDecoder().decode(expectedSignatureBase64Url)
         val verifier = Ed25519Signer()

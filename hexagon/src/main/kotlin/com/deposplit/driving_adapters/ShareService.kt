@@ -19,7 +19,7 @@ import com.deposplit.value_objects.SecretState
 import com.deposplit.value_objects.ShareMetadata
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareRequestState
-import com.deposplit.value_objects.ShareRequestType
+import com.deposplit.value_objects.ShareTransactionType
 import com.deposplit.value_objects.SignatureVerificationException
 import java.time.Instant
 import java.util.UUID
@@ -60,7 +60,7 @@ class ShareService(
     private fun verifyOpen(req: ShareRequest): Boolean {
         val contact = contactRepository.getByEdKey(req.senderKey) ?: return false
         val canon = PayloadCanonical.forOpen(
-            req.secretId, req.requestType, req.recipientKey, req.label, req.secretCreatedAt, req.shareId, req.ciphertext,
+            req.secretId, req.transactionType, req.recipientKey, req.label, req.secretCreatedAt, req.shareId, req.ciphertext,
             req.k, req.n,
         )
         return identity.verify(canon, req.senderSignature, contact.edPublicKey)
@@ -70,7 +70,7 @@ class ShareService(
         val sig = req.recipientSignature ?: return false
         val contact = contactRepository.getByEdKey(req.recipientKey) ?: return false
         val approved = req.state == ShareRequestState.APPROVED
-        val signedCiphertext = if (approved && req.requestType == ShareRequestType.RETRIEVE) req.ciphertext else null
+        val signedCiphertext = if (approved && req.transactionType == ShareTransactionType.RETRIEVAL) req.ciphertext else null
         val canon = PayloadCanonical.forRespond(req.id, approved, signedCiphertext)
         return identity.verify(canon, sig, contact.edPublicKey)
     }
@@ -83,10 +83,10 @@ class ShareService(
         val createdAt = Instant.now()
         shares.zip(contacts).forEach { (share, contact) ->
             val ciphertext = encryption.encrypt(share, contact.xPublicKey)
-            val canon = PayloadCanonical.forOpen(secretId, ShareRequestType.PICK_UP, contact.edPublicKey, label, createdAt, null, ciphertext, threshold, contacts.size)
+            val canon = PayloadCanonical.forOpen(secretId, ShareTransactionType.DEPOSIT, contact.edPublicKey, label, createdAt, null, ciphertext, threshold, contacts.size)
             val senderSignature = identity.sign(canon)
             val req = relayForContact(contact).openShareRequest(
-                secretId, contact.edPublicKey, label, createdAt, ShareRequestType.PICK_UP, null, ciphertext,
+                secretId, contact.edPublicKey, label, createdAt, ShareTransactionType.DEPOSIT, null, ciphertext,
                 k = threshold, n = contacts.size, senderSignature = senderSignature,
             )
             shareMetadataRepository.save(ShareMetadata(req.id, secretId, contact.id))
@@ -98,7 +98,7 @@ class ShareService(
 
     override fun syncDistributed() {
         allRelays().forEach { relay ->
-            runCatching { relay.listShareRequests(Role.SENDER, ShareRequestType.PICK_UP) }.getOrDefault(emptyList())
+            runCatching { relay.listShareRequests(Role.SENDER, ShareTransactionType.DEPOSIT) }.getOrDefault(emptyList())
                 .forEach { req ->
                     // A row for a holder we no longer have a contact record for can't be
                     // re-anchored to a contactId — skip rather than drop the holder's identity.
@@ -109,7 +109,7 @@ class ShareService(
         reconcileDiscarding()
     }
 
-    // For every DISCARDING Secret, checks whether each remaining holder's fanned-out delete
+    // For every DISCARDING Secret, checks whether each remaining holder's fanned-out removal
     // request has been approved; approved ones are cleaned up (relay row deleted, local
     // ShareMetadata removed). Once a DISCARDING secret has no ShareMetadata rows left, its
     // Secret record itself is removed. See item 11's two-state lifecycle.
@@ -118,8 +118,8 @@ class ShareService(
         if (discarding.isEmpty()) return
         val discardingIds = discarding.map { it.id }.toSet()
 
-        val deleteRequests: List<Pair<ShareRelay, ShareRequest>> = allRelays().flatMap { relay ->
-            runCatching { relay.listShareRequests(Role.SENDER, ShareRequestType.DELETE) }.getOrDefault(emptyList())
+        val removalRequests: List<Pair<ShareRelay, ShareRequest>> = allRelays().flatMap { relay ->
+            runCatching { relay.listShareRequests(Role.SENDER, ShareTransactionType.REMOVAL) }.getOrDefault(emptyList())
                 .filter { it.secretId in discardingIds }
                 .map { relay to it }
         }
@@ -127,9 +127,9 @@ class ShareService(
         for (secret in discarding) {
             val metasForSecret = shareMetadataRepository.getAll().filter { it.secretId == secret.id }
             for (meta in metasForSecret) {
-                val approvedDelete = deleteRequests.firstOrNull { (_, r) -> r.shareId == meta.id && r.state == ShareRequestState.APPROVED }
+                val approvedRemoval = removalRequests.firstOrNull { (_, r) -> r.shareId == meta.id && r.state == ShareRequestState.APPROVED }
                     ?: continue
-                runCatching { approvedDelete.first.deleteShareRequest(meta.id) }
+                runCatching { approvedRemoval.first.deleteShareRequest(meta.id) }
                 runCatching { shareMetadataRepository.delete(meta.id) }
             }
             val remaining = shareMetadataRepository.getAll().filter { it.secretId == secret.id }
@@ -144,13 +144,13 @@ class ShareService(
     override fun listSentRequests(): List<ShareRequest> =
         allRelays()
             .flatMap { relay -> runCatching { relay.listShareRequests(Role.SENDER) }.getOrDefault(emptyList()) }
-            .filterNot { it.requestType == ShareRequestType.PICK_UP }
+            .filterNot { it.transactionType == ShareTransactionType.DEPOSIT }
 
     override fun requestAll(secretId: UUID) {
         val secret = secretRepository.getAll().find { it.id == secretId } ?: return
         val deposited = shareMetadataRepository.getAll().filter { it.secretId == secretId }
         val existing = allRelays().flatMap { relay ->
-            runCatching { relay.listShareRequests(Role.SENDER, ShareRequestType.RETRIEVE) }.getOrDefault(emptyList())
+            runCatching { relay.listShareRequests(Role.SENDER, ShareTransactionType.RETRIEVAL) }.getOrDefault(emptyList())
         }
         for (meta in deposited) {
             val contact = contactRepository.getById(meta.contactId) ?: continue
@@ -161,17 +161,17 @@ class ShareService(
                     (it.state == ShareRequestState.PENDING || it.state == ShareRequestState.APPROVED)
             }
             if (!hasActive) runCatching {
-                val canon = PayloadCanonical.forOpen(meta.secretId, ShareRequestType.RETRIEVE, contact.edPublicKey, secret.label, secret.secretCreatedAt, meta.id, null)
+                val canon = PayloadCanonical.forOpen(meta.secretId, ShareTransactionType.RETRIEVAL, contact.edPublicKey, secret.label, secret.secretCreatedAt, meta.id, null)
                 val senderSignature = identity.sign(canon)
                 relayForContact(contact).openShareRequest(
-                    meta.secretId, contact.edPublicKey, secret.label, secret.secretCreatedAt, ShareRequestType.RETRIEVE, meta.id, null,
+                    meta.secretId, contact.edPublicKey, secret.label, secret.secretCreatedAt, ShareTransactionType.RETRIEVAL, meta.id, null,
                     senderSignature = senderSignature,
                 )
             }
         }
     }
 
-    override fun openRequest(shareId: UUID, type: ShareRequestType): ShareRequest {
+    override fun openRequest(shareId: UUID, type: ShareTransactionType): ShareRequest {
         val meta = shareMetadataRepository.getAll().find { it.id == shareId }
             ?: error("No local share record for id $shareId")
         val secret = secretRepository.getAll().find { it.id == meta.secretId }
@@ -186,14 +186,14 @@ class ShareService(
         )
     }
 
-    // Pure read (item 11): collects and decrypts k approved retrieve shares, but never tears down
+    // Pure read (item 11): collects and decrypts k approved retrieval shares, but never tears down
     // local ShareMetadata or relay rows. Use discardSecret for teardown — reconstruct is now a
     // *step* toward a possible re-split, not an implicit "I'm done with this" signal.
     override fun reconstruct(secretId: UUID): ByteArray {
         val secret = secretRepository.getAll().find { it.id == secretId }
             ?: error("No local record for secret $secretId")
         val allRequests: List<Pair<ShareRelay, ShareRequest>> = allRelays().flatMap { relay ->
-            runCatching { relay.listShareRequests(Role.SENDER, ShareRequestType.RETRIEVE) }.getOrDefault(emptyList())
+            runCatching { relay.listShareRequests(Role.SENDER, ShareTransactionType.RETRIEVAL) }.getOrDefault(emptyList())
                 .map { relay to it }
         }
         // An unverified recipientSignature is treated as "not yet approved" rather than a hard
@@ -214,14 +214,14 @@ class ShareService(
         return combine(decrypted)
     }
 
-    // Fans out a sender-initiated delete to every known holder of secretId and flips the Secret
+    // Fans out a sender-initiated removal to every known holder of secretId and flips the Secret
     // to DISCARDING immediately, before any holder has responded — see item 11.
     override fun discardSecret(secretId: UUID) {
         val secret = secretRepository.getAll().find { it.id == secretId }
             ?: error("No local record for secret $secretId")
         secretRepository.save(secret.copy(state = SecretState.DISCARDING))
         shareMetadataRepository.getAll().filter { it.secretId == secretId }.forEach { share ->
-            runCatching { openRequest(share.id, ShareRequestType.DELETE) }
+            runCatching { openRequest(share.id, ShareTransactionType.REMOVAL) }
         }
     }
 
@@ -240,12 +240,12 @@ class ShareService(
     override fun syncInbox() {
         allRelays().forEach { relay ->
             val pending = runCatching {
-                relay.listShareRequests(Role.RECIPIENT, ShareRequestType.PICK_UP, ShareRequestState.PENDING)
+                relay.listShareRequests(Role.RECIPIENT, ShareTransactionType.DEPOSIT, ShareRequestState.PENDING)
             }.getOrDefault(emptyList())
             // Unknown sender or unverified senderSignature: skip silently, do not auto-approve.
             for (req in pending.filter(::verifyOpen)) {
                 val senderContact = contactRepository.getByEdKey(req.senderKey) ?: continue
-                // A pick_up without valid k/n can't happen against a conforming relay (required by
+                // A deposit without valid k/n can't happen against a conforming relay (required by
                 // ShareRequestsService) — skip defensively rather than store a share we can't
                 // later report thresholds for during recovery.
                 val k = req.k ?: continue
@@ -287,7 +287,7 @@ class ShareService(
     private fun processRecoveryMetadata() {
         allRelays().forEach { relay ->
             val pushes = runCatching {
-                relay.listShareRequests(Role.RECIPIENT, ShareRequestType.RECOVERY_METADATA, ShareRequestState.APPROVED)
+                relay.listShareRequests(Role.RECIPIENT, ShareTransactionType.INVENTORY, ShareRequestState.APPROVED)
             }.getOrDefault(emptyList())
             for (req in pushes.filter(::verifyOpen)) {
                 val holderContact = contactRepository.getByEdKey(req.senderKey) ?: continue
@@ -309,12 +309,12 @@ class ShareService(
         shareRepository.getAll().filter { it.contactId == contactId }.forEach { share ->
             runCatching {
                 val canon = PayloadCanonical.forOpen(
-                    share.secretId, ShareRequestType.RECOVERY_METADATA, contact.edPublicKey, share.label, share.createdAt, null, null,
+                    share.secretId, ShareTransactionType.INVENTORY, contact.edPublicKey, share.label, share.createdAt, null, null,
                     share.k, share.n,
                 )
                 val senderSignature = identity.sign(canon)
                 relayForContact(contact).openShareRequest(
-                    share.secretId, contact.edPublicKey, share.label, share.createdAt, ShareRequestType.RECOVERY_METADATA, null, null,
+                    share.secretId, contact.edPublicKey, share.label, share.createdAt, ShareTransactionType.INVENTORY, null, null,
                     k = share.k, n = share.n, senderSignature = senderSignature,
                 )
             }
@@ -328,8 +328,8 @@ class ShareService(
             .flatMap { relay ->
                 runCatching { relay.listShareRequests(Role.RECIPIENT, state = ShareRequestState.PENDING) }.getOrDefault(emptyList())
             }
-            .filterNot { it.requestType == ShareRequestType.PICK_UP }
-            // A forged delete/retrieve request has no AEAD backstop — must never reach the UI.
+            .filterNot { it.transactionType == ShareTransactionType.DEPOSIT }
+            // A forged removal/retrieval request has no AEAD backstop — must never reach the UI.
             .filter(::verifyOpen)
 
     override fun respond(requestId: UUID, approved: Boolean) {
@@ -337,7 +337,7 @@ class ShareService(
         if (!verifyOpen(request)) {
             throw SignatureVerificationException("senderSignature does not verify for request $requestId")
         }
-        val ciphertext = if (approved && request.requestType == ShareRequestType.RETRIEVE) {
+        val ciphertext = if (approved && request.transactionType == ShareTransactionType.RETRIEVAL) {
             // Matched on secretId, not the sender's local shareId — that id is meaningless to this
             // device once identities can be rebuilt independently after recovery (item 8).
             val plaintext = shareRepository.getPlaintextShare(request.secretId) ?: error("Share for secret ${request.secretId} not in local storage")
@@ -350,7 +350,7 @@ class ShareService(
         val canon = PayloadCanonical.forRespond(requestId, approved, ciphertext)
         val recipientSignature = identity.sign(canon)
         relay.respondToShareRequest(requestId, approved, ciphertext, recipientSignature)
-        if (approved && request.requestType == ShareRequestType.DELETE) {
+        if (approved && request.transactionType == ShareTransactionType.REMOVAL) {
             shareRepository.getAll().firstOrNull { it.secretId == request.secretId }?.let { shareRepository.delete(it.id) }
         }
     }

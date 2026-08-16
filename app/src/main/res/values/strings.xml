@@ -136,10 +136,10 @@
     <string name="requests_error_respond">Failed to respond</string>
 
     <!-- Share request types and states -->
-    <string name="share_request_pick_up">Pick Up</string>
-    <string name="share_request_retrieve">Retrieve</string>
-    <string name="share_request_delete">Delete</string>
-    <string name="share_request_recovery">Recovery</string>
+    <string name="share_request_deposit">Deposit</string>
+    <string name="share_request_retrieval">Retrieval</string>
+    <string name="share_request_removal">Removal</string>
+    <string name="share_request_inventory">Inventory</string>
     <string name="share_request_state_pending">Pending</string>
     <string name="share_request_state_approved">Approved</string>
     <string name="share_request_state_denied">Denied</string>
@@ -149,8 +149,8 @@
     <string name="share_detail_unknown_contact">Unknown contact</string>
     <string name="share_detail_recipient_label">Recipient</string>
     <string name="share_detail_deposited_label">Deposited</string>
-    <string name="share_detail_retrieve_button">Request Retrieval</string>
-    <string name="share_detail_delete_button">Request Deletion</string>
+    <string name="share_detail_retrieval_button">Request Retrieval</string>
+    <string name="share_detail_removal_button">Request Removal</string>
     <string name="share_detail_reconstruct_title">Reconstruct Secret</string>
     <string name="share_detail_biometric_none_enrolled">Enrol a biometric (fingerprint or face) in device settings to reconstruct the secret.</string>
     <string name="share_detail_biometric_no_hardware">This device has no biometric sensor — reconstruction is disabled.</string>

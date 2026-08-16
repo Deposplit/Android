@@ -15,7 +15,7 @@ import com.deposplit.value_objects.Secret
 import com.deposplit.value_objects.ShareMetadata
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareRequestState
-import com.deposplit.value_objects.ShareRequestType
+import com.deposplit.value_objects.ShareTransactionType
 import com.deposplit.value_objects.SignatureVerificationException
 import com.deposplit.value_objects.VerificationLevel
 import org.bouncycastle.crypto.generators.Ed25519KeyPairGenerator
@@ -117,13 +117,13 @@ private object NoOpShareEncryption : ShareEncryption {
     override fun decrypt(noncePlusCiphertext: ByteArray, recipientXPublicKey: ByteArray) = noncePlusCiphertext
 }
 
-/** In-memory ShareRelay test double. listShareRequests filters by requestType/state (role is
+/** In-memory ShareRelay test double. listShareRequests filters by transactionType/state (role is
  * ignored — every fixture row here is already addressed correctly) since syncInbox now issues two
- * differently-filtered queries per relay (pickUp/pending, then recoveryMetadata/approved) that
+ * differently-filtered queries per relay (deposit/pending, then inventory/approved) that
  * must not see each other's rows.
  */
 private class FakeShareRelay(var unreachable: Boolean = false) : ShareRelay {
-    data class OpenedRequest(val secretId: UUID, val recipientKey: ByteArray, val requestType: ShareRequestType, val k: Int?, val n: Int?)
+    data class OpenedRequest(val secretId: UUID, val recipientKey: ByteArray, val transactionType: ShareTransactionType, val k: Int?, val n: Int?)
 
     var pending: List<ShareRequest> = emptyList()
     var byId: MutableMap<UUID, ShareRequest> = mutableMapOf()
@@ -133,23 +133,23 @@ private class FakeShareRelay(var unreachable: Boolean = false) : ShareRelay {
 
     override fun openShareRequest(
         secretId: UUID, recipientKey: ByteArray, label: String, secretCreatedAt: Instant,
-        requestType: ShareRequestType, shareId: UUID?, ciphertext: ByteArray?, k: Int?, n: Int?, senderSignature: ByteArray,
+        transactionType: ShareTransactionType, shareId: UUID?, ciphertext: ByteArray?, k: Int?, n: Int?, senderSignature: ByteArray,
     ): ShareRequest {
-        openedRequests.add(OpenedRequest(secretId, recipientKey, requestType, k, n))
-        val selfApproved = requestType == ShareRequestType.RECOVERY_METADATA
+        openedRequests.add(OpenedRequest(secretId, recipientKey, transactionType, k, n))
+        val selfApproved = transactionType == ShareTransactionType.INVENTORY
         val now = Instant.now()
         return ShareRequest(
             id = UUID.randomUUID(), secretId = secretId, senderKey = ByteArray(0), recipientKey = recipientKey,
-            label = label, secretCreatedAt = secretCreatedAt, requestType = requestType,
+            label = label, secretCreatedAt = secretCreatedAt, transactionType = transactionType,
             state = if (selfApproved) ShareRequestState.APPROVED else ShareRequestState.PENDING,
             shareId = shareId, requestedAt = now, respondedAt = if (selfApproved) now else null,
             ciphertext = null, k = k, n = n, senderSignature = senderSignature, recipientSignature = null,
         )
     }
 
-    override fun listShareRequests(role: Role, requestType: ShareRequestType?, state: ShareRequestState?): List<ShareRequest> {
+    override fun listShareRequests(role: Role, transactionType: ShareTransactionType?, state: ShareRequestState?): List<ShareRequest> {
         if (unreachable) throw RuntimeException("simulated relay outage")
-        return pending.filter { (requestType == null || it.requestType == requestType) && (state == null || it.state == state) }
+        return pending.filter { (transactionType == null || it.transactionType == transactionType) && (state == null || it.state == state) }
     }
 
     override fun getShareRequest(requestId: UUID): ShareRequest = byId.getValue(requestId)
@@ -208,7 +208,7 @@ class ShareServiceTest {
         return Triple(svc, bobIdentity, shareRepo)
     }
 
-    private fun pickUpRow(id: UUID, senderKey: ByteArray, recipientKey: ByteArray, senderSignature: ByteArray, ciphertext: ByteArray = byteArrayOf(1, 2, 3)): ShareRequest =
+    private fun depositRow(id: UUID, senderKey: ByteArray, recipientKey: ByteArray, senderSignature: ByteArray, ciphertext: ByteArray = byteArrayOf(1, 2, 3)): ShareRequest =
         ShareRequest(
             id = id,
             secretId = UUID.randomUUID(),
@@ -216,7 +216,7 @@ class ShareServiceTest {
             recipientKey = recipientKey,
             label = "test secret",
             secretCreatedAt = Instant.now(),
-            requestType = ShareRequestType.PICK_UP,
+            transactionType = ShareTransactionType.DEPOSIT,
             state = ShareRequestState.PENDING,
             shareId = null,
             requestedAt = Instant.now(),
@@ -229,14 +229,14 @@ class ShareServiceTest {
         )
 
     private fun signOpenAs(signer: TestKeyPair, row: ShareRequest): ByteArray =
-        signer.sign(PayloadCanonical.forOpen(row.secretId, row.requestType, row.recipientKey, row.label, row.secretCreatedAt, row.shareId, row.ciphertext, row.k, row.n))
+        signer.sign(PayloadCanonical.forOpen(row.secretId, row.transactionType, row.recipientKey, row.label, row.secretCreatedAt, row.shareId, row.ciphertext, row.k, row.n))
 
     @Test
-    fun `syncInbox approves and saves a PickUp with a valid senderSignature from a known contact`() {
+    fun `syncInbox approves and saves a Deposit with a valid senderSignature from a known contact`() {
         val relay = FakeShareRelay()
         val (svc, bob, shareRepo) = newService(relay)
         val id = UUID.randomUUID()
-        val unsigned = pickUpRow(id, aliceKeys.publicKey, bob.edPublicKey(), ByteArray(0))
+        val unsigned = depositRow(id, aliceKeys.publicKey, bob.edPublicKey(), ByteArray(0))
         val row = unsigned.copy(senderSignature = signOpenAs(aliceKeys, unsigned))
         relay.pending = listOf(row)
         relay.byId[id] = row
@@ -248,11 +248,11 @@ class ShareServiceTest {
     }
 
     @Test
-    fun `syncInbox skips a PickUp whose senderSignature doesn't verify against the claimed sender`() {
+    fun `syncInbox skips a Deposit whose senderSignature doesn't verify against the claimed sender`() {
         val relay = FakeShareRelay()
         val (svc, bob, shareRepo) = newService(relay)
         val id = UUID.randomUUID()
-        val unsigned = pickUpRow(id, aliceKeys.publicKey, bob.edPublicKey(), ByteArray(0))
+        val unsigned = depositRow(id, aliceKeys.publicKey, bob.edPublicKey(), ByteArray(0))
         // Signed by a stranger, not by alice — claims to be from alice but doesn't verify against her key.
         val forged = unsigned.copy(senderSignature = signOpenAs(strangerKeys, unsigned))
         relay.pending = listOf(forged)
@@ -265,11 +265,11 @@ class ShareServiceTest {
     }
 
     @Test
-    fun `syncInbox skips a PickUp from an unknown sender even with a self-consistent signature`() {
+    fun `syncInbox skips a Deposit from an unknown sender even with a self-consistent signature`() {
         val relay = FakeShareRelay()
         val (svc, bob, shareRepo) = newService(relay)
         val id = UUID.randomUUID()
-        val unsigned = pickUpRow(id, strangerKeys.publicKey, bob.edPublicKey(), ByteArray(0))
+        val unsigned = depositRow(id, strangerKeys.publicKey, bob.edPublicKey(), ByteArray(0))
         val row = unsigned.copy(senderSignature = signOpenAs(strangerKeys, unsigned))
         relay.pending = listOf(row)
         relay.byId[id] = row
@@ -285,7 +285,7 @@ class ShareServiceTest {
         val relay = FakeShareRelay()
         val (svc, bob, _) = newService(relay)
         val id = UUID.randomUUID()
-        val unsigned = pickUpRow(id, aliceKeys.publicKey, bob.edPublicKey(), ByteArray(0)).copy(requestType = ShareRequestType.DELETE)
+        val unsigned = depositRow(id, aliceKeys.publicKey, bob.edPublicKey(), ByteArray(0)).copy(transactionType = ShareTransactionType.REMOVAL)
         val forged = unsigned.copy(senderSignature = signOpenAs(strangerKeys, unsigned))
         relay.pending = listOf(forged)
 
@@ -297,7 +297,7 @@ class ShareServiceTest {
         val relay = FakeShareRelay()
         val (svc, bob, _) = newService(relay)
         val id = UUID.randomUUID()
-        val unsigned = pickUpRow(id, aliceKeys.publicKey, bob.edPublicKey(), ByteArray(0)).copy(requestType = ShareRequestType.DELETE)
+        val unsigned = depositRow(id, aliceKeys.publicKey, bob.edPublicKey(), ByteArray(0)).copy(transactionType = ShareTransactionType.REMOVAL)
         val forged = unsigned.copy(senderSignature = signOpenAs(strangerKeys, unsigned))
         relay.byId[id] = forged
 
@@ -341,10 +341,10 @@ class ShareServiceTest {
         )
 
         val fromAliceId = UUID.randomUUID()
-        val unsignedFromAlice = pickUpRow(fromAliceId, aliceKeys.publicKey, bobIdentity.edPublicKey(), ByteArray(0))
+        val unsignedFromAlice = depositRow(fromAliceId, aliceKeys.publicKey, bobIdentity.edPublicKey(), ByteArray(0))
         val fromAlice = unsignedFromAlice.copy(senderSignature = signOpenAs(aliceKeys, unsignedFromAlice))
         val fromCharlieId = UUID.randomUUID()
-        val unsignedFromCharlie = pickUpRow(fromCharlieId, charlieKeys.publicKey, bobIdentity.edPublicKey(), ByteArray(0))
+        val unsignedFromCharlie = depositRow(fromCharlieId, charlieKeys.publicKey, bobIdentity.edPublicKey(), ByteArray(0))
         val fromCharlie = unsignedFromCharlie.copy(senderSignature = signOpenAs(charlieKeys, unsignedFromCharlie))
         defaultRelay.pending = listOf(fromAlice)
         defaultRelay.byId[fromAliceId] = fromAlice
@@ -379,7 +379,7 @@ class ShareServiceTest {
         )
 
         val fromAliceId = UUID.randomUUID()
-        val unsignedFromAlice = pickUpRow(fromAliceId, aliceKeys.publicKey, bobIdentity.edPublicKey(), ByteArray(0))
+        val unsignedFromAlice = depositRow(fromAliceId, aliceKeys.publicKey, bobIdentity.edPublicKey(), ByteArray(0))
         val fromAlice = unsignedFromAlice.copy(senderSignature = signOpenAs(aliceKeys, unsignedFromAlice))
         defaultRelay.pending = listOf(fromAlice)
         defaultRelay.byId[fromAliceId] = fromAlice
@@ -426,12 +426,12 @@ class ShareServiceTest {
         k: Int = 2, n: Int = 3, label: String = "recovered secret",
     ): ShareRequest {
         val createdAt = Instant.now()
-        val canon = PayloadCanonical.forOpen(secretId, ShareRequestType.RECOVERY_METADATA, recipientKey, label, createdAt, null, null, k, n)
+        val canon = PayloadCanonical.forOpen(secretId, ShareTransactionType.INVENTORY, recipientKey, label, createdAt, null, null, k, n)
         val sig = signer.sign(canon)
         val now = Instant.now()
         return ShareRequest(
             id = UUID.randomUUID(), secretId = secretId, senderKey = senderKey, recipientKey = recipientKey, label = label,
-            secretCreatedAt = createdAt, requestType = ShareRequestType.RECOVERY_METADATA, state = ShareRequestState.APPROVED,
+            secretCreatedAt = createdAt, transactionType = ShareTransactionType.INVENTORY, state = ShareRequestState.APPROVED,
             shareId = null, requestedAt = now, respondedAt = now, ciphertext = null, k = k, n = n,
             senderSignature = sig, recipientSignature = null,
         )
@@ -454,7 +454,7 @@ class ShareServiceTest {
 
         assertEquals(1, relay.openedRequests.size)
         val opened = relay.openedRequests.first()
-        assertEquals(ShareRequestType.RECOVERY_METADATA, opened.requestType)
+        assertEquals(ShareTransactionType.INVENTORY, opened.transactionType)
         assertEquals(secretId, opened.secretId)
         assertTrue(opened.recipientKey.contentEquals(aliceContact.edPublicKey))
         assertEquals(2, opened.k)

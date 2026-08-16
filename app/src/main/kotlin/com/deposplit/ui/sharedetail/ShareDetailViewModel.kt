@@ -11,7 +11,7 @@ import com.deposplit.value_objects.Secret
 import com.deposplit.value_objects.ShareMetadata
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareRequestState
-import com.deposplit.value_objects.ShareRequestType
+import com.deposplit.value_objects.ShareTransactionType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,12 +31,12 @@ class ShareDetailViewModel(
         val share: ShareMetadata? = null,
         val secret: Secret? = null,
         val contacts: List<Contact> = emptyList(),
-        val retrieveRequest: ShareRequest? = null,
-        val deleteRequest: ShareRequest? = null,
-        val approvedRetrieveCount: Int = 0,
+        val retrievalRequest: ShareRequest? = null,
+        val removalRequest: ShareRequest? = null,
+        val approvedRetrievalCount: Int = 0,
         val isLoading: Boolean = false,
-        val isOpeningRetrieve: Boolean = false,
-        val isOpeningDelete: Boolean = false,
+        val isOpeningRetrieval: Boolean = false,
+        val isOpeningRemoval: Boolean = false,
         val isReconstructing: Boolean = false,
         val reconstructedSecret: String? = null,
         @StringRes val error: Int? = null,
@@ -74,15 +74,15 @@ class ShareDetailViewModel(
             }
                 .onSuccess { (share, secret, allRequests, contacts) ->
                     val forThisShare = allRequests.filter { it.shareId == shareId }
-                    val retrieveReq = forThisShare
-                        .filter { it.requestType == ShareRequestType.RETRIEVE }
+                    val retrievalReq = forThisShare
+                        .filter { it.transactionType == ShareTransactionType.RETRIEVAL }
                         .maxByOrNull { it.requestedAt }
-                    val deleteReq = forThisShare
-                        .filter { it.requestType == ShareRequestType.DELETE }
+                    val removalReq = forThisShare
+                        .filter { it.transactionType == ShareTransactionType.REMOVAL }
                         .maxByOrNull { it.requestedAt }
                     val approvedCount = allRequests.count {
                         it.secretId == share.secretId &&
-                            it.requestType == ShareRequestType.RETRIEVE &&
+                            it.transactionType == ShareTransactionType.RETRIEVAL &&
                             it.state == ShareRequestState.APPROVED &&
                             it.ciphertext != null
                     }
@@ -92,9 +92,9 @@ class ShareDetailViewModel(
                             share = share,
                             secret = secret,
                             contacts = contacts,
-                            retrieveRequest = retrieveReq,
-                            deleteRequest = deleteReq,
-                            approvedRetrieveCount = approvedCount,
+                            retrievalRequest = retrievalReq,
+                            removalRequest = removalReq,
+                            approvedRetrievalCount = approvedCount,
                         )
                     }
                 }
@@ -104,16 +104,16 @@ class ShareDetailViewModel(
         }
     }
 
-    fun openRetrieveRequest() = openRequest(ShareRequestType.RETRIEVE)
+    fun openRetrievalRequest() = openRequest(ShareTransactionType.RETRIEVAL)
 
-    fun openDeleteRequest() = openRequest(ShareRequestType.DELETE)
+    fun openRemovalRequest() = openRequest(ShareTransactionType.REMOVAL)
 
-    private fun openRequest(type: ShareRequestType) {
-        val isRetrieve = type == ShareRequestType.RETRIEVE
+    private fun openRequest(type: ShareTransactionType) {
+        val isRetrieval = type == ShareTransactionType.RETRIEVAL
         viewModelScope.launch {
             _uiState.update {
-                if (isRetrieve) it.copy(isOpeningRetrieve = true, actionError = null)
-                else it.copy(isOpeningDelete = true, actionError = null)
+                if (isRetrieval) it.copy(isOpeningRetrieval = true, actionError = null)
+                else it.copy(isOpeningRemoval = true, actionError = null)
             }
             runCatching {
                 withContext(Dispatchers.IO) { shareManagement.openRequest(shareId, type) }
@@ -121,8 +121,8 @@ class ShareDetailViewModel(
                 .onSuccess { load() }
                 .onFailure {
                     _uiState.update {
-                        if (isRetrieve) it.copy(isOpeningRetrieve = false, actionError = R.string.share_detail_error_open_request)
-                        else it.copy(isOpeningDelete = false, actionError = R.string.share_detail_error_open_request)
+                        if (isRetrieval) it.copy(isOpeningRetrieval = false, actionError = R.string.share_detail_error_open_request)
+                        else it.copy(isOpeningRemoval = false, actionError = R.string.share_detail_error_open_request)
                     }
                 }
         }

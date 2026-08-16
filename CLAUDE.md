@@ -77,13 +77,13 @@ services/
 │                                  implemented by IdentityService
 ├── ShareService.kt                Implements ShareManagement — Shamir.split/combine + ShareEncryption.encrypt/decrypt +
 │                                  ShareRelay + ShareRepository + ShareMetadataRepository + SecretRepository + ContactRepository;
-│                                  deposit() opens a PickUp request (incl. k/n) + writes ShareMetadata + a Secret to local
+│                                  deposit() opens a Deposit request (incl. k/n) + writes ShareMetadata + a Secret to local
 │                                  store; listDistributed() reads from local store; syncDistributed() syncs field updates
 │                                  from relay (upserts, never deletes), then reconcileDiscarding() cleans up DISCARDING
-│                                  secrets whose holder deletes have been approved; syncInbox() auto-approves pending
-│                                  PickUp requests then calls processRecoveryMetadata() (item 8, private — consumes
-│                                  approved recoveryMetadata pushes, verified against a known contact, rebuilding
-│                                  Secret/ShareMetadata); respond()'s retrieve/delete paths match the holder's HeldShare
+│                                  secrets whose holder removals have been approved; syncInbox() auto-approves pending
+│                                  Deposit requests then calls processRecoveryMetadata() (item 8, private — consumes
+│                                  approved inventory pushes, verified against a known contact, rebuilding
+│                                  Secret/ShareMetadata); respond()'s retrieval/removal paths match the holder's HeldShare
 │                                  by secretId, not the sender's local shareId (item 8); reconstruct() is a pure read
 │                                  (enforces Secret.k, no teardown — see item 11); discardSecret() fans out delete
 │                                  requests + flips Secret to DISCARDING; forceForgetSecret() is the local-only escape
@@ -98,7 +98,7 @@ value_objects/
 ├── HeldShare.kt                   HeldShare data class (incl. k/n, item 8 — reported back to the owner during recovery)
 ├── Secret.kt                      Secret data class (id, label, k, n, secretCreatedAt, state) + SecretState enum
 │                                  (ACTIVE/DISCARDING) — sender-side per-secret aggregate, see CLAUDE.md item 11
-├── Share.kt                       Role, ShareRequestType (incl. RECOVERY_METADATA, item 8 — self-approved, no
+├── Share.kt                       Role, ShareTransactionType (incl. INVENTORY, item 8 — self-approved, no
 │                                  consent phase), ShareRequestState, ShareMetadata (id/secretId/contactId only —
 │                                  label/secretCreatedAt live on Secret), ShareRequest (incl. k/n,
 │                                  senderSignature/recipientSignature)
@@ -150,7 +150,7 @@ ui/
 ├── deposit/      DepositViewModel + DepositScreen           — contactManagement.listContacts + shareManagement.deposit(...);
 │               SplitTimeWarning sealed interface + onDepositClick/confirmDespiteWarnings (item 11 non-blocking split-time warnings)
 ├── requests/     RequestsViewModel + RecipientRequestsTab   — approve/deny incoming requests
-├── sharedetail/  ShareDetailViewModel + ShareDetailScreen   — open RETRIEVE/DELETE + shareManagement.reconstruct(...);
+├── sharedetail/  ShareDetailViewModel + ShareDetailScreen   — open RETRIEVAL/REMOVAL + shareManagement.reconstruct(...);
 │               loads both the ShareMetadata and its parent Secret (for label/k)
 ├── qr/           QrPayload (v2, incl. relay field), QrDisplay{ViewModel,Screen}, QrScan{ViewModel,Screen}
 │               (CameraViewfinder composable shared with RelinkContactScreen)
@@ -208,7 +208,7 @@ When set, `ShareDetailScreen` shows the Reconstruct button unconditionally and c
 - Share encryption uses **X25519 + HKDF-SHA-256 + ChaCha20-Poly1305**. Wire format: `nonce(12 bytes) || ciphertext+tag`. See `deposplit.com/CLAUDE.md` → *Transport Encryption* for the full construction.
 - The X25519 and Ed25519 private keys are stored in the Android Keystore (wrapped with AES-256-GCM under the `deposplit_master` alias) and never leave the device as raw key material.
 - Session persistence uses plain `SharedPreferences` (just an "is registered" flag). Do not add `EncryptedSharedPreferences` without a concrete reason; `security-crypto` is not a dependency.
-- **Local share storage** (`LocalShareRepository`): held shares (plaintext share + metadata) are stored as JSON in `filesDir/shares.json`, keyed by share ID. On `syncInbox()` the relay is polled for pending PickUp requests; each is approved (which delivers the ciphertext once and clears the relay row), decrypted on-device with the holder's X25519 private key + the sender's current X25519 public key, and the resulting **plaintext** is what's stored locally — see `deposplit.com/CLAUDE.md` item 7 (holder-decrypts-at-pickup). The share is standard base64 in the JSON wire format; the sender is referenced by `contactId` (a stable local UUID), not by key, so the record survives a sender key rotation.
+- **Local share storage** (`LocalShareRepository`): held shares (plaintext share + metadata) are stored as JSON in `filesDir/shares.json`, keyed by share ID. On `syncInbox()` the relay is polled for pending Deposit requests; each is approved (which delivers the ciphertext once and clears the relay row), decrypted on-device with the holder's X25519 private key + the sender's current X25519 public key, and the resulting **plaintext** is what's stored locally — see `deposplit.com/CLAUDE.md` item 7 (holder-decrypts-at-pickup). The share is standard base64 in the JSON wire format; the sender is referenced by `contactId` (a stable local UUID), not by key, so the record survives a sender key rotation.
 
 ## what follows was moved from ../deposplit.com/CLAUDE.md to ./CLAUDE.md
 

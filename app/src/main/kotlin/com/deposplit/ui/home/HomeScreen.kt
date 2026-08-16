@@ -399,7 +399,7 @@ private fun SecretGroupCard(
                 Spacer(Modifier.height(12.dp))
                 val isDiscarding = group.secret.state == SecretState.DISCARDING
                 val canRequest = !isDiscarding && group.holders.any {
-                    val state = it.retrieveRequest?.state
+                    val state = it.retrievalRequest?.state
                     state != ShareRequestState.PENDING && state != ShareRequestState.APPROVED
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -470,7 +470,7 @@ private fun HolderRow(holder: HolderStatus, onClick: () -> Unit) {
         Column(modifier = Modifier.weight(1f)) {
             Text(holder.recipientName, style = MaterialTheme.typography.bodyMedium)
         }
-        holder.retrieveRequest?.let { req ->
+        holder.retrievalRequest?.let { req ->
             val (labelRes, color) = when (req.state) {
                 ShareRequestState.PENDING -> R.string.share_request_state_pending to MaterialTheme.colorScheme.onSurfaceVariant
                 ShareRequestState.APPROVED -> R.string.share_request_state_approved to MaterialTheme.colorScheme.primary

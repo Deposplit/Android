@@ -112,9 +112,9 @@
     <string name="requests_error_respond">Antwort fehlgeschlagen</string>
 
     <!-- Share request types and states -->
-    <string name="share_request_retrieve">Abrufen</string>
-    <string name="share_request_delete">Löschen</string>
-    <string name="share_request_recovery">Wiederherstellung</string>
+    <string name="share_request_retrieval">Abrufen</string>
+    <string name="share_request_removal">Entfernung</string>
+    <string name="share_request_inventory">Inventar</string>
     <string name="share_request_state_pending">Offen</string>
     <string name="share_request_state_approved">Angenommen</string>
     <string name="share_request_state_denied">Abgelehnt</string>
@@ -124,8 +124,8 @@
     <string name="share_detail_unknown_contact">Unbekannter Kontakt</string>
     <string name="share_detail_recipient_label">Empfänger</string>
     <string name="share_detail_deposited_label">Hinterlegt</string>
-    <string name="share_detail_retrieve_button">Abruf anfragen</string>
-    <string name="share_detail_delete_button">Löschung anfragen</string>
+    <string name="share_detail_retrieval_button">Abruf anfragen</string>
+    <string name="share_detail_removal_button">Entfernung anfragen</string>
     <string name="share_detail_reconstruct_title">Geheimnis rekonstruieren</string>
     <string name="share_detail_biometric_none_enrolled">Hinterlege eine biometrische Methode (Fingerabdruck oder Gesicht) in den Geräteeinstellungen, um das Geheimnis zu rekonstruieren.</string>
     <string name="share_detail_biometric_no_hardware">Dieses Gerät hat keinen biometrischen Sensor — Rekonstruktion nicht möglich.</string>

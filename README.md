@@ -123,7 +123,7 @@ Android/
 │   │   │   │   ├── ShareEncryption.kt   Intra-hexagon interface: encrypt(plaintext, recipientXPublicKey),
 │   │   │   │   │                        decrypt(noncePlusCiphertext, recipientXPublicKey) — consumed by ShareService
 │   │   │   │   ├── ShareService.kt      Implements ShareManagement — SSS split/combine + ShareEncryption.encrypt/decrypt + relay + ShareMetadataRepository + SecretRepository;
-│   │   │   │   │                        deposit() writes ShareMetadata + a Secret to local store (incl. k/n on the pick_up); listDistributed()/listSecrets() read from local store;
+│   │   │   │   │                        deposit() writes ShareMetadata + a Secret to local store (incl. k/n on the deposit); listDistributed()/listSecrets() read from local store;
 │   │   │   │   │                        syncDistributed() syncs field updates from relay (upserts, never deletes) then reconciles DISCARDING secrets;
 │   │   │   │   │                        syncInbox() also calls processRecoveryMetadata() (item 8) to rebuild Secret/ShareMetadata from verified holder pushes;
 │   │   │   │   │                        respond() matches retrieve/delete by secretId, not the sender's local shareId (item 8);
@@ -136,7 +136,7 @@ Android/
 │   │   │       ├── HeldShare.kt         HeldShare (plaintext share + metadata + k/n, held by the recipient)
 │   │   │       ├── Secret.kt            Secret (id, label, k, n, secretCreatedAt, state) + SecretState — sender-side per-secret
 │   │   │       │                        aggregate, see CLAUDE.md item 11
-│   │   │       └── Share.kt             Role, ShareRequestType (incl. RECOVERY_METADATA — item 8), ShareRequestState,
+│   │   │       └── Share.kt             Role, ShareTransactionType (incl. INVENTORY — item 8), ShareRequestState,
 │   │   │                                ShareMetadata (id/secretId/contactId only), ShareRequest (incl. k/n)
 │   │   └── test/kotlin/com/deposplit/shamir/
 │   │       └── ShamirTest.kt            SSS unit tests
@@ -328,11 +328,11 @@ You need **three AVD instances** (or three physical devices on the same WiFi, us
 | 7 | AVD-A | Add Bob as a contact; add Carol as a contact |
 | 8 | AVD-A | FAB (＋) → enter a label (e.g. "test secret"), a secret text, select Bob and Carol, choose threshold 2-of-2 → **Deposit** |
 | 9 | AVD-A | **My Shared Secrets** tab → one grouped card for the secret; expand it to see Bob and Carol as holders |
-| 10 | AVD-B | **Their Secret Shares** tab → Bob's inbox shows Alice's PickUp request → app automatically approves it, decrypts the share, and stores it as plaintext locally; relay clears the ciphertext |
-| 11 | AVD-C | **Their Secret Shares** tab → Carol's inbox shows Alice's PickUp request → app approves the same way |
-| 12 | AVD-A | Expand the card → tap **Request Retrieval** (opens Retrieve requests for Bob and Carol at once) |
-| 13 | AVD-B | **Requests** tab → a Retrieve request from Alice appears → app re-encrypts the locally-stored plaintext to Alice's current key → tap **Approve** (ciphertext sent in response body) |
-| 14 | AVD-C | **Requests** tab → a Retrieve request from Alice appears → tap **Approve** |
+| 10 | AVD-B | **Their Secret Shares** tab → Bob's inbox shows Alice's Deposit request → app automatically approves it, decrypts the share, and stores it as plaintext locally; relay clears the ciphertext |
+| 11 | AVD-C | **Their Secret Shares** tab → Carol's inbox shows Alice's Deposit request → app approves the same way |
+| 12 | AVD-A | Expand the card → tap **Request Retrieval** (opens Retrieval requests for Bob and Carol at once) |
+| 13 | AVD-B | **Requests** tab → a Retrieval request from Alice appears → app re-encrypts the locally-stored plaintext to Alice's current key → tap **Approve** (ciphertext sent in response body) |
+| 14 | AVD-C | **Requests** tab → a Retrieval request from Alice appears → tap **Approve** |
 | 15 | AVD-A | Expand the card → both holders show "Approved" → tap **Reconstruct** in `ShareDetailScreen` → biometric prompt → secret appears |
 
 The threshold logic (`Shamir.combine`) is already fully tested in the hexagon unit tests; the manual test above validates the full end-to-end path including encryption and transport.
@@ -343,7 +343,7 @@ After step 12 above: Bob taps **Deny** → on Alice's side the Retrieve section 
 
 ### Flow 3 — Sender-initiated deletion
 
-Alice taps **Request Deletion** on a share (via `ShareDetailScreen`) → Bob's Requests tab shows a Delete request → Bob approves → Bob's PickUp row is deleted (cascade-deleting any related Retrieve/Delete rows) → the share disappears from Bob's **Their Secret Shares** tab.
+Alice taps **Request Removal** on a share (via `ShareDetailScreen`) → Bob's Requests tab shows a Removal request → Bob approves → Bob's Deposit row is deleted (cascade-deleting any related Retrieval/Removal rows) → the share disappears from Bob's **Their Secret Shares** tab.
 
 ### Flow 4 — Recipient-initiated deletion
 

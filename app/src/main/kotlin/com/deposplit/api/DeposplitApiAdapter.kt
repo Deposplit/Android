@@ -5,7 +5,7 @@ import com.deposplit.driven_ports.ShareRelay
 import com.deposplit.value_objects.Role
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareRequestState
-import com.deposplit.value_objects.ShareRequestType
+import com.deposplit.value_objects.ShareTransactionType
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -31,7 +31,7 @@ class DeposplitApiAdapter(
         recipientKey: ByteArray,
         label: String,
         secretCreatedAt: Instant,
-        requestType: ShareRequestType,
+        transactionType: ShareTransactionType,
         shareId: UUID?,
         ciphertext: ByteArray?,
         k: Int?,
@@ -44,7 +44,7 @@ class DeposplitApiAdapter(
                 recipientKey = recipientKey.encodeBase64Url(),
                 label = label,
                 secretCreatedAt = secretCreatedAt.toString(),
-                requestType = requestType.toWire(),
+                transactionType = transactionType.wireValue,
                 shareId = shareId?.toString(),
                 ciphertext = ciphertext?.encodeBase64(),
                 k = k,
@@ -55,10 +55,10 @@ class DeposplitApiAdapter(
         return json.decodeFromString<ShareRequestJson>(execute("POST", "/share-requests", body)).toDomain()
     }
 
-    override fun listShareRequests(role: Role, requestType: ShareRequestType?, state: ShareRequestState?): List<ShareRequest> {
+    override fun listShareRequests(role: Role, transactionType: ShareTransactionType?, state: ShareRequestState?): List<ShareRequest> {
         val query = buildString {
             append("?role=${role.name.lowercase()}")
-            if (requestType != null) append("&type=${requestType.toWire()}")
+            if (transactionType != null) append("&type=${transactionType.wireValue}")
             if (state != null) append("&state=${state.name.lowercase()}")
         }
         return json.decodeFromString<List<ShareRequestJson>>(execute("GET", "/share-requests$query"))
@@ -157,7 +157,7 @@ class DeposplitApiAdapter(
         val recipientKey: String,
         val label: String,
         val secretCreatedAt: String,
-        val requestType: String,
+        val transactionType: String,
         val shareId: String? = null,
         val ciphertext: String? = null,
         val k: Int? = null,
@@ -176,7 +176,7 @@ class DeposplitApiAdapter(
         val recipientKey: String,
         val label: String,
         val secretCreatedAt: String,
-        val requestType: String,
+        val transactionType: String,
         val state: String,
         val shareId: String? = null,
         val requestedAt: String,
@@ -197,13 +197,7 @@ class DeposplitApiAdapter(
         recipientKey = recipientKey.decodeBase64Url(),
         label = label,
         secretCreatedAt = Instant.parse(secretCreatedAt),
-        requestType = when (requestType) {
-            "pick_up" -> ShareRequestType.PICK_UP
-            "retrieve" -> ShareRequestType.RETRIEVE
-            "delete" -> ShareRequestType.DELETE
-            "recovery_metadata" -> ShareRequestType.RECOVERY_METADATA
-            else -> error("Unknown requestType: $requestType")
-        },
+        transactionType = ShareTransactionType.fromWire(transactionType) ?: error("Unknown transactionType: $transactionType"),
         state = when (state) {
             "pending" -> ShareRequestState.PENDING
             "approved" -> ShareRequestState.APPROVED
@@ -219,13 +213,6 @@ class DeposplitApiAdapter(
         senderSignature = senderSignature.decodeBase64Url(),
         recipientSignature = recipientSignature?.decodeBase64Url(),
     )
-
-    private fun ShareRequestType.toWire(): String = when (this) {
-        ShareRequestType.PICK_UP -> "pick_up"
-        ShareRequestType.RETRIEVE -> "retrieve"
-        ShareRequestType.DELETE -> "delete"
-        ShareRequestType.RECOVERY_METADATA -> "recovery_metadata"
-    }
 
     companion object {
         private val secureRandom = SecureRandom()

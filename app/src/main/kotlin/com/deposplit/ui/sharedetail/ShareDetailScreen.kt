@@ -48,7 +48,6 @@ import com.deposplit.R
 import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareRequestState
-import com.deposplit.value_objects.ShareRequestType
 import com.deposplit.ui.biometric.AuthAvailability
 import com.deposplit.ui.biometric.AuthResult
 import com.deposplit.ui.biometric.authenticate
@@ -139,25 +138,25 @@ fun ShareDetailScreen(shareId: UUID, onNavigateBack: () -> Unit) {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
                 RequestSection(
-                    title = stringResource(R.string.share_request_retrieve),
-                    request = uiState.retrieveRequest,
-                    isOpening = uiState.isOpeningRetrieve,
-                    buttonLabel = stringResource(R.string.share_detail_retrieve_button),
-                    onOpen = viewModel::openRetrieveRequest,
+                    title = stringResource(R.string.share_request_retrieval),
+                    request = uiState.retrievalRequest,
+                    isOpening = uiState.isOpeningRetrieval,
+                    buttonLabel = stringResource(R.string.share_detail_retrieval_button),
+                    onOpen = viewModel::openRetrievalRequest,
                 )
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
                 RequestSection(
-                    title = stringResource(R.string.share_request_delete),
-                    request = uiState.deleteRequest,
-                    isOpening = uiState.isOpeningDelete,
-                    buttonLabel = stringResource(R.string.share_detail_delete_button),
-                    onOpen = viewModel::openDeleteRequest,
+                    title = stringResource(R.string.share_request_removal),
+                    request = uiState.removalRequest,
+                    isOpening = uiState.isOpeningRemoval,
+                    buttonLabel = stringResource(R.string.share_detail_removal_button),
+                    onOpen = viewModel::openRemovalRequest,
                 )
 
-                val neededRetrieves = uiState.secret?.k ?: Int.MAX_VALUE
-                if (uiState.approvedRetrieveCount >= neededRetrieves || uiState.reconstructedSecret != null) {
+                val neededRetrievals = uiState.secret?.k ?: Int.MAX_VALUE
+                if (uiState.approvedRetrievalCount >= neededRetrievals || uiState.reconstructedSecret != null) {
                     HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
                     Text(stringResource(R.string.share_detail_reconstruct_title), style = MaterialTheme.typography.titleSmall)
@@ -165,8 +164,8 @@ fun ShareDetailScreen(shareId: UUID, onNavigateBack: () -> Unit) {
                     Text(
                         text = pluralStringResource(
                             R.plurals.share_detail_approved_shares,
-                            uiState.approvedRetrieveCount,
-                            uiState.approvedRetrieveCount,
+                            uiState.approvedRetrievalCount,
+                            uiState.approvedRetrievalCount,
                         ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

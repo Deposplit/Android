@@ -31,7 +31,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.deposplit.R
 import com.deposplit.value_objects.ShareRequest
-import com.deposplit.value_objects.ShareRequestType
+import com.deposplit.value_objects.ShareTransactionType
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -124,27 +124,27 @@ private fun RequestItem(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                val (badgeText, badgeBackground, badgeContent) = when (request.requestType) {
-                    ShareRequestType.PICK_UP -> Triple(
-                        stringResource(R.string.share_request_pick_up),
+                val (badgeText, badgeBackground, badgeContent) = when (request.transactionType) {
+                    ShareTransactionType.DEPOSIT -> Triple(
+                        stringResource(R.string.share_request_deposit),
                         MaterialTheme.colorScheme.secondaryContainer,
                         MaterialTheme.colorScheme.onSecondaryContainer,
                     )
-                    ShareRequestType.RETRIEVE -> Triple(
-                        stringResource(R.string.share_request_retrieve),
+                    ShareTransactionType.RETRIEVAL -> Triple(
+                        stringResource(R.string.share_request_retrieval),
                         MaterialTheme.colorScheme.primaryContainer,
                         MaterialTheme.colorScheme.onPrimaryContainer,
                     )
-                    ShareRequestType.DELETE -> Triple(
-                        stringResource(R.string.share_request_delete),
+                    ShareTransactionType.REMOVAL -> Triple(
+                        stringResource(R.string.share_request_removal),
                         MaterialTheme.colorScheme.errorContainer,
                         MaterialTheme.colorScheme.onErrorContainer,
                     )
-                    // Never surfaced here — recoveryMetadata is a self-approved push, consumed
+                    // Never surfaced here — inventory is a self-approved push, consumed
                     // silently by syncInbox's processRecoveryMetadata, not routed through
                     // listPendingRequests.
-                    ShareRequestType.RECOVERY_METADATA -> Triple(
-                        stringResource(R.string.share_request_recovery),
+                    ShareTransactionType.INVENTORY -> Triple(
+                        stringResource(R.string.share_request_inventory),
                         MaterialTheme.colorScheme.secondaryContainer,
                         MaterialTheme.colorScheme.onSecondaryContainer,
                     )

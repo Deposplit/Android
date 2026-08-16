@@ -25,13 +25,6 @@ object PayloadCanonical {
     private val base64Std: Base64.Encoder = Base64.getEncoder()
     private val base64Url: Base64.Encoder = Base64.getUrlEncoder().withoutPadding()
 
-    private fun ShareRequestType.toWire(): String = when (this) {
-        ShareRequestType.PICK_UP -> "pick_up"
-        ShareRequestType.RETRIEVE -> "retrieve"
-        ShareRequestType.DELETE -> "delete"
-        ShareRequestType.RECOVERY_METADATA -> "recovery_metadata"
-    }
-
     /**
      * Signed by the sender when opening a share request (`senderSignature`).
      *
@@ -40,7 +33,7 @@ object PayloadCanonical {
      */
     fun forOpen(
         secretId: UUID,
-        requestType: ShareRequestType,
+        transactionType: ShareTransactionType,
         recipientKey: ByteArray,
         label: String,
         secretCreatedAt: Instant,
@@ -50,7 +43,7 @@ object PayloadCanonical {
         n: Int? = null,
     ): ByteArray = listOf(
         secretId.toString(),
-        requestType.toWire(),
+        transactionType.wireValue,
         base64Url.encodeToString(recipientKey),
         label,
         secretCreatedAt.toEpochMilli().toString(),

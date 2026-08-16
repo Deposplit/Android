@@ -12,7 +12,7 @@ import com.deposplit.value_objects.Secret
 import com.deposplit.value_objects.SecretState
 import com.deposplit.value_objects.ShareMetadata
 import com.deposplit.value_objects.ShareRequest
-import com.deposplit.value_objects.ShareRequestType
+import com.deposplit.value_objects.ShareTransactionType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,7 +26,7 @@ data class HolderStatus(
     val shareId: UUID,
     val contactId: UUID,
     val recipientName: String,
-    val retrieveRequest: ShareRequest?,
+    val retrievalRequest: ShareRequest?,
 )
 
 // Graduated n_live health alarm — see deposplit.com/CLAUDE.md "What is next" item 11. `n_live`
@@ -216,14 +216,14 @@ class HomeViewModel(
                 val shares = byShareSecretId[secret.id] ?: emptyList()
                 val holders = shares.map { share ->
                     val name = contacts.find { it.id == share.contactId }?.pseudonym ?: "?"
-                    val latestRetrieve = allRequests
-                        .filter { it.shareId == share.id && it.requestType == ShareRequestType.RETRIEVE }
+                    val latestRetrieval = allRequests
+                        .filter { it.shareId == share.id && it.transactionType == ShareTransactionType.RETRIEVAL }
                         .maxByOrNull { it.requestedAt }
                     HolderStatus(
                         shareId = share.id,
                         contactId = share.contactId,
                         recipientName = name,
-                        retrieveRequest = latestRetrieve,
+                        retrievalRequest = latestRetrieval,
                     )
                 }
                 SecretGroup(secret = secret, holders = holders)
