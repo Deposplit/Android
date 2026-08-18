@@ -68,9 +68,19 @@ class ContactService(
                 xPublicKey = xPublicKey ?: existing.xPublicKey,
                 verificationLevel = verificationLevel ?: existing.verificationLevel,
                 verifiedAt = if (verificationLevel != null) Instant.now() else existing.verifiedAt,
+                revokedEdKeys = existing.revokedEdKeys,
+                keyChangedAt = if (changingKeys) Instant.now() else existing.keyChangedAt,
             )
         )
     }
 
     override fun deleteContact(contactId: UUID) = contactRepository.delete(contactId)
+
+    // Item 10 — idempotent: a no-op if the key is already in revokedEdKeys.
+    override fun markKeyCompromised(contactId: UUID, edPublicKey: ByteArray?) {
+        val existing = contactRepository.getById(contactId) ?: error("Contact not found for id $contactId")
+        val keyToFlag = edPublicKey ?: existing.edPublicKey
+        if (existing.revokedEdKeys.any { it.contentEquals(keyToFlag) }) return
+        contactRepository.save(existing.copy(revokedEdKeys = existing.revokedEdKeys + keyToFlag))
+    }
 }

@@ -50,6 +50,14 @@
     <string name="contacts_error_load">Laden fehlgeschlagen</string>
     <string name="contacts_error_delete">Löschen fehlgeschlagen</string>
 
+    <!-- Item 10 — Kompromittierung des Schlüssels -->
+    <string name="contacts_mark_compromised_description">Schlüssel von %1$s als kompromittiert markieren</string>
+    <string name="contacts_revoked_badge_description">Ein früherer Schlüssel dieses Kontakts ist als kompromittiert markiert</string>
+    <string name="contacts_mark_compromised_title">Den aktuellen Schlüssel dieses Kontakts als kompromittiert markieren?</string>
+    <string name="contacts_mark_compromised_message">Tun Sie dies nur, wenn Sie außerhalb dieses Kanals Grund zur Annahme haben, dass der Schlüssel von %1$s gestohlen wurde. Deposplit lehnt dann jede künftige Schlüsseländerung ab, die Kontinuität zu diesem Schlüssel beansprucht — Sie müssen die Person erneut verifizieren, persönlich oder über einen vertrauenswürdigen Kanal, um die Verbindung wiederherzustellen.</string>
+    <string name="contacts_mark_compromised_confirm">Als kompromittiert markieren</string>
+    <string name="contacts_error_mark_compromised">Markieren als kompromittiert fehlgeschlagen</string>
+
     <!-- Relink contact (item 8 — identity recovery) -->
     <string name="relink_title">%1$s neu verknüpfen</string>
     <string name="relink_scanned_message">Neue Schlüssel für %1$s gescannt.</string>
@@ -110,6 +118,16 @@
     <string name="requests_action_approve">Annehmen</string>
     <string name="requests_error_load">Laden fehlgeschlagen</string>
     <string name="requests_error_respond">Antwort fehlgeschlagen</string>
+
+    <!-- Item 10 — Schlüsselkonflikte (nie automatisch aufgelöst) und Verstärkung bei Abruf-Freigabe -->
+    <string name="requests_key_conflict_title">Möglicher Identitätsdiebstahl</string>
+    <string name="requests_key_conflict_message">Der Schlüssel von %1$s hat sich geändert, aber der vorherige Schlüssel ist als kompromittiert markiert. Dies könnte ein Angreifer mit dem gestohlenen Schlüssel sein, oder ein Fehlalarm. Um die Verbindung wiederherzustellen, verifizieren Sie %1$s erneut — persönlich oder über einen vertrauenswürdigen Kanal — und nutzen Sie dann „Neu verknüpfen“ auf dem Kontakte-Bildschirm. Akzeptieren Sie dies nicht automatisch.</string>
+    <string name="requests_key_conflict_detected_at">Erkannt %1$s</string>
+    <string name="requests_key_conflict_dismiss">Verwerfen</string>
+    <plurals name="requests_key_changed_warning">
+        <item quantity="one">Der Schlüssel von %1$s hat sich vor %2$d Tag geändert — vor der Freigabe erneut verifizieren</item>
+        <item quantity="other">Der Schlüssel von %1$s hat sich vor %2$d Tagen geändert — vor der Freigabe erneut verifizieren</item>
+    </plurals>
 
     <!-- Share request types and states -->
     <string name="share_request_retrieval">Abrufen</string>

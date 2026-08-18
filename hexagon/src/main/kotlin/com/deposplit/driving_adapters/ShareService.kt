@@ -1,6 +1,7 @@
 package com.deposplit.driving_adapters
 
 import com.deposplit.driven_ports.ContactRepository
+import com.deposplit.driven_ports.KeyConflictRepository
 import com.deposplit.driven_ports.SecretRepository
 import com.deposplit.driven_ports.ShareMetadataRepository
 import com.deposplit.driven_ports.ShareRelay
@@ -13,6 +14,7 @@ import com.deposplit.shamir.combine
 import com.deposplit.shamir.split
 import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.HeldShare
+import com.deposplit.value_objects.KeyConflict
 import com.deposplit.value_objects.PayloadCanonical
 import com.deposplit.value_objects.Role
 import com.deposplit.value_objects.Secret
@@ -34,6 +36,7 @@ class ShareService(
     private val secretRepository: SecretRepository,
     private val contactRepository: ContactRepository,
     private val contactManagement: ContactManagement,
+    private val keyConflictRepository: KeyConflictRepository,
     private val identity: Identity,
 ) : ShareManagement {
 
@@ -306,6 +309,28 @@ class ShareService(
                 val contact = contactRepository.getByEdKey(notice.oldEd25519Key) ?: continue
                 val canon = PayloadCanonical.forRotation(notice.recipientKey, notice.newEd25519Key, notice.newX25519Key)
                 if (!identity.verify(canon, notice.signature, notice.oldEd25519Key)) continue
+                // Item 10 — a rotation claiming continuity from a key the user has flagged
+                // compromised is never auto-accepted. Capture a durable local KeyConflict record
+                // *before* touching the relay notice: the relay may lose its state at any time and
+                // must never be relied on to keep the alert alive. Skip updateContact entirely —
+                // the contact record is left untouched; only a fresh human-verified relink can move
+                // it forward.
+                if (contact.revokedEdKeys.any { it.contentEquals(notice.oldEd25519Key) }) {
+                    runCatching {
+                        keyConflictRepository.save(
+                            KeyConflict(
+                                id = UUID.randomUUID(),
+                                contactId = contact.id,
+                                oldEd25519Key = notice.oldEd25519Key,
+                                newEd25519Key = notice.newEd25519Key,
+                                newX25519Key = notice.newX25519Key,
+                                detectedAt = Instant.now(),
+                            )
+                        )
+                    }
+                    runCatching { relay.deleteRotation(notice.id) }
+                    continue
+                }
                 val downgraded = minOf(contact.verificationLevel, VerificationLevel.LOW)
                 runCatching {
                     contactManagement.updateContact(contact.id, notice.newEd25519Key, notice.newX25519Key, downgraded)
@@ -423,4 +448,10 @@ class ShareService(
             .filter { it.contactId == contactId }
             .forEach { shareRepository.delete(it.id) }
     }
+
+    // ── Item 10: key conflicts (never auto-resolved) ────────────────────────────
+
+    override fun listKeyConflicts(): List<KeyConflict> = keyConflictRepository.getAll()
+
+    override fun dismissKeyConflict(id: UUID) = keyConflictRepository.delete(id)
 }

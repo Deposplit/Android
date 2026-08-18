@@ -46,13 +46,17 @@ shamir/
 driving_ports/
 ├── Identity.kt                    isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign
 ├── ContactManagement.kt           listContacts, addManually, addFromQr, updateContact (contact-update-in-place,
-│                                  item 8 — key change forces a fresh verificationLevel), deleteContact
+│                                  item 8 — key change forces a fresh verificationLevel), deleteContact,
+│                                  markKeyCompromised (item 10 — flags an Ed25519 key into the contact's
+│                                  revokedEdKeys history; defaults to the contact's current key when none is given;
+│                                  idempotent)
 ├── ShareManagement.kt             deposit, listSecrets, listDistributed, listSentRequests, requestAll, openRequest,
 │                                  reconstruct (pure read, enforces real k), discardSecret, forceForgetSecret,
 │                                  syncInbox, listHeld, listPendingRequests, respond, deleteHeldShare,
 │                                  deleteAllHeldFromSender, pushRecoveryMetadata (item 8 — holder side);
 │                                  pushRotation (item 9, client primitive only — no "regenerate my own identity"
-│                                  UI trigger exists yet, see deposplit.com/TODO.md item 9's scope-split note)
+│                                  UI trigger exists yet, see deposplit.com/TODO.md item 9's scope-split note);
+│                                  listKeyConflicts, dismissKeyConflict (item 10, local-only, no relay involvement)
 └── CatalogManagement.kt           exportCatalog, importCatalog — optional non-secret catalog backup (item 8)
 driven_ports/
 ├── IdentityStore.kt               isRegistered, save, pseudonym, edPublicKey, edPrivateKey, xPublicKey, xPrivateKey
@@ -61,6 +65,10 @@ driven_ports/
 │                                  item 8), save, delete (local held-share storage)
 ├── SecretRepository.kt            getAll, save, delete (local store of sender-side Secret aggregates)
 ├── ShareMetadataRepository.kt     getAll, save, delete (local store of distributed ShareMetadata)
+├── KeyConflictRepository.kt       getAll, save, delete — local store of item 10's KeyConflict records; the
+│                                  durable copy a detected conflict is captured into before its relay notice is
+│                                  deleted, since the relay may lose its state at any time and must never be
+│                                  relied on to keep the alert alive
 ├── ShareRelay.kt                  openShareRequest(..., k, n, senderSignature), listShareRequests, getShareRequest,
 │                                  respondToShareRequest(..., recipientSignature), deleteShareRequest, deleteShareRequests,
 │                                  withdrawShareRequests (item 9 — best-effort tombstone, not a hard delete),
@@ -77,7 +85,9 @@ services/
 │                                  to IdentityStore
 ├── ContactService.kt              Implements ContactManagement — key-size validation, VerificationLevel assignment,
 │                                  UUID/timestamp generation; delegates persistence to ContactRepository;
-│                                  updateContact requires a fresh verificationLevel whenever either key changes
+│                                  updateContact requires a fresh verificationLevel whenever either key changes and
+│                                  now also carries revokedEdKeys forward and stamps keyChangedAt when a key
+│                                  actually changes (item 10); markKeyCompromised (item 10) is idempotent
 ├── ShareEncryption.kt             Intra-hexagon interface: encrypt(plaintext, recipientXPublicKey),
 │                                  decrypt(noncePlusCiphertext, recipientXPublicKey) — consumed by ShareService,
 │                                  implemented by IdentityService
@@ -100,13 +110,25 @@ services/
 │                                  old key, downgrading the verification level to min(old, LOW) per item 10's unifying
 │                                  rule; deleteHeldShare/deleteAllHeldFromSender best-effort withdraw via the sender's
 │                                  relay before deleting locally (item 9); syncDistributed() drops the local
-│                                  ShareMetadata pointer and deletes the relay row when it observes a WITHDRAWN deposit
+│                                  ShareMetadata pointer and deletes the relay row when it observes a WITHDRAWN deposit;
+│                                  takes a new KeyConflictRepository dependency (item 10) so processRotations() checks
+│                                  the notice's oldEd25519Key against the contact's revokedEdKeys *before* the
+│                                  downgrade/auto-accept branch — on a match it saves a KeyConflict, deletes the relay
+│                                  notice, and skips updateContact entirely (never auto-resolved); listKeyConflicts/
+│                                  dismissKeyConflict (item 10) delegate directly to KeyConflictRepository
 └── CatalogService.kt              Implements CatalogManagement — exportCatalog reads Contact/Secret/ShareMetadata
                                    repositories; importCatalog upserts-if-absent-by-id, never overwriting a newer
                                    local record (item 8)
 value_objects/
 ├── Catalog.kt                     Catalog data class (contacts, secrets, shareMetadata) — item 8's optional backup
-├── Contact.kt                     Contact data class (incl. relayBaseUrl BYOR override) + VerificationLevel enum
+├── Contact.kt                     Contact data class (incl. relayBaseUrl BYOR override) + VerificationLevel enum;
+│                                  gained revokedEdKeys: List<ByteArray> (item 10 — historical set, not a single
+│                                  flag, so a later legitimate relink to a genuinely new key is never blocked) and
+│                                  keyChangedAt: Instant? (item 10 — stamped by updateContact on any key change,
+│                                  surfaced as "key changed N days ago" on retrieve-approval)
+├── KeyConflict.kt                 KeyConflict data class (item 10) — id, contactId, oldEd25519Key, newEd25519Key,
+│                                  newX25519Key, detectedAt; captured the instant a rotation notice's old key is
+│                                  found in revokedEdKeys, durable and local, never re-derived from the relay
 ├── HeldShare.kt                   HeldShare data class (incl. k/n, item 8 — reported back to the owner during recovery)
 ├── Secret.kt                      Secret data class (id, label, k, n, secretCreatedAt, state) + SecretState enum
 │                                  (ACTIVE/DISCARDING) — sender-side per-secret aggregate, see CLAUDE.md item 11
@@ -146,7 +168,13 @@ settings/
 └── CatalogCodec.kt          JSON (de)serialization for Catalog (item 8) — lives in the app layer since the
                              hexagon has no JSON dependency; mirrors the Local*Repository wire-shape conventions
 contacts/
-└── LocalContactRepository.kt  JSON file in filesDir; @Synchronized; kotlinx.serialization wire types
+├── LocalContactRepository.kt  JSON file in filesDir; @Synchronized; kotlinx.serialization wire types; ContactWire
+│                            gained non-optional revokedEdKeys: List<String> (base64url) and keyChangedAt: String?
+│                            (item 10 — no optional/fallback decode shim, since Deposplit is pre-launch and local
+│                            stores are wiped, not migrated)
+└── LocalKeyConflictRepository.kt  JSON file in filesDir (key_conflicts.json) (item 10) — structurally identical
+                             to LocalShareMetadataRepository.kt: @Synchronized, kotlinx.serialization wire type,
+                             base64url keys, ISO-8601 timestamps
 shares/
 ├── LocalShareRepository.kt         JSON file in filesDir (shares.json); @Synchronized; stores HeldShare (plaintext share + metadata, incl. k/n) keyed by share ID; getPlaintextShare keyed on secretId (item 8)
 ├── LocalSecretRepository.kt        JSON file in filesDir (secrets.json); @Synchronized; local store of sender-side Secret aggregates
@@ -157,7 +185,9 @@ ui/
 │                                                              SecretGroup (wraps a Secret) + HolderStatus (sender view); HeldShareDisplay + HeldSortOrder (recipient view)
 │                                                              SecretHealth (graduated n_live-vs-k badge, item 11) computed on SecretGroup
 │                                                              requestAll, discardSecret, forceForgetSecret, setHeldSortOrder, deleteSingleShare, deleteAllFromSender
-├── contacts/     ContactsViewModel + ContactsScreen (contactManagement.listContacts/deleteContact, "Relink" icon per row),
+├── contacts/     ContactsViewModel + ContactsScreen (contactManagement.listContacts/deleteContact, "Relink" icon per row;
+│               a red warning badge when revokedEdKeys is non-empty, a "Mark Key Compromised" IconButton +
+│               AlertDialog confirmation, item 10 — viewModel.markKeyCompromised),
 │               AddContactViewModel + AddContactScreen (contactManagement.addManually),
 │               QrScanViewModel uses contactManagement.addFromQr,
 │               RelinkContactViewModel + RelinkContactScreen (item 8) — scans a re-presented QR code, calls
@@ -165,7 +195,13 @@ ui/
 │               QrScanViewModel, which always mints a *new* contact
 ├── deposit/      DepositViewModel + DepositScreen           — contactManagement.listContacts + shareManagement.deposit(...);
 │               SplitTimeWarning sealed interface + onDepositClick/confirmDespiteWarnings (item 11 non-blocking split-time warnings)
-├── requests/     RequestsViewModel + RecipientRequestsTab   — approve/deny incoming requests
+├── requests/     RequestsViewModel + RecipientRequestsTab   — approve/deny incoming requests; RequestsViewModel
+│               gained keyConflicts: List<KeyConflict> (loaded in load(), soft-failed), keyChangedDaysAgo(request)
+│               (item 10 — gated to RETRIEVAL requests only, per the "key change → quick retrieval" attack
+│               signature), contactName(conflict), dismissConflict(id); RecipientRequestsTab renders a
+│               KeyConflictItem list ("Possible impersonation attempt," Dismiss only, steers to the existing
+│               Relink flow rather than any new "Accept" action, never auto-resolved) above pending requests, and
+│               RequestItem shows an orange "key changed N days ago" Label when keyChangedDaysAgo is non-null
 ├── sharedetail/  ShareDetailViewModel + ShareDetailScreen   — open RETRIEVAL/REMOVAL + shareManagement.reconstruct(...);
 │               loads both the ShareMetadata and its parent Secret (for label/k)
 ├── qr/           QrPayload (v2, incl. relay field), QrDisplay{ViewModel,Screen}, QrScan{ViewModel,Screen}

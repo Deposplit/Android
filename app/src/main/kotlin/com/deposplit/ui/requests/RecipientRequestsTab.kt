@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -30,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.deposplit.R
+import com.deposplit.value_objects.KeyConflict
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareTransactionType
 import java.time.Instant
@@ -43,6 +45,9 @@ fun RecipientRequestsTab(
     uiState: RequestsViewModel.UiState,
     onRetry: () -> Unit,
     onRespond: (UUID, Boolean) -> Unit,
+    keyChangedDaysAgo: (ShareRequest) -> Long? = { null },
+    contactName: (KeyConflict) -> String? = { null },
+    onDismissConflict: (UUID) -> Unit = {},
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         if (uiState.error != null) {
@@ -76,9 +81,9 @@ fun RecipientRequestsTab(
                 contentAlignment = Alignment.Center,
             ) { CircularProgressIndicator() }
 
-            uiState.error != null && uiState.requests.isEmpty() -> Spacer(Modifier.weight(1f))
+            uiState.error != null && uiState.requests.isEmpty() && uiState.keyConflicts.isEmpty() -> Spacer(Modifier.weight(1f))
 
-            uiState.requests.isEmpty() -> Box(
+            uiState.requests.isEmpty() && uiState.keyConflicts.isEmpty() -> Box(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 contentAlignment = Alignment.Center,
             ) {
@@ -94,6 +99,13 @@ fun RecipientRequestsTab(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                items(uiState.keyConflicts, key = { it.id }) { conflict ->
+                    KeyConflictItem(
+                        conflict = conflict,
+                        contactName = contactName(conflict) ?: keyPreview(conflict.oldEd25519Key),
+                        onDismiss = { onDismissConflict(conflict.id) },
+                    )
+                }
                 items(uiState.requests, key = { it.id }) { request ->
                     val senderName = uiState.contacts
                         .find { it.edPublicKey.contentEquals(request.senderKey) }
@@ -102,6 +114,7 @@ fun RecipientRequestsTab(
                     RequestItem(
                         request = request,
                         senderName = senderName,
+                        keyChangedDaysAgo = keyChangedDaysAgo(request),
                         isResponding = request.id in uiState.respondingIds,
                         onRespond = { approved -> onRespond(request.id, approved) },
                     )
@@ -111,10 +124,47 @@ fun RecipientRequestsTab(
     }
 }
 
+/** Item 10 — never auto-resolved. Resolving "yes, this really was them" goes through the existing
+ * Relink (Key Changed) flow on the Contacts screen, not through anything here; this card only
+ * warns and lets the user acknowledge (dismiss) the alert.
+ */
+@Composable
+private fun KeyConflictItem(conflict: KeyConflict, contactName: String, onDismiss: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Default.Shield, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                Text(
+                    text = stringResource(R.string.requests_key_conflict_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.requests_key_conflict_message, contactName),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = stringResource(R.string.requests_key_conflict_detected_at, formatDate(conflict.detectedAt)),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.requests_key_conflict_dismiss))
+            }
+        }
+    }
+}
+
 @Composable
 private fun RequestItem(
     request: ShareRequest,
     senderName: String,
+    keyChangedDaysAgo: Long?,
     isResponding: Boolean,
     onRespond: (Boolean) -> Unit,
 ) {
@@ -174,6 +224,24 @@ private fun RequestItem(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            // Item 10's retrieve-approval hardening — the attack signature is key change followed
+            // by a quick retrieval request, so nudge toward a fresh out-of-band check.
+            if (keyChangedDaysAgo != null) {
+                Spacer(Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Icon(
+                        Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Text(
+                        text = pluralKeyChangedWarning(senderName, keyChangedDaysAgo),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(
@@ -208,3 +276,7 @@ private fun formatDate(instant: Instant): String =
 
 private fun keyPreview(key: ByteArray): String =
     key.take(4).joinToString("") { "%02x".format(it.toInt() and 0xff) } + "…"
+
+@Composable
+private fun pluralKeyChangedWarning(senderName: String, days: Long): String =
+    androidx.compose.ui.res.pluralStringResource(R.plurals.requests_key_changed_warning, days.toInt(), senderName, days)

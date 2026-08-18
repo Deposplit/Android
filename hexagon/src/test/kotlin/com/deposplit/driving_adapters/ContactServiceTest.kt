@@ -90,4 +90,63 @@ class ContactServiceTest {
             svc.updateContact(UUID.randomUUID(), verificationLevel = VerificationLevel.HIGH)
         }
     }
+
+    // ── Item 10: stolen-key revocation ────────────────────────────────────────
+
+    @Test
+    fun `updateContact sets keyChangedAt only when keys actually change`() {
+        val repo = InMemoryContactRepositoryForContactServiceTest()
+        val svc = ContactService(repo)
+        val original = makeContact()
+        repo.save(original)
+        assertEquals(null, original.keyChangedAt)
+
+        svc.updateContact(original.id, verificationLevel = VerificationLevel.HIGH)
+        assertEquals(null, repo.getById(original.id)!!.keyChangedAt)
+
+        svc.updateContact(original.id, edPublicKey = ByteArray(32) { 0x05 }, verificationLevel = VerificationLevel.LOW)
+        assertTrue(repo.getById(original.id)!!.keyChangedAt != null)
+    }
+
+    @Test
+    fun `markKeyCompromised flags the contact's current key by default`() {
+        val repo = InMemoryContactRepositoryForContactServiceTest()
+        val svc = ContactService(repo)
+        val original = makeContact()
+        repo.save(original)
+
+        svc.markKeyCompromised(original.id)
+
+        val updated = repo.getById(original.id)!!
+        assertEquals(1, updated.revokedEdKeys.size)
+        assertTrue(updated.revokedEdKeys.first().contentEquals(original.edPublicKey))
+    }
+
+    @Test
+    fun `markKeyCompromised is idempotent for an already-flagged key`() {
+        val repo = InMemoryContactRepositoryForContactServiceTest()
+        val svc = ContactService(repo)
+        val original = makeContact()
+        repo.save(original.copy(revokedEdKeys = listOf(original.edPublicKey)))
+
+        svc.markKeyCompromised(original.id)
+
+        assertEquals(1, repo.getById(original.id)!!.revokedEdKeys.size)
+    }
+
+    @Test
+    fun `markKeyCompromised can flag an explicit key other than the current one`() {
+        val repo = InMemoryContactRepositoryForContactServiceTest()
+        val svc = ContactService(repo)
+        val original = makeContact()
+        repo.save(original)
+        val oldKey = ByteArray(32) { 0x07 }
+
+        svc.markKeyCompromised(original.id, edPublicKey = oldKey)
+
+        val updated = repo.getById(original.id)!!
+        assertEquals(1, updated.revokedEdKeys.size)
+        assertTrue(updated.revokedEdKeys.first().contentEquals(oldKey))
+        assertTrue(!updated.revokedEdKeys.first().contentEquals(original.edPublicKey))
+    }
 }

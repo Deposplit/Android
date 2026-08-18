@@ -2,6 +2,7 @@ package com.deposplit.driving_ports
 
 import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.HeldShare
+import com.deposplit.value_objects.KeyConflict
 import com.deposplit.value_objects.Secret
 import com.deposplit.value_objects.ShareMetadata
 import com.deposplit.value_objects.ShareRequest
@@ -49,4 +50,8 @@ interface ShareManagement {
     // note — so callers supply the new keys directly; this method is exercised by tests today,
     // not yet by any UI action.
     fun pushRotation(contactId: UUID, newEd25519Key: ByteArray, newX25519Key: ByteArray)
+
+    // ─── Item 10 — key conflicts (never auto-resolved), local-only, no relay involvement ───────
+    fun listKeyConflicts(): List<KeyConflict>
+    fun dismissKeyConflict(id: UUID)
 }

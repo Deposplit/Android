@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -19,6 +21,9 @@ import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -29,9 +34,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.compose.ui.Alignment
@@ -136,6 +145,7 @@ fun ContactsScreen(
                         contact = contact,
                         onDelete = { viewModel.delete(contact.id) },
                         onRelink = { onNavigateToRelinkContact(contact) },
+                        onMarkCompromised = { viewModel.markKeyCompromised(contact.id) },
                     )
                 }
             }
@@ -144,14 +154,27 @@ fun ContactsScreen(
 }
 
 @Composable
-private fun ContactItem(contact: Contact, onDelete: () -> Unit, onRelink: () -> Unit) {
+private fun ContactItem(contact: Contact, onDelete: () -> Unit, onRelink: () -> Unit, onMarkCompromised: () -> Unit) {
+    var showCompromiseConfirm by remember { mutableStateOf(false) }
+
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(contact.pseudonym, style = MaterialTheme.typography.titleMedium)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(contact.pseudonym, style = MaterialTheme.typography.titleMedium)
+                    if (contact.revokedEdKeys.isNotEmpty()) {
+                        Spacer(Modifier.width(6.dp))
+                        Icon(
+                            Icons.Default.Warning,
+                            contentDescription = stringResource(R.string.contacts_revoked_badge_description),
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                }
                 if (contact.verificationLevel != VerificationLevel.VERY_LOW) {
                     Spacer(Modifier.height(4.dp))
                     Text(
@@ -167,6 +190,13 @@ private fun ContactItem(contact: Contact, onDelete: () -> Unit, onRelink: () -> 
                     contentDescription = stringResource(R.string.contacts_relink_description, contact.pseudonym),
                 )
             }
+            IconButton(onClick = { showCompromiseConfirm = true }) {
+                Icon(
+                    Icons.Default.Shield,
+                    contentDescription = stringResource(R.string.contacts_mark_compromised_description, contact.pseudonym),
+                    tint = MaterialTheme.colorScheme.error,
+                )
+            }
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Default.Delete,
@@ -175,5 +205,22 @@ private fun ContactItem(contact: Contact, onDelete: () -> Unit, onRelink: () -> 
                 )
             }
         }
+    }
+
+    if (showCompromiseConfirm) {
+        AlertDialog(
+            onDismissRequest = { showCompromiseConfirm = false },
+            title = { Text(stringResource(R.string.contacts_mark_compromised_title)) },
+            text = { Text(stringResource(R.string.contacts_mark_compromised_message, contact.pseudonym)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showCompromiseConfirm = false
+                    onMarkCompromised()
+                }) { Text(stringResource(R.string.contacts_mark_compromised_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCompromiseConfirm = false }) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
     }
 }

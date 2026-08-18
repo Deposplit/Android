@@ -61,6 +61,14 @@
     <string name="contacts_error_load">Failed to load</string>
     <string name="contacts_error_delete">Failed to delete</string>
 
+    <!-- Item 10 — stolen-key revocation -->
+    <string name="contacts_mark_compromised_description">Mark %1$s\'s key compromised</string>
+    <string name="contacts_revoked_badge_description">A previous key for this contact is flagged compromised</string>
+    <string name="contacts_mark_compromised_title">Mark this contact\'s current key as compromised?</string>
+    <string name="contacts_mark_compromised_message">Only do this if you have an out-of-band reason to believe %1$s\'s key was stolen. Deposplit will refuse to auto-accept any future key rotation claiming continuity from it — you\'ll need to verify them fresh, in person or over a trusted channel, to reconnect.</string>
+    <string name="contacts_mark_compromised_confirm">Mark Compromised</string>
+    <string name="contacts_error_mark_compromised">Failed to flag key as compromised</string>
+
     <!-- Relink contact (item 8 — identity recovery) -->
     <string name="relink_title">Relink %1$s</string>
     <string name="relink_scanned_message">Scanned new keys for %1$s.</string>
@@ -134,6 +142,16 @@
     <string name="requests_action_approve">Approve</string>
     <string name="requests_error_load">Failed to load</string>
     <string name="requests_error_respond">Failed to respond</string>
+
+    <!-- Item 10 — key conflicts (never auto-resolved) and retrieve-approval hardening -->
+    <string name="requests_key_conflict_title">Possible impersonation attempt</string>
+    <string name="requests_key_conflict_message">%1$s\'s key changed, but their previous key is flagged compromised. This could be an attacker with the stolen key, or a false alarm. To reconnect, verify %1$s fresh — in person or over a trusted channel — then use Relink from the Contacts screen. Do not accept this automatically.</string>
+    <string name="requests_key_conflict_detected_at">Detected %1$s</string>
+    <string name="requests_key_conflict_dismiss">Dismiss</string>
+    <plurals name="requests_key_changed_warning">
+        <item quantity="one">%1$s\'s key changed %2$d day ago — verify fresh before approving</item>
+        <item quantity="other">%1$s\'s key changed %2$d days ago — verify fresh before approving</item>
+    </plurals>
 
     <!-- Share request types and states -->
     <string name="share_request_deposit">Deposit</string>

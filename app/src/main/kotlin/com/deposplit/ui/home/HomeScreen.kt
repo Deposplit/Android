@@ -187,6 +187,9 @@ fun HomeScreen(
                     uiState = requestsUiState,
                     onRetry = requestsViewModel::load,
                     onRespond = requestsViewModel::respond,
+                    keyChangedDaysAgo = requestsViewModel::keyChangedDaysAgo,
+                    contactName = requestsViewModel::contactName,
+                    onDismissConflict = requestsViewModel::dismissConflict,
                 )
             } else {
                 when {

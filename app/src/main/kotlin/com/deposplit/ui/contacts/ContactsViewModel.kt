@@ -46,4 +46,16 @@ class ContactsViewModel(private val contactManagement: ContactManagement) : View
                 .onFailure { _uiState.update { it.copy(error = R.string.contacts_error_delete) } }
         }
     }
+
+    // Item 10 — flags this contact's *current* key as compromised, out-of-band-triggered (the user
+    // has some independent reason to believe it). From this point, any signed rotation notice
+    // claiming continuity from that key is refused auto-accept; only a fresh human-verified relink
+    // can move the contact forward.
+    fun markKeyCompromised(contactId: UUID) {
+        viewModelScope.launch {
+            runCatching { withContext(Dispatchers.IO) { contactManagement.markKeyCompromised(contactId) } }
+                .onSuccess { load() }
+                .onFailure { _uiState.update { it.copy(error = R.string.contacts_error_mark_compromised) } }
+        }
+    }
 }

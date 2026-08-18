@@ -7,7 +7,9 @@ import com.deposplit.R
 import com.deposplit.driving_ports.ContactManagement
 import com.deposplit.driving_ports.ShareManagement
 import com.deposplit.value_objects.Contact
+import com.deposplit.value_objects.KeyConflict
 import com.deposplit.value_objects.ShareRequest
+import com.deposplit.value_objects.ShareTransactionType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,6 +17,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.Duration
+import java.time.Instant
 import java.util.UUID
 
 class RequestsViewModel(
@@ -25,6 +29,7 @@ class RequestsViewModel(
     data class UiState(
         val requests: List<ShareRequest> = emptyList(),
         val contacts: List<Contact> = emptyList(),
+        val keyConflicts: List<KeyConflict> = emptyList(),
         val isLoading: Boolean = false,
         @StringRes val error: Int? = null,
         val respondingIds: Set<UUID> = emptySet(),
@@ -42,15 +47,20 @@ class RequestsViewModel(
             _uiState.update { it.copy(isLoading = true, error = null) }
             runCatching {
                 withContext(Dispatchers.IO) {
-                    shareManagement.listPendingRequests() to contactManagement.listContacts()
+                    Triple(
+                        shareManagement.listPendingRequests(),
+                        contactManagement.listContacts(),
+                        runCatching { shareManagement.listKeyConflicts() }.getOrDefault(emptyList()),
+                    )
                 }
             }
-                .onSuccess { (requests, contacts) ->
+                .onSuccess { (requests, contacts, keyConflicts) ->
                     _uiState.update {
                         it.copy(
                             isLoading = false,
                             requests = requests,
                             contacts = contacts,
+                            keyConflicts = keyConflicts,
                             respondingIds = emptySet(),
                         )
                     }
@@ -76,6 +86,29 @@ class RequestsViewModel(
                         )
                     }
                 }
+        }
+    }
+
+    // Item 10's retrieve-approval hardening: the attack signature is key change → quick retrieval,
+    // so this is surfaced only for Retrieval requests, not every request type.
+    fun keyChangedDaysAgo(request: ShareRequest): Long? {
+        if (request.transactionType != ShareTransactionType.RETRIEVAL) return null
+        val changedAt = uiState.value.contacts
+            .find { it.edPublicKey.contentEquals(request.senderKey) }
+            ?.keyChangedAt ?: return null
+        return Duration.between(changedAt, Instant.now()).toDays()
+    }
+
+    fun contactName(conflict: KeyConflict): String? =
+        uiState.value.contacts.find { it.id == conflict.contactId }?.pseudonym
+
+    // Item 10 — resolving "yes, this really was them" goes through the existing Relink flow (a
+    // fresh human-verified re-scan), not through this dismiss action — dismissing only
+    // acknowledges the alert (a false alarm, or already handled out-of-band).
+    fun dismissConflict(id: UUID) {
+        viewModelScope.launch {
+            runCatching { withContext(Dispatchers.IO) { shareManagement.dismissKeyConflict(id) } }
+                .onSuccess { load() }
         }
     }
 }

@@ -4,6 +4,7 @@ import android.app.Application
 import com.deposplit.api.DeposplitRelayResolver
 import com.deposplit.auth.AndroidIdentityStore
 import com.deposplit.contacts.LocalContactRepository
+import com.deposplit.contacts.LocalKeyConflictRepository
 import com.deposplit.driven_ports.RelaySettings
 import com.deposplit.driving_ports.CatalogManagement
 import com.deposplit.driving_ports.ContactManagement
@@ -44,6 +45,7 @@ class DeposplitApp : Application() {
         val shareRepository = LocalShareRepository(this)
         val shareMetadataRepository = LocalShareMetadataRepository(this)
         val secretRepository = LocalSecretRepository(this)
+        val keyConflictRepository = LocalKeyConflictRepository(this)
         contactManagement = ContactService(contactRepository)
         shareManagement = ShareService(
             relayResolver = DeposplitRelayResolver(auth = identityService, relaySettings = relaySettings),
@@ -53,6 +55,7 @@ class DeposplitApp : Application() {
             secretRepository = secretRepository,
             contactRepository = contactRepository,
             contactManagement = contactManagement,
+            keyConflictRepository = keyConflictRepository,
             identity = identityService,
         )
         catalogManagement = CatalogService(
