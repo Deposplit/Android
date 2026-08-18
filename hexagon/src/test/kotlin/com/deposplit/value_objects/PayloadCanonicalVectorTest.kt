@@ -77,4 +77,44 @@ class PayloadCanonicalVectorTest {
         verifier.update(canon, 0, canon.size)
         assertTrue(verifier.verifySignature(sigBytes))
     }
+
+    // ── forRotation (item 9) — same cross-platform-interop purpose as forOpen above, checked into
+    // the relay's and iOS's PayloadCanonicalVectorTests. Uses the same fixed private key seed as
+    // forOpen so both vectors are anchored to one known keypair.
+
+    private val rotationRecipientKey: ByteArray = ByteArray(32) { 0x03 }
+    private val newEd25519Key: ByteArray = ByteArray(32) { 0x04 }
+    private val newX25519Key: ByteArray = ByteArray(32) { 0x05 }
+    private val expectedRotationSignatureBase64Url =
+        "Fs4kRoHL0q5uN2ECfmXdcJnYzSz_yvO-8VNz6AIJYAcMR3QJmPQlu8AyiJpYOfeUGXag0M4VdZtPQ3AoWjPBDQ"
+
+    @Test
+    fun `forRotation produces the fixed canonical bytes`() {
+        val canon = PayloadCanonical.forRotation(rotationRecipientKey, newEd25519Key, newX25519Key)
+        val expected =
+            "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM\nBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ\nBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQU"
+        assertEquals(expected, String(canon, Charsets.UTF_8))
+    }
+
+    @Test
+    fun `signing the rotation canonical bytes with the fixed seed reproduces the fixed signature`() {
+        val canon = PayloadCanonical.forRotation(rotationRecipientKey, newEd25519Key, newX25519Key)
+        val privKey = Ed25519PrivateKeyParameters(privateKeySeed, 0)
+        val signer = Ed25519Signer()
+        signer.init(true, privKey)
+        signer.update(canon, 0, canon.size)
+        val sig = signer.generateSignature()
+        assertEquals(expectedRotationSignatureBase64Url, b64url.encodeToString(sig))
+    }
+
+    @Test
+    fun `the fixed rotation signature verifies against the fixed public key`() {
+        val canon = PayloadCanonical.forRotation(rotationRecipientKey, newEd25519Key, newX25519Key)
+        val pubKeyBytes = Base64.getUrlDecoder().decode(expectedPublicKeyBase64Url)
+        val sigBytes = Base64.getUrlDecoder().decode(expectedRotationSignatureBase64Url)
+        val verifier = Ed25519Signer()
+        verifier.init(false, Ed25519PublicKeyParameters(pubKeyBytes, 0))
+        verifier.update(canon, 0, canon.size)
+        assertTrue(verifier.verifySignature(sigBytes))
+    }
 }

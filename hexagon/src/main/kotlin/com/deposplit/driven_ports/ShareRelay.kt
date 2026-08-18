@@ -1,5 +1,6 @@
 package com.deposplit.driven_ports
 
+import com.deposplit.value_objects.KeyRotation
 import com.deposplit.value_objects.Role
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareRequestState
@@ -30,4 +31,27 @@ interface ShareRelay {
     ): ShareRequest
     fun deleteShareRequest(requestId: UUID)
     fun deleteShareRequests(senderKey: ByteArray? = null, secretId: UUID? = null)
+
+    // Recipient-initiated unilateral withdrawal (item 9) — flips matching approved Deposit rows
+    // to WITHDRAWN on the relay instead of deleting them, so the sender's next poll can observe
+    // the tombstone. Best-effort and fire-and-forget.
+    fun withdrawShareRequests(senderKey: ByteArray? = null, secretId: UUID? = null)
+
+    // Item 9's signed rotate(K_old -> K_new) push. Grouped onto this interface rather than a
+    // separate port: it's the same physical relay endpoint and the same BYOR per-contact routing
+    // as every other ShareRelay call. deposplit.com's own backend keeps rotation pushes in a
+    // dedicated key_rotations table/KeyRotations service for domain-purity reasons (no secretId,
+    // no consent phase) that are about server-side schema shape, not about this client-side
+    // HTTP-calling port, so no equivalent split is needed here.
+
+    /**
+     * Pushes a signed rotation notice to one contact. [signature] must verify against the
+     * caller's own current Ed25519 key (the relay's `oldEd25519Key`) over
+     * [com.deposplit.value_objects.PayloadCanonical.forRotation].
+     */
+    fun pushRotation(recipientKey: ByteArray, newEd25519Key: ByteArray, newX25519Key: ByteArray, signature: ByteArray)
+    /** Rotation notices addressed to this device. */
+    fun listRotations(): List<KeyRotation>
+    /** Deletes a rotation notice once consumed. */
+    fun deleteRotation(id: UUID)
 }

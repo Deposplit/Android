@@ -52,6 +52,7 @@ class DeposplitApp : Application() {
             shareMetadataRepository = shareMetadataRepository,
             secretRepository = secretRepository,
             contactRepository = contactRepository,
+            contactManagement = contactManagement,
             identity = identityService,
         )
         catalogManagement = CatalogService(

@@ -28,7 +28,9 @@ enum class ShareTransactionType(val wireValue: String) {
         fun fromWire(value: String): ShareTransactionType? = entries.find { it.wireValue == value }
     }
 }
-enum class ShareRequestState { PENDING, APPROVED, DENIED }
+// WITHDRAWN is deposit-only (item 9): the recipient unilaterally stopped holding the share. A
+// best-effort tombstone, not authoritative — see ShareRelay.withdrawShareRequests.
+enum class ShareRequestState { PENDING, APPROVED, DENIED, WITHDRAWN }
 
 // Per-share record on the sender's device — one per holder of a Secret. Normalized to reference
 // its parent Secret (by secretId) rather than duplicating label/secretCreatedAt — see

@@ -118,6 +118,7 @@
     <string name="share_request_state_pending">Offen</string>
     <string name="share_request_state_approved">Angenommen</string>
     <string name="share_request_state_denied">Abgelehnt</string>
+    <string name="share_request_state_withdrawn">Zurückgezogen</string>
 
     <!-- Share detail -->
     <string name="share_detail_title_fallback">Teil</string>

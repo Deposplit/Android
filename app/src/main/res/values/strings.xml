@@ -143,6 +143,7 @@
     <string name="share_request_state_pending">Pending</string>
     <string name="share_request_state_approved">Approved</string>
     <string name="share_request_state_denied">Denied</string>
+    <string name="share_request_state_withdrawn">Withdrawn</string>
 
     <!-- Share detail -->
     <string name="share_detail_title_fallback">Share</string>

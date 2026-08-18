@@ -59,4 +59,16 @@ object PayloadCanonical {
         if (approved) "approved" else "denied",
         ciphertext?.let { base64Std.encodeToString(it) } ?: "",
     ).joinToString("\n").toByteArray(Charsets.UTF_8)
+
+    /**
+     * Signed by the old key when pushing a rotation notice (item 9), i.e. by the caller who
+     * becomes [KeyRotation.oldEd25519Key]. Proves continuity of key control — only someone
+     * holding the old private key can produce this signature, which is what lets the recipient
+     * auto-verify and auto-accept the rotation without a fresh human re-verification.
+     */
+    fun forRotation(recipientKey: ByteArray, newEd25519Key: ByteArray, newX25519Key: ByteArray): ByteArray = listOf(
+        base64Url.encodeToString(recipientKey),
+        base64Url.encodeToString(newEd25519Key),
+        base64Url.encodeToString(newX25519Key),
+    ).joinToString("\n").toByteArray(Charsets.UTF_8)
 }

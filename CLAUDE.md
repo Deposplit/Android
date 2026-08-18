@@ -50,7 +50,9 @@ driving_ports/
 ├── ShareManagement.kt             deposit, listSecrets, listDistributed, listSentRequests, requestAll, openRequest,
 │                                  reconstruct (pure read, enforces real k), discardSecret, forceForgetSecret,
 │                                  syncInbox, listHeld, listPendingRequests, respond, deleteHeldShare,
-│                                  deleteAllHeldFromSender, pushRecoveryMetadata (item 8 — holder side)
+│                                  deleteAllHeldFromSender, pushRecoveryMetadata (item 8 — holder side);
+│                                  pushRotation (item 9, client primitive only — no "regenerate my own identity"
+│                                  UI trigger exists yet, see deposplit.com/TODO.md item 9's scope-split note)
 └── CatalogManagement.kt           exportCatalog, importCatalog — optional non-secret catalog backup (item 8)
 driven_ports/
 ├── IdentityStore.kt               isRegistered, save, pseudonym, edPublicKey, edPrivateKey, xPublicKey, xPrivateKey
@@ -60,7 +62,11 @@ driven_ports/
 ├── SecretRepository.kt            getAll, save, delete (local store of sender-side Secret aggregates)
 ├── ShareMetadataRepository.kt     getAll, save, delete (local store of distributed ShareMetadata)
 ├── ShareRelay.kt                  openShareRequest(..., k, n, senderSignature), listShareRequests, getShareRequest,
-│                                  respondToShareRequest(..., recipientSignature), deleteShareRequest, deleteShareRequests
+│                                  respondToShareRequest(..., recipientSignature), deleteShareRequest, deleteShareRequests,
+│                                  withdrawShareRequests (item 9 — best-effort tombstone, not a hard delete),
+│                                  pushRotation/listRotations/deleteRotation (item 9's signed rotate(K_old→K_new)
+│                                  push — grouped onto this interface rather than a separate one since it's the
+│                                  same physical relay + BYOR routing; see KeyRotation.kt)
 ├── ShareRelayResolver.kt          resolve(relayBaseUrl: String?): ShareRelay — BYOR factory/cache, not a fan-out
 │                                  mechanism; null resolves to the device's default relay (RelaySettings)
 └── RelaySettings.kt               getDefaultRelayBaseUrl, setDefaultRelayBaseUrl — device's runtime-configurable
@@ -88,7 +94,13 @@ services/
 │                                  (enforces Secret.k, no teardown — see item 11); discardSecret() fans out delete
 │                                  requests + flips Secret to DISCARDING; forceForgetSecret() is the local-only escape
 │                                  hatch; pushRecoveryMetadata(contactId) opens a recoveryMetadata push for every
-│                                  HeldShare held from that contact (item 8)
+│                                  HeldShare held from that contact (item 8); takes a new ContactManagement dependency
+│                                  (item 9) so processRotations() (private, called from syncInbox) can call updateContact
+│                                  after auto-verifying an incoming rotation notice against a known contact's trusted
+│                                  old key, downgrading the verification level to min(old, LOW) per item 10's unifying
+│                                  rule; deleteHeldShare/deleteAllHeldFromSender best-effort withdraw via the sender's
+│                                  relay before deleting locally (item 9); syncDistributed() drops the local
+│                                  ShareMetadata pointer and deletes the relay row when it observes a WITHDRAWN deposit
 └── CatalogService.kt              Implements CatalogManagement — exportCatalog reads Contact/Secret/ShareMetadata
                                    repositories; importCatalog upserts-if-absent-by-id, never overwriting a newer
                                    local record (item 8)
@@ -98,8 +110,11 @@ value_objects/
 ├── HeldShare.kt                   HeldShare data class (incl. k/n, item 8 — reported back to the owner during recovery)
 ├── Secret.kt                      Secret data class (id, label, k, n, secretCreatedAt, state) + SecretState enum
 │                                  (ACTIVE/DISCARDING) — sender-side per-secret aggregate, see CLAUDE.md item 11
+├── KeyRotation.kt                 KeyRotation data class (item 9) — a signed rotate(K_old→K_new) notice addressed
+│                                  to this device; not a ShareRequest (no secretId, no consent phase)
 ├── Share.kt                       Role, ShareTransactionType (incl. INVENTORY, item 8 — self-approved, no
-│                                  consent phase), ShareRequestState, ShareMetadata (id/secretId/contactId only —
+│                                  consent phase), ShareRequestState (incl. WITHDRAWN — item 9, deposit-only
+│                                  best-effort tombstone), ShareMetadata (id/secretId/contactId only —
 │                                  label/secretCreatedAt live on Secret), ShareRequest (incl. k/n,
 │                                  senderSignature/recipientSignature)
 ├── PayloadCanonical.kt            forOpen (incl. k/n, item 8, appended at the end of the signed sequence)/forRespond
@@ -119,7 +134,8 @@ auth/
 └── AndroidIdentityStore.kt  Adapter implementing IdentityStore — Android Keystore AES-256-GCM wrapping of private keys; public keys + pseudonym in SharedPreferences
 api/
 ├── DeposplitApiAdapter.kt   HTTP adapter implementing ShareRelay: HttpURLConnection, Ed25519 request signing,
-│                            JSON via kotlinx.serialization; senderSignature/recipientSignature and k/n (item 8) wired through
+│                            JSON via kotlinx.serialization; senderSignature/recipientSignature and k/n (item 8) wired through;
+│                            POST /share-requests/withdraw and POST/GET /key-rotations + DELETE /key-rotations/{id} (item 9)
 ├── DeposplitRelayResolver.kt  Implements ShareRelayResolver — memoizes one DeposplitApiAdapter per resolved base
 │                            URL; null resolves via RelaySettings.getDefaultRelayBaseUrl()
 └── RelayDefaults.kt         FALLBACK_BASE_URL constant ("https://api.deposplit.com") — plain Kotlin, decoupled

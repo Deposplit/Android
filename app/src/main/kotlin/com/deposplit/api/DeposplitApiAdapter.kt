@@ -2,6 +2,7 @@ package com.deposplit.api
 
 import com.deposplit.driving_ports.Identity
 import com.deposplit.driven_ports.ShareRelay
+import com.deposplit.value_objects.KeyRotation
 import com.deposplit.value_objects.Role
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareRequestState
@@ -105,6 +106,40 @@ class DeposplitApiAdapter(
         execute("DELETE", "/share-requests$query")
     }
 
+    override fun withdrawShareRequests(senderKey: ByteArray?, secretId: UUID?) {
+        val query = buildString {
+            var first = true
+            if (senderKey != null) {
+                append("?senderKey=${senderKey.encodeBase64Url()}")
+                first = false
+            }
+            if (secretId != null) {
+                append(if (first) "?" else "&")
+                append("secretId=$secretId")
+            }
+        }
+        execute("POST", "/share-requests/withdraw$query")
+    }
+
+    override fun pushRotation(recipientKey: ByteArray, newEd25519Key: ByteArray, newX25519Key: ByteArray, signature: ByteArray) {
+        val body = json.encodeToString(
+            PushRotationJson(
+                recipientKey = recipientKey.encodeBase64Url(),
+                newEd25519Key = newEd25519Key.encodeBase64Url(),
+                newX25519Key = newX25519Key.encodeBase64Url(),
+                signature = signature.encodeBase64Url(),
+            )
+        )
+        execute("POST", "/key-rotations", body)
+    }
+
+    override fun listRotations(): List<KeyRotation> =
+        json.decodeFromString<List<KeyRotationJson>>(execute("GET", "/key-rotations")).map { it.toDomain() }
+
+    override fun deleteRotation(id: UUID) {
+        execute("DELETE", "/key-rotations/$id")
+    }
+
     // ── HTTP ─────────────────────────────────────────────────────────────────
 
     private fun execute(method: String, path: String, body: String? = null): String {
@@ -169,6 +204,25 @@ class DeposplitApiAdapter(
     private data class RespondJson(val state: String, val ciphertext: String? = null, val recipientSignature: String)
 
     @Serializable
+    private data class PushRotationJson(
+        val recipientKey: String,
+        val newEd25519Key: String,
+        val newX25519Key: String,
+        val signature: String,
+    )
+
+    @Serializable
+    private data class KeyRotationJson(
+        val id: String,
+        val oldEd25519Key: String,
+        val recipientKey: String,
+        val newEd25519Key: String,
+        val newX25519Key: String,
+        val signature: String,
+        val createdAt: String,
+    )
+
+    @Serializable
     private data class ShareRequestJson(
         val id: String,
         val secretId: String,
@@ -202,6 +256,7 @@ class DeposplitApiAdapter(
             "pending" -> ShareRequestState.PENDING
             "approved" -> ShareRequestState.APPROVED
             "denied" -> ShareRequestState.DENIED
+            "withdrawn" -> ShareRequestState.WITHDRAWN
             else -> error("Unknown state: $state")
         },
         shareId = shareId?.let { UUID.fromString(it) },
@@ -212,6 +267,16 @@ class DeposplitApiAdapter(
         n = n,
         senderSignature = senderSignature.decodeBase64Url(),
         recipientSignature = recipientSignature?.decodeBase64Url(),
+    )
+
+    private fun KeyRotationJson.toDomain() = KeyRotation(
+        id = UUID.fromString(id),
+        oldEd25519Key = oldEd25519Key.decodeBase64Url(),
+        recipientKey = recipientKey.decodeBase64Url(),
+        newEd25519Key = newEd25519Key.decodeBase64Url(),
+        newX25519Key = newX25519Key.decodeBase64Url(),
+        signature = signature.decodeBase64Url(),
+        createdAt = Instant.parse(createdAt),
     )
 
     companion object {
