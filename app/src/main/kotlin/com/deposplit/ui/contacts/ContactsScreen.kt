@@ -19,6 +19,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Shield
@@ -68,7 +70,7 @@ fun ContactsScreen(
     val app = LocalContext.current.applicationContext as DeposplitApp
     val viewModel: ContactsViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { ContactsViewModel(app.contactManagement) }
+            initializer { ContactsViewModel(app.contactManagement, app.shareManagement) }
         }
     )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -146,6 +148,7 @@ fun ContactsScreen(
                         onDelete = { viewModel.delete(contact.id) },
                         onRelink = { onNavigateToRelinkContact(contact) },
                         onMarkCompromised = { viewModel.markKeyCompromised(contact.id) },
+                        onToggleHeartbeatEmission = { viewModel.toggleHeartbeatEmission(contact) },
                     )
                 }
             }
@@ -154,7 +157,13 @@ fun ContactsScreen(
 }
 
 @Composable
-private fun ContactItem(contact: Contact, onDelete: () -> Unit, onRelink: () -> Unit, onMarkCompromised: () -> Unit) {
+private fun ContactItem(
+    contact: Contact,
+    onDelete: () -> Unit,
+    onRelink: () -> Unit,
+    onMarkCompromised: () -> Unit,
+    onToggleHeartbeatEmission: () -> Unit,
+) {
     var showCompromiseConfirm by remember { mutableStateOf(false) }
 
     Card(modifier = Modifier.fillMaxWidth()) {
@@ -174,6 +183,15 @@ private fun ContactItem(contact: Contact, onDelete: () -> Unit, onRelink: () -> 
                             modifier = Modifier.size(16.dp),
                         )
                     }
+                    if (contact.heartbeatEmissionOptedOut) {
+                        Spacer(Modifier.width(6.dp))
+                        Icon(
+                            Icons.Default.NotificationsOff,
+                            contentDescription = stringResource(R.string.contacts_heartbeat_paused_badge_description),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
                 }
                 if (contact.verificationLevel != VerificationLevel.VERY_LOW) {
                     Spacer(Modifier.height(4.dp))
@@ -188,6 +206,19 @@ private fun ContactItem(contact: Contact, onDelete: () -> Unit, onRelink: () -> 
                 Icon(
                     Icons.Default.Autorenew,
                     contentDescription = stringResource(R.string.contacts_relink_description, contact.pseudonym),
+                )
+            }
+            IconButton(onClick = onToggleHeartbeatEmission) {
+                Icon(
+                    if (contact.heartbeatEmissionOptedOut) Icons.Default.Notifications else Icons.Default.NotificationsOff,
+                    contentDescription = stringResource(
+                        if (contact.heartbeatEmissionOptedOut) {
+                            R.string.contacts_resume_heartbeats_description
+                        } else {
+                            R.string.contacts_pause_heartbeats_description
+                        },
+                        contact.pseudonym,
+                    ),
                 )
             }
             IconButton(onClick = { showCompromiseConfirm = true }) {

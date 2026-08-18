@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deposplit.R
 import com.deposplit.driving_ports.ContactManagement
+import com.deposplit.driving_ports.ShareManagement
 import com.deposplit.value_objects.Contact
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,7 +16,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
-class ContactsViewModel(private val contactManagement: ContactManagement) : ViewModel() {
+class ContactsViewModel(
+    private val contactManagement: ContactManagement,
+    private val shareManagement: ShareManagement,
+) : ViewModel() {
 
     data class UiState(
         val contacts: List<Contact> = emptyList(),
@@ -56,6 +60,16 @@ class ContactsViewModel(private val contactManagement: ContactManagement) : View
             runCatching { withContext(Dispatchers.IO) { contactManagement.markKeyCompromised(contactId) } }
                 .onSuccess { load() }
                 .onFailure { _uiState.update { it.copy(error = R.string.contacts_error_mark_compromised) } }
+        }
+    }
+
+    // Item 12 — this device's own choice to stop (or resume) heartbeating this contact (who is
+    // the owner of shares this device holds from them). Low-stakes and reversible, unlike marking
+    // a key compromised — no confirmation needed.
+    fun toggleHeartbeatEmission(contact: Contact) {
+        viewModelScope.launch {
+            runCatching { withContext(Dispatchers.IO) { shareManagement.setHeartbeatEmissionOptedOut(contact.id, !contact.heartbeatEmissionOptedOut) } }
+                .onSuccess { load() }
         }
     }
 }

@@ -2,6 +2,7 @@ package com.deposplit.api
 
 import com.deposplit.driving_ports.Identity
 import com.deposplit.driven_ports.ShareRelay
+import com.deposplit.value_objects.CustodyHeartbeat
 import com.deposplit.value_objects.KeyRotation
 import com.deposplit.value_objects.Role
 import com.deposplit.value_objects.ShareRequest
@@ -140,6 +141,21 @@ class DeposplitApiAdapter(
         execute("DELETE", "/key-rotations/$id")
     }
 
+    override fun pushHeartbeat(ownerKey: ByteArray, secretIds: List<UUID>, optedOut: Boolean, signature: ByteArray) {
+        val body = json.encodeToString(
+            PushHeartbeatJson(
+                ownerKey = ownerKey.encodeBase64Url(),
+                secretIds = secretIds.map { it.toString() },
+                optedOut = optedOut,
+                signature = signature.encodeBase64Url(),
+            )
+        )
+        execute("POST", "/custody-heartbeats", body)
+    }
+
+    override fun listHeartbeats(): List<CustodyHeartbeat> =
+        json.decodeFromString<List<CustodyHeartbeatJson>>(execute("GET", "/custody-heartbeats")).map { it.toDomain() }
+
     // ── HTTP ─────────────────────────────────────────────────────────────────
 
     private fun execute(method: String, path: String, body: String? = null): String {
@@ -223,6 +239,25 @@ class DeposplitApiAdapter(
     )
 
     @Serializable
+    private data class PushHeartbeatJson(
+        val ownerKey: String,
+        val secretIds: List<String>,
+        val optedOut: Boolean,
+        val signature: String,
+    )
+
+    @Serializable
+    private data class CustodyHeartbeatJson(
+        val id: String,
+        val holderKey: String,
+        val ownerKey: String,
+        val secretIds: List<String>,
+        val optedOut: Boolean,
+        val signature: String,
+        val createdAt: String,
+    )
+
+    @Serializable
     private data class ShareRequestJson(
         val id: String,
         val secretId: String,
@@ -275,6 +310,16 @@ class DeposplitApiAdapter(
         recipientKey = recipientKey.decodeBase64Url(),
         newEd25519Key = newEd25519Key.decodeBase64Url(),
         newX25519Key = newX25519Key.decodeBase64Url(),
+        signature = signature.decodeBase64Url(),
+        createdAt = Instant.parse(createdAt),
+    )
+
+    private fun CustodyHeartbeatJson.toDomain() = CustodyHeartbeat(
+        id = UUID.fromString(id),
+        holderKey = holderKey.decodeBase64Url(),
+        ownerKey = ownerKey.decodeBase64Url(),
+        secretIds = secretIds.map { UUID.fromString(it) },
+        optedOut = optedOut,
         signature = signature.decodeBase64Url(),
         createdAt = Instant.parse(createdAt),
     )

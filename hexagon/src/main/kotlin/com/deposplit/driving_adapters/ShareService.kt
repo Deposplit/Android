@@ -2,6 +2,7 @@ package com.deposplit.driving_adapters
 
 import com.deposplit.driven_ports.ContactRepository
 import com.deposplit.driven_ports.KeyConflictRepository
+import com.deposplit.driven_ports.RetainedDepositRepository
 import com.deposplit.driven_ports.SecretRepository
 import com.deposplit.driven_ports.ShareMetadataRepository
 import com.deposplit.driven_ports.ShareRelay
@@ -13,9 +14,11 @@ import com.deposplit.driving_ports.ShareManagement
 import com.deposplit.shamir.combine
 import com.deposplit.shamir.split
 import com.deposplit.value_objects.Contact
+import com.deposplit.value_objects.CustodyHeartbeatTuning
 import com.deposplit.value_objects.HeldShare
 import com.deposplit.value_objects.KeyConflict
 import com.deposplit.value_objects.PayloadCanonical
+import com.deposplit.value_objects.RetainedDepositBlob
 import com.deposplit.value_objects.Role
 import com.deposplit.value_objects.Secret
 import com.deposplit.value_objects.SecretState
@@ -25,6 +28,7 @@ import com.deposplit.value_objects.ShareRequestState
 import com.deposplit.value_objects.ShareTransactionType
 import com.deposplit.value_objects.SignatureVerificationException
 import com.deposplit.value_objects.VerificationLevel
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -37,6 +41,7 @@ class ShareService(
     private val contactRepository: ContactRepository,
     private val contactManagement: ContactManagement,
     private val keyConflictRepository: KeyConflictRepository,
+    private val retainedDepositRepository: RetainedDepositRepository,
     private val identity: Identity,
 ) : ShareManagement {
 
@@ -96,6 +101,10 @@ class ShareService(
                 k = threshold, n = contacts.size, senderSignature = senderSignature,
             )
             shareMetadataRepository.save(ShareMetadata(req.id, secretId, contact.id))
+            // Item 12 — retained until this holder's pickup is confirmed (relay-observed or
+            // heartbeat-attested), then discarded. Safe to retain: this blob is encrypted to the
+            // holder's X25519 key, so this device cannot decrypt it itself.
+            runCatching { retainedDepositRepository.save(RetainedDepositBlob(req.id, secretId, contact.id, label, createdAt, ciphertext, threshold, contacts.size)) }
         }
         secretRepository.save(Secret(secretId, label, threshold, contacts.size, createdAt, SecretState.ACTIVE))
     }
@@ -103,6 +112,7 @@ class ShareService(
     override fun listSecrets(): List<Secret> = secretRepository.getAll()
 
     override fun syncDistributed() {
+        val existingMetadata = shareMetadataRepository.getAll()
         allRelays().forEach { relay ->
             runCatching { relay.listShareRequests(Role.SENDER, ShareTransactionType.DEPOSIT) }.getOrDefault(emptyList())
                 .forEach { req ->
@@ -119,11 +129,37 @@ class ShareService(
                     // A row for a holder we no longer have a contact record for can't be
                     // re-anchored to a contactId — skip rather than drop the holder's identity.
                     val contact = contactRepository.getByEdKey(req.recipientKey) ?: return@forEach
-                    shareMetadataRepository.save(ShareMetadata(req.id, req.secretId, contact.id))
+                    val priorConfirmedAt = existingMetadata.find { it.id == req.id }?.lastConfirmedAt
+                    if (req.state == ShareRequestState.APPROVED && isRetentionStillPending(req.id)) {
+                        // Item 12 — first-observed pickup confirmation (relay-observed channel):
+                        // a one-time transition, not "still approved therefore still fresh" — an
+                        // unchanging Approved row on a later poll must not keep bumping
+                        // freshness, or a long-dead holder would look perpetually confirmed. The
+                        // retained blob's continued existence is exactly the "not yet confirmed
+                        // by any channel" marker, so its presence is what gates the stamp.
+                        shareMetadataRepository.save(ShareMetadata(req.id, req.secretId, contact.id, Instant.now()))
+                        runCatching { retainedDepositRepository.delete(req.id) }
+                    } else {
+                        shareMetadataRepository.save(ShareMetadata(req.id, req.secretId, contact.id, priorConfirmedAt))
+                    }
+                }
+            // Item 12 — a retrieve approval is also proof-of-custody. Polled here purely for that
+            // freshness side effect; the functional read path for these rows is reconstruct()/
+            // listSentRequests(), unchanged.
+            runCatching { relay.listShareRequests(Role.SENDER, ShareTransactionType.RETRIEVAL, ShareRequestState.APPROVED) }
+                .getOrDefault(emptyList())
+                .forEach { req ->
+                    val shareId = req.shareId ?: return@forEach
+                    val meta = existingMetadata.find { it.id == shareId } ?: return@forEach
+                    shareMetadataRepository.save(meta.copy(lastConfirmedAt = Instant.now()))
                 }
         }
         reconcileDiscarding()
+        processHeartbeats()
     }
+
+    private fun isRetentionStillPending(depositId: UUID): Boolean =
+        runCatching { retainedDepositRepository.getAll() }.getOrDefault(emptyList()).any { it.id == depositId }
 
     // For every DISCARDING Secret, checks whether each remaining holder's fanned-out removal
     // request has been approved; approved ones are cleaned up (relay row deleted, local
@@ -294,6 +330,72 @@ class ShareService(
         }
         processRecoveryMetadata()
         processRotations()
+        emitHeartbeats()
+    }
+
+    // Item 12, holder side — opportunistically piggybacks this same inbox poll: for each distinct
+    // sender this device currently holds at least one share from, pushes one coalesced heartbeat
+    // (or opt-out notice) once the per-sender emission interval has elapsed. Each push is
+    // independently best-effort so one unreachable BYOR relay doesn't block heartbeating other
+    // senders. lastHeartbeatSentAt only advances on a *successful* push, so a transient failure
+    // retries on the very next poll rather than waiting out the full interval again.
+    private fun emitHeartbeats() {
+        val held = shareRepository.getAll()
+        val senderIds = held.map { it.contactId }.toSet()
+        val now = Instant.now()
+        for (contactId in senderIds) {
+            val contact = contactRepository.getById(contactId) ?: continue
+            val isDue = contact.lastHeartbeatSentAt?.let { Duration.between(it, now) >= CustodyHeartbeatTuning.emissionInterval } ?: true
+            if (!isDue) continue
+            val secretIds = if (contact.heartbeatEmissionOptedOut) emptyList() else held.filter { it.contactId == contactId }.map { it.secretId }
+            val canon = PayloadCanonical.forHeartbeat(contact.edPublicKey, secretIds, contact.heartbeatEmissionOptedOut)
+            val signature = runCatching { identity.sign(canon) }.getOrNull() ?: continue
+            val pushed = runCatching {
+                relayForContact(contact).pushHeartbeat(contact.edPublicKey, secretIds, contact.heartbeatEmissionOptedOut, signature)
+            }.isSuccess
+            if (pushed) {
+                contactRepository.save(contact.copy(lastHeartbeatSentAt = now))
+            }
+        }
+    }
+
+    // Item 12, owner side — auto-verifies each holder's latest heartbeat (or opt-out notice)
+    // against a known contact's trusted key, then updates local freshness/opt-out state. Never
+    // deletes a heartbeat row — see CustodyHeartbeat for why it's a standing status, not a
+    // one-shot delivery. Unknown senders and forged signatures are silently skipped, same
+    // posture as processRotations().
+    private fun processHeartbeats() {
+        val myKey = identity.edPublicKey()
+        val existingMetadata = shareMetadataRepository.getAll()
+        allRelays().forEach { relay ->
+            val notices = runCatching { relay.listHeartbeats() }.getOrDefault(emptyList())
+            for (notice in notices) {
+                val contact = contactRepository.getByEdKey(notice.holderKey) ?: continue
+                val canon = PayloadCanonical.forHeartbeat(myKey, notice.secretIds, notice.optedOut)
+                if (!identity.verify(canon, notice.signature, notice.holderKey)) continue
+                if (notice.optedOut) {
+                    contactRepository.save(contact.copy(heartbeatOptedOutAt = notice.createdAt))
+                    continue
+                }
+                if (contact.heartbeatOptedOutAt != null) {
+                    contactRepository.save(contact.copy(heartbeatOptedOutAt = null))
+                }
+                for (secretId in notice.secretIds) {
+                    val meta = existingMetadata.find { it.secretId == secretId && it.contactId == contact.id } ?: continue
+                    shareMetadataRepository.save(meta.copy(lastConfirmedAt = notice.createdAt))
+                    if (isRetentionStillPending(meta.id)) {
+                        runCatching { retainedDepositRepository.delete(meta.id) }
+                    }
+                }
+            }
+        }
+    }
+
+    override fun setHeartbeatEmissionOptedOut(contactId: UUID, optedOut: Boolean) {
+        val contact = contactRepository.getById(contactId) ?: error("Contact not found for id $contactId")
+        // Reset so the changed preference reaches the contact on the very next poll rather than
+        // waiting out the emission interval.
+        contactRepository.save(contact.copy(heartbeatEmissionOptedOut = optedOut, lastHeartbeatSentAt = null))
     }
 
     // Item 9, receiving side — auto-verifies a signed rotation notice against the trusted old key

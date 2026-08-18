@@ -7,6 +7,7 @@ import com.deposplit.R
 import com.deposplit.driving_ports.ContactManagement
 import com.deposplit.driving_ports.ShareManagement
 import com.deposplit.value_objects.Contact
+import com.deposplit.value_objects.CustodyHeartbeatTuning
 import com.deposplit.value_objects.HeldShare
 import com.deposplit.value_objects.Secret
 import com.deposplit.value_objects.SecretState
@@ -20,29 +21,60 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.Duration
+import java.time.Instant
 import java.util.UUID
+
+// Item 12's three-bucket freshness model — see CustodyHeartbeatTuning for the underlying windows
+// and deposplit.com/CLAUDE.md "What is next" item 12 for the rationale.
+enum class FreshnessBucket {
+    // Proof-of-custody (heartbeat, pickup, or retrieve approval) observed within
+    // CustodyHeartbeatTuning.lossThreshold. Counts toward n_live.
+    CONFIRMED,
+    // The holder sent a signed opt-out notice — never a loss alarm, shown as a standing advisory
+    // instead. Does not count toward n_live.
+    UNMONITORED,
+    // Expected proof-of-custody hasn't arrived within the loss threshold (or never has). Drops
+    // out of n_live — reversible the moment a fresh heartbeat/approval is observed.
+    SILENT_OVERDUE,
+}
 
 data class HolderStatus(
     val shareId: UUID,
     val contactId: UUID,
     val recipientName: String,
     val retrievalRequest: ShareRequest?,
-)
+    val lastConfirmedAt: Instant?,
+    val heartbeatOptedOutAt: Instant?,
+) {
+    val freshnessBucket: FreshnessBucket
+        get() = when {
+            heartbeatOptedOutAt != null -> FreshnessBucket.UNMONITORED
+            lastConfirmedAt != null && Duration.between(lastConfirmedAt, Instant.now()) <= CustodyHeartbeatTuning.lossThreshold -> FreshnessBucket.CONFIRMED
+            else -> FreshnessBucket.SILENT_OVERDUE
+        }
 
-// Graduated n_live health alarm — see deposplit.com/CLAUDE.md "What is next" item 11. `n_live`
-// here is a pre-item-9/12 proxy: the count of holders this device currently still tracks a
-// ShareMetadata row for. Item 12 later refines this into a freshness-gated count; item 11 only
-// introduces the count-vs-k comparison itself.
+    // Item 12's early nudge — surfaced before a holder actually drops out of n_live, while still
+    // comfortably CONFIRMED.
+    val isGettingStale: Boolean
+        get() = freshnessBucket == FreshnessBucket.CONFIRMED && lastConfirmedAt != null &&
+            Duration.between(lastConfirmedAt, Instant.now()) > CustodyHeartbeatTuning.staleWarningThreshold
+}
+
+// Graduated n_live health alarm — see deposplit.com/CLAUDE.md "What is next" item 11.
 enum class SecretHealth { HEALTHY, CAUTION, CRITICAL, LOST, DISCARDING }
 
 data class SecretGroup(
     val secret: Secret,
     val holders: List<HolderStatus>,
 ) {
+    // Item 12 — n_live is now the freshness-gated CONFIRMED count, not a raw ShareMetadata-row
+    // count: an UNMONITORED holder never alarms, and a SILENT_OVERDUE one drops out (reversibly)
+    // instead of being counted as still-live.
     val health: SecretHealth
         get() {
             if (secret.state == SecretState.DISCARDING) return SecretHealth.DISCARDING
-            val nLive = holders.size
+            val nLive = holders.count { it.freshnessBucket == FreshnessBucket.CONFIRMED }
             val k = secret.k
             return when {
                 nLive < k -> SecretHealth.LOST
@@ -215,15 +247,17 @@ class HomeViewModel(
             .map { secret ->
                 val shares = byShareSecretId[secret.id] ?: emptyList()
                 val holders = shares.map { share ->
-                    val name = contacts.find { it.id == share.contactId }?.pseudonym ?: "?"
+                    val contact = contacts.find { it.id == share.contactId }
                     val latestRetrieval = allRequests
                         .filter { it.shareId == share.id && it.transactionType == ShareTransactionType.RETRIEVAL }
                         .maxByOrNull { it.requestedAt }
                     HolderStatus(
                         shareId = share.id,
                         contactId = share.contactId,
-                        recipientName = name,
+                        recipientName = contact?.pseudonym ?: "?",
                         retrievalRequest = latestRetrieval,
+                        lastConfirmedAt = share.lastConfirmedAt,
+                        heartbeatOptedOutAt = contact?.heartbeatOptedOutAt,
                     )
                 }
                 SecretGroup(secret = secret, holders = holders)

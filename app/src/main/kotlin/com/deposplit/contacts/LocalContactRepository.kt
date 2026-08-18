@@ -31,6 +31,11 @@ class LocalContactRepository(context: Context) : ContactRepository {
         // wiped, not migrated.
         val revokedEdKeys: List<String>,
         val keyChangedAt: String?,
+        // Item 12 — no default/fallback decode shim: Deposplit is pre-launch, local stores are
+        // wiped, not migrated.
+        val heartbeatOptedOutAt: String?,
+        val lastHeartbeatSentAt: String?,
+        val heartbeatEmissionOptedOut: Boolean,
     )
 
     @Synchronized
@@ -79,6 +84,9 @@ class LocalContactRepository(context: Context) : ContactRepository {
         relayBaseUrl = relayBaseUrl,
         revokedEdKeys = revokedEdKeys.map { Base64.getUrlDecoder().decode(it) },
         keyChangedAt = keyChangedAt?.let { Instant.parse(it) },
+        heartbeatOptedOutAt = heartbeatOptedOutAt?.let { Instant.parse(it) },
+        lastHeartbeatSentAt = lastHeartbeatSentAt?.let { Instant.parse(it) },
+        heartbeatEmissionOptedOut = heartbeatEmissionOptedOut,
     )
 
     private fun Contact.toWire() = ContactWire(
@@ -92,5 +100,8 @@ class LocalContactRepository(context: Context) : ContactRepository {
         relayBaseUrl = relayBaseUrl,
         revokedEdKeys = revokedEdKeys.map { Base64.getUrlEncoder().withoutPadding().encodeToString(it) },
         keyChangedAt = keyChangedAt?.toString(),
+        heartbeatOptedOutAt = heartbeatOptedOutAt?.toString(),
+        lastHeartbeatSentAt = lastHeartbeatSentAt?.toString(),
+        heartbeatEmissionOptedOut = heartbeatEmissionOptedOut,
     )
 }

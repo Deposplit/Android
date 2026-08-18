@@ -44,6 +44,11 @@
     <string name="home_health_critical">Reconstruct + re-split now</string>
     <string name="home_health_lost">Unrecoverable</string>
     <string name="home_health_discarding">Discarding</string>
+
+    <!-- Item 12 — per-holder freshness bucket -->
+    <string name="home_freshness_stale">Getting stale</string>
+    <string name="home_freshness_unmonitored">Unmonitored by choice</string>
+    <string name="home_freshness_silent">Silent — possible loss</string>
     <string name="home_discard_button">Discard</string>
     <string name="home_discard_title">Discard this secret?</string>
     <string name="home_discard_body">Requests deletion from all %1$d holder(s). Each must approve — this only removes it from your device\'s list once every holder confirms (or you force-forget it).</string>
@@ -68,6 +73,11 @@
     <string name="contacts_mark_compromised_message">Only do this if you have an out-of-band reason to believe %1$s\'s key was stolen. Deposplit will refuse to auto-accept any future key rotation claiming continuity from it — you\'ll need to verify them fresh, in person or over a trusted channel, to reconnect.</string>
     <string name="contacts_mark_compromised_confirm">Mark Compromised</string>
     <string name="contacts_error_mark_compromised">Failed to flag key as compromised</string>
+
+    <!-- Item 12 — custodial heartbeats -->
+    <string name="contacts_pause_heartbeats_description">Pause custody heartbeats to %1$s</string>
+    <string name="contacts_resume_heartbeats_description">Resume custody heartbeats to %1$s</string>
+    <string name="contacts_heartbeat_paused_badge_description">Custody heartbeats to this contact are paused</string>
 
     <!-- Relink contact (item 8 — identity recovery) -->
     <string name="relink_title">Relink %1$s</string>

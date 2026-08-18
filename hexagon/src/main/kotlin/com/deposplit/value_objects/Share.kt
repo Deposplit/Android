@@ -41,6 +41,11 @@ data class ShareMetadata(
     // The holder's stable local contact id — not their Ed25519 key — so this record survives a
     // holder key rotation/recovery (see deposplit.com/CLAUDE.md "What is next" item 7).
     val contactId: UUID,
+    // Item 12 — last proof-of-custody observed for this holder: a relay-observed pickup/retrieve
+    // approval, or a processed heartbeat, whichever is most recent. Null until the first such
+    // observation (e.g. right after deposit(), before the holder has picked up). Drives the
+    // freshness-bucket health model — see CustodyHeartbeatTuning.
+    val lastConfirmedAt: Instant? = null,
 ) {
     override fun equals(other: Any?) = other is ShareMetadata && id == other.id
     override fun hashCode() = id.hashCode()

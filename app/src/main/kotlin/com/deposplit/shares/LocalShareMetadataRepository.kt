@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.time.Instant
 import java.util.UUID
 
 class LocalShareMetadataRepository(context: Context) : ShareMetadataRepository {
@@ -19,6 +20,9 @@ class LocalShareMetadataRepository(context: Context) : ShareMetadataRepository {
         val id: String,
         val secretId: String,
         val contactId: String,
+        // Item 12 — no default/fallback decode shim: Deposplit is pre-launch, local stores are
+        // wiped, not migrated.
+        val lastConfirmedAt: String?,
     )
 
     @Synchronized
@@ -54,11 +58,13 @@ class LocalShareMetadataRepository(context: Context) : ShareMetadataRepository {
         id = UUID.fromString(id),
         secretId = UUID.fromString(secretId),
         contactId = UUID.fromString(contactId),
+        lastConfirmedAt = lastConfirmedAt?.let { Instant.parse(it) },
     )
 
     private fun ShareMetadata.toWire() = ShareMetadataWire(
         id = id.toString(),
         secretId = secretId.toString(),
         contactId = contactId.toString(),
+        lastConfirmedAt = lastConfirmedAt?.toString(),
     )
 }

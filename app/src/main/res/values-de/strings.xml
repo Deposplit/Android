@@ -33,6 +33,11 @@
     <string name="home_health_critical">Jetzt rekonstruieren + neu aufteilen</string>
     <string name="home_health_lost">Nicht wiederherstellbar</string>
     <string name="home_health_discarding">Wird verworfen</string>
+
+    <!-- Item 12 — Frische-Status pro Halter -->
+    <string name="home_freshness_stale">Wird veraltet</string>
+    <string name="home_freshness_unmonitored">Bewusst nicht überwacht</string>
+    <string name="home_freshness_silent">Still — möglicher Verlust</string>
     <string name="home_discard_button">Verwerfen</string>
     <string name="home_discard_title">Dieses Geheimnis verwerfen?</string>
     <string name="home_discard_body">Fordert die Löschung von allen %1$d Verwahrer(n) an. Jeder muss zustimmen — dies entfernt es erst dann von der Geräteliste, wenn alle bestätigt haben (oder du es zwangsweise vergisst).</string>
@@ -57,6 +62,11 @@
     <string name="contacts_mark_compromised_message">Tun Sie dies nur, wenn Sie außerhalb dieses Kanals Grund zur Annahme haben, dass der Schlüssel von %1$s gestohlen wurde. Deposplit lehnt dann jede künftige Schlüsseländerung ab, die Kontinuität zu diesem Schlüssel beansprucht — Sie müssen die Person erneut verifizieren, persönlich oder über einen vertrauenswürdigen Kanal, um die Verbindung wiederherzustellen.</string>
     <string name="contacts_mark_compromised_confirm">Als kompromittiert markieren</string>
     <string name="contacts_error_mark_compromised">Markieren als kompromittiert fehlgeschlagen</string>
+
+    <!-- Item 12 — Custodial Heartbeats -->
+    <string name="contacts_pause_heartbeats_description">Custody-Heartbeats an %1$s pausieren</string>
+    <string name="contacts_resume_heartbeats_description">Custody-Heartbeats an %1$s fortsetzen</string>
+    <string name="contacts_heartbeat_paused_badge_description">Custody-Heartbeats an diesen Kontakt sind pausiert</string>
 
     <!-- Relink contact (item 8 — identity recovery) -->
     <string name="relink_title">%1$s neu verknüpfen</string>

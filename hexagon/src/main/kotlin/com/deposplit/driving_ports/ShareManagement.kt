@@ -54,4 +54,11 @@ interface ShareManagement {
     // ─── Item 10 — key conflicts (never auto-resolved), local-only, no relay involvement ───────
     fun listKeyConflicts(): List<KeyConflict>
     fun dismissKeyConflict(id: UUID)
+
+    // ─── Item 12 — holder role. This device's own choice to stop (or resume) heartbeating
+    // contactId (who is the owner in that relationship). Updates the local preference only — the
+    // opportunistic syncInbox() emission loop is what actually reaches the contact, on its
+    // normal per-sender cadence; this resets that contact's lastHeartbeatSentAt so the change
+    // reaches them on the very next poll rather than waiting out the interval.
+    fun setHeartbeatEmissionOptedOut(contactId: UUID, optedOut: Boolean)
 }

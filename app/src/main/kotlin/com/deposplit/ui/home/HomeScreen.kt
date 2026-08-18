@@ -1,5 +1,6 @@
 package com.deposplit.ui.home
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,8 +24,10 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -55,6 +58,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -472,6 +477,13 @@ private fun HolderRow(holder: HolderStatus, onClick: () -> Unit) {
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(holder.recipientName, style = MaterialTheme.typography.bodyMedium)
+            // Item 12 — early nudge, surfaced before the holder actually drops out of n_live.
+            when {
+                holder.isGettingStale -> FreshnessLabel(R.string.home_freshness_stale, Icons.Filled.Schedule, MaterialTheme.colorScheme.tertiary)
+                holder.freshnessBucket == FreshnessBucket.UNMONITORED -> FreshnessLabel(R.string.home_freshness_unmonitored, Icons.Filled.VisibilityOff, MaterialTheme.colorScheme.onSurfaceVariant)
+                holder.freshnessBucket == FreshnessBucket.SILENT_OVERDUE -> FreshnessLabel(R.string.home_freshness_silent, Icons.Filled.Warning, MaterialTheme.colorScheme.error)
+                else -> {}
+            }
         }
         holder.retrievalRequest?.let { req ->
             val (labelRes, color) = when (req.state) {
@@ -486,6 +498,14 @@ private fun HolderRow(holder: HolderStatus, onClick: () -> Unit) {
                 color = color,
             )
         }
+    }
+}
+
+@Composable
+private fun FreshnessLabel(@StringRes textRes: Int, icon: ImageVector, color: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(12.dp))
+        Text(stringResource(textRes), style = MaterialTheme.typography.labelSmall, color = color)
     }
 }
 

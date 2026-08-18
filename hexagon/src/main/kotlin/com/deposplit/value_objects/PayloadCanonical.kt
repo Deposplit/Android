@@ -71,4 +71,17 @@ object PayloadCanonical {
         base64Url.encodeToString(newEd25519Key),
         base64Url.encodeToString(newX25519Key),
     ).joinToString("\n").toByteArray(Charsets.UTF_8)
+
+    /**
+     * Signed by the holder when pushing a custodial-heartbeat push (item 12), i.e. by the caller
+     * who becomes [CustodyHeartbeat.holderKey]. [secretIds] is sorted (lowercase `UUID.toString`)
+     * before joining so the signed bytes are independent of list-construction order on either
+     * side. The same construction covers the opt-out notice ([optedOut] `= true`, `secretIds`
+     * typically empty) — mechanically the same signed row, just a different meaning to the reader.
+     */
+    fun forHeartbeat(ownerKey: ByteArray, secretIds: List<UUID>, optedOut: Boolean): ByteArray = listOf(
+        base64Url.encodeToString(ownerKey),
+        secretIds.map { it.toString() }.sorted().joinToString(","),
+        optedOut.toString(),
+    ).joinToString("\n").toByteArray(Charsets.UTF_8)
 }

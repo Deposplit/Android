@@ -1,5 +1,6 @@
 package com.deposplit.driven_ports
 
+import com.deposplit.value_objects.CustodyHeartbeat
 import com.deposplit.value_objects.KeyRotation
 import com.deposplit.value_objects.Role
 import com.deposplit.value_objects.ShareRequest
@@ -54,4 +55,17 @@ interface ShareRelay {
     fun listRotations(): List<KeyRotation>
     /** Deletes a rotation notice once consumed. */
     fun deleteRotation(id: UUID)
+
+    // Item 12's signed custodial-heartbeat push — same "grouped onto this interface" reasoning as
+    // the rotation push above: one physical relay, one BYOR routing scheme.
+
+    /**
+     * Pushes (upserts) a signed heartbeat for one owner, replacing any previous heartbeat this
+     * device sent to that owner. [signature] must verify against the caller's own current
+     * Ed25519 key (the relay's `holderKey`) over
+     * [com.deposplit.value_objects.PayloadCanonical.forHeartbeat].
+     */
+    fun pushHeartbeat(ownerKey: ByteArray, secretIds: List<UUID>, optedOut: Boolean, signature: ByteArray)
+    /** The latest heartbeat (or opt-out) from each holder addressed to this device. */
+    fun listHeartbeats(): List<CustodyHeartbeat>
 }
