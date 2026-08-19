@@ -14,6 +14,7 @@ import com.deposplit.ui.deposit.DepositScreen
 import com.deposplit.ui.home.HomeScreen
 import com.deposplit.ui.qr.QrDisplayScreen
 import com.deposplit.ui.qr.QrScanScreen
+import com.deposplit.ui.repair.RepairScreen
 import com.deposplit.ui.settings.SettingsScreen
 import com.deposplit.ui.sharedetail.ShareDetailScreen
 import com.deposplit.ui.signin.SignInScreen
@@ -27,6 +28,7 @@ private const val ROUTE_ADD_CONTACT = "add_contact"
 private const val ROUTE_RELINK_CONTACT = "relink_contact/{contactId}"
 private const val ROUTE_DEPOSIT = "deposit"
 private const val ROUTE_SHARE_DETAIL = "share_detail/{shareId}"
+private const val ROUTE_REPAIR = "repair/{secretId}"
 private const val ROUTE_QR_DISPLAY = "qr_display"
 private const val ROUTE_QR_SCAN = "qr_scan"
 private const val ROUTE_SETTINGS = "settings"
@@ -62,6 +64,7 @@ class MainActivity : FragmentActivity() {
                             },
                             onNavigateToQrDisplay = { navController.navigate(ROUTE_QR_DISPLAY) },
                             onNavigateToSettings = { navController.navigate(ROUTE_SETTINGS) },
+                            onNavigateToRepair = { secretId -> navController.navigate("repair/$secretId") },
                         )
                     }
                     composable(ROUTE_SETTINGS) {
@@ -104,6 +107,15 @@ class MainActivity : FragmentActivity() {
                         )
                         ShareDetailScreen(
                             shareId = shareId,
+                            onNavigateBack = { navController.popBackStack() },
+                        )
+                    }
+                    composable(ROUTE_REPAIR) { backStackEntry ->
+                        val secretId = UUID.fromString(
+                            backStackEntry.arguments?.getString("secretId")
+                        )
+                        RepairScreen(
+                            secretId = secretId,
                             onNavigateBack = { navController.popBackStack() },
                         )
                     }

@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -87,6 +88,7 @@ fun HomeScreen(
     onNavigateToShareDetail: (UUID) -> Unit,
     onNavigateToQrDisplay: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToRepair: (UUID) -> Unit,
 ) {
     val app = LocalContext.current.applicationContext as DeposplitApp
     val viewModel: HomeViewModel = viewModel(
@@ -248,6 +250,7 @@ fun HomeScreen(
                                         onHolderClick = onNavigateToShareDetail,
                                         onDiscard = { pendingDiscard = group },
                                         onForceForget = { viewModel.forceForgetSecret(group.secret.id) },
+                                        onRepair = { onNavigateToRepair(group.secret.id) },
                                     )
                                 }
                             }
@@ -370,6 +373,7 @@ private fun SecretGroupCard(
     onHolderClick: (UUID) -> Unit,
     onDiscard: () -> Unit,
     onForceForget: () -> Unit,
+    onRepair: () -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth(), onClick = onToggle) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -424,6 +428,18 @@ private fun SecretGroupCard(
                             )
                         } else {
                             Text(stringResource(R.string.home_request_all))
+                        }
+                    }
+                    if (group.health == SecretHealth.CAUTION || group.health == SecretHealth.CRITICAL) {
+                        Button(
+                            onClick = onRepair,
+                            colors = if (group.health == SecretHealth.CRITICAL) {
+                                ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                            } else {
+                                ButtonDefaults.buttonColors()
+                            },
+                        ) {
+                            Text(stringResource(R.string.home_repair_button))
                         }
                     }
                 }

@@ -21,7 +21,18 @@ import java.util.UUID
 class DepositViewModel(
     private val shareManagement: ShareManagement,
     private val contactManagement: ContactManagement,
+    prefill: Prefill? = null,
 ) : ViewModel() {
+
+    // Seeds the form's initial state — used by the Repair flow to pre-fill a reconstructed
+    // secret's label/value/holders/threshold into an otherwise-ordinary deposit. All fields stay
+    // editable afterward; this only affects the starting values.
+    data class Prefill(
+        val label: String,
+        val secretText: String,
+        val selectedContactIds: Set<UUID>,
+        val threshold: Int,
+    )
 
     data class UiState(
         val label: String = "",
@@ -56,7 +67,18 @@ class DepositViewModel(
         data object AvailabilityOne : SplitTimeWarning
     }
 
-    private val _uiState = MutableStateFlow(UiState())
+    private val _uiState = MutableStateFlow(
+        if (prefill != null) {
+            UiState(
+                label = prefill.label,
+                secret = prefill.secretText,
+                threshold = prefill.threshold,
+                selectedContactIds = prefill.selectedContactIds,
+            )
+        } else {
+            UiState()
+        }
+    )
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
     private val _effects = Channel<Effect>(Channel.BUFFERED)

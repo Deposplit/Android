@@ -151,7 +151,7 @@ Tests: `:hexagon/src/test/kotlin/com/deposplit/shamir/ShamirTest.kt` — round-t
 
 ```
 DeposplitApp.kt              Application subclass; owns authAdapter + contactManagement + shareManagement + catalogManagement + relaySettings
-MainActivity.kt              Single activity; NavHost root (sign_in / home / contacts / add_contact / relink_contact/{contactId} / deposit / share_detail / qr_display / qr_scan / settings)
+MainActivity.kt              Single activity; NavHost root (sign_in / home / contacts / add_contact / relink_contact/{contactId} / deposit / share_detail / repair/{secretId} / qr_display / qr_scan / settings)
 auth/
 └── AndroidIdentityStore.kt  Adapter implementing IdentityStore — Android Keystore AES-256-GCM wrapping of private keys; public keys + pseudonym in SharedPreferences
 api/
@@ -194,7 +194,20 @@ ui/
 │               contactManagement.updateContact then shareManagement.pushRecoveryMetadata; distinct from
 │               QrScanViewModel, which always mints a *new* contact
 ├── deposit/      DepositViewModel + DepositScreen           — contactManagement.listContacts + shareManagement.deposit(...);
-│               SplitTimeWarning sealed interface + onDepositClick/confirmDespiteWarnings (item 11 non-blocking split-time warnings)
+│               SplitTimeWarning sealed interface + onDepositClick/confirmDespiteWarnings (item 11 non-blocking split-time warnings);
+│               DepositViewModel gained an optional Prefill constructor param (item 9, seeds UiState) and DepositScreen's form
+│               body was extracted into a public DepositForm composable so RepairScreen can embed the identical validated form
+│               (including the warning dialog) as its own wizard step instead of duplicating it
+├── repair/       RepairViewModel + RepairScreen (item 9 — reconstruct-and-re-split "Repair" flow, deposplit.com/CLAUDE.md
+│               "What is next" item 9) — one screen, internal wizard state (RepairPhase: GATHERING/RECONSTRUCTING/REDEPOSIT/
+│               CONFIRM_DISCARD/DONE) composing three already-existing primitives: requestAll/reconstruct (ShareManagement),
+│               and (via a key-scoped, prefilled DepositViewModel constructed only on entering REDEPOSIT) deposit, then
+│               discardSecret. Reconstruct is biometric-gated exactly like ShareDetailScreen (reuses the same
+│               ui/biometric/authenticate + biometricAvailability helpers); the reconstructed plaintext lives only in that
+│               transient DepositViewModel's UiState, dropped immediately on deposit success. discardSecret is called at most
+│               once per flow (confirmed non-idempotent — see ShareService.discardSecret). Entry point is a "Repair" button on
+│               HomeScreen's SecretGroupCard, shown only when SecretHealth is CAUTION or CRITICAL, navigating to
+│               "repair/{secretId}"
 ├── requests/     RequestsViewModel + RecipientRequestsTab   — approve/deny incoming requests; RequestsViewModel
 │               gained keyConflicts: List<KeyConflict> (loaded in load(), soft-failed), keyChangedDaysAgo(request)
 │               (item 10 — gated to RETRIEVAL requests only, per the "key change → quick retrieval" attack

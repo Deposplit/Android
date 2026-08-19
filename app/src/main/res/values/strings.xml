@@ -55,6 +55,7 @@
     <string name="home_discard_confirm">Discard</string>
     <string name="home_discarding_label">Discarding…</string>
     <string name="home_force_forget_button">Force Forget</string>
+    <string name="home_repair_button">Repair</string>
 
     <!-- Contacts -->
     <string name="contacts_title">Contacts</string>
@@ -191,6 +192,23 @@
     <string name="share_detail_error_load">Failed to load</string>
     <string name="share_detail_error_open_request">Failed to open request</string>
     <string name="share_detail_error_reconstruct">Reconstruction failed</string>
+
+    <!-- Item 9 — reconstruct-and-re-split repair flow -->
+    <string name="repair_title_format">Repair %1$s</string>
+    <string name="repair_title_fallback">Repair</string>
+    <string name="repair_need_retrievals">Need %1$d approved retrieval(s) to reconstruct — %2$d so far.</string>
+    <string name="repair_holders_title">Holders</string>
+    <string name="repair_no_holders">No holders on record for this secret.</string>
+    <string name="repair_not_requested">Not requested</string>
+    <string name="repair_request_missing_button">Request Missing Retrievals</string>
+    <string name="repair_complete_title">Repair complete</string>
+    <string name="repair_complete_body">Deposited to %1$d new holder(s). Discard the old distribution now? Each of its holders will be asked to delete their copy.</string>
+    <string name="repair_discard_old_button">Discard Old Distribution</string>
+    <string name="repair_not_now_button">Not Now</string>
+    <string name="repair_done_title">Done</string>
+    <string name="repair_close_button">Close</string>
+    <string name="repair_error_load">Failed to load</string>
+    <string name="repair_error_reconstruct">Reconstruction failed</string>
 
     <!-- QR display -->
     <string name="qr_display_title">My QR Code</string>

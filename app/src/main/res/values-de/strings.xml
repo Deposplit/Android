@@ -44,6 +44,7 @@
     <string name="home_discard_confirm">Verwerfen</string>
     <string name="home_discarding_label">Wird verworfen …</string>
     <string name="home_force_forget_button">Zwangsweise vergessen</string>
+    <string name="home_repair_button">Reparieren</string>
 
     <!-- Contacts -->
     <string name="contacts_title">Kontakte</string>
@@ -166,6 +167,23 @@
     <string name="share_detail_error_load">Laden fehlgeschlagen</string>
     <string name="share_detail_error_open_request">Anfrage konnte nicht geöffnet werden</string>
     <string name="share_detail_error_reconstruct">Rekonstruktion fehlgeschlagen</string>
+
+    <!-- Item 9 — Reparatur-Fluss (Rekonstruieren + neu aufteilen) -->
+    <string name="repair_title_format">%1$s reparieren</string>
+    <string name="repair_title_fallback">Reparieren</string>
+    <string name="repair_need_retrievals">Benötige %1$d genehmigte Abholung(en) zur Rekonstruktion — bisher %2$d.</string>
+    <string name="repair_holders_title">Inhaber</string>
+    <string name="repair_no_holders">Keine Inhaber für dieses Geheimnis bekannt.</string>
+    <string name="repair_not_requested">Nicht angefragt</string>
+    <string name="repair_request_missing_button">Fehlende Abholungen anfragen</string>
+    <string name="repair_complete_title">Reparatur abgeschlossen</string>
+    <string name="repair_complete_body">An %1$d neue(n) Inhaber hinterlegt. Alte Verteilung jetzt verwerfen? Jeder ihrer Inhaber wird gebeten, seine Kopie zu löschen.</string>
+    <string name="repair_discard_old_button">Alte Verteilung verwerfen</string>
+    <string name="repair_not_now_button">Jetzt nicht</string>
+    <string name="repair_done_title">Fertig</string>
+    <string name="repair_close_button">Schließen</string>
+    <string name="repair_error_load">Laden fehlgeschlagen</string>
+    <string name="repair_error_reconstruct">Rekonstruktion fehlgeschlagen</string>
 
     <!-- QR display -->
     <string name="qr_display_title">Mein QR-Code</string>

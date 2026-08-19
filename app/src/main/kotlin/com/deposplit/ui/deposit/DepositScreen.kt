@@ -2,6 +2,7 @@ package com.deposplit.ui.deposit
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -81,121 +82,136 @@ fun DepositScreen(onNavigateBack: () -> Unit) {
             )
         }
     ) { padding ->
-        if (uiState.isLoadingContacts) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center,
-            ) { CircularProgressIndicator() }
-            return@Scaffold
-        }
+        DepositForm(uiState = uiState, viewModel = viewModel, contentPadding = padding)
+    }
+}
 
-        Column(
+/**
+ * The deposit form itself, factored out so the Repair flow (`RepairScreen`) can embed the same
+ * validated form — including the split-time warning dialog — inside its own wizard step rather
+ * than duplicating it. `DepositScreen` wraps this in its own `Scaffold`/`TopAppBar` for the
+ * standalone "Split & Share" route; `RepairScreen` embeds it directly inside its own `Scaffold`.
+ */
+@Composable
+fun DepositForm(
+    uiState: DepositViewModel.UiState,
+    viewModel: DepositViewModel,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
+) {
+    if (uiState.isLoadingContacts) {
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp)
-                .verticalScroll(rememberScrollState())
-                .imePadding(),
-        ) {
+                .padding(contentPadding),
+            contentAlignment = Alignment.Center,
+        ) { CircularProgressIndicator() }
+        return
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding)
+            .padding(horizontal = 16.dp)
+            .verticalScroll(rememberScrollState())
+            .imePadding(),
+    ) {
+        Spacer(Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = uiState.label,
+            onValueChange = viewModel::onLabelChange,
+            label = { Text(stringResource(R.string.deposit_label_label)) },
+            placeholder = { Text(stringResource(R.string.deposit_label_placeholder)) },
+            isError = uiState.labelError != null,
+            supportingText = uiState.labelError?.let { resId -> { Text(stringResource(resId)) } },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        OutlinedTextField(
+            value = uiState.secret,
+            onValueChange = viewModel::onSecretChange,
+            label = { Text(stringResource(R.string.deposit_secret_label)) },
+            isError = uiState.secretError != null,
+            supportingText = uiState.secretError?.let { resId -> { Text(stringResource(resId)) } },
+            minLines = 3,
+            maxLines = 6,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        Spacer(Modifier.height(20.dp))
+
+        Text(stringResource(R.string.deposit_recipients_title), style = MaterialTheme.typography.titleSmall)
+
+        if (uiState.contacts.isEmpty()) {
             Spacer(Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = uiState.label,
-                onValueChange = viewModel::onLabelChange,
-                label = { Text(stringResource(R.string.deposit_label_label)) },
-                placeholder = { Text(stringResource(R.string.deposit_label_placeholder)) },
-                isError = uiState.labelError != null,
-                supportingText = uiState.labelError?.let { resId -> { Text(stringResource(resId)) } },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+            Text(
+                text = stringResource(R.string.deposit_no_contacts),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        } else {
+            uiState.contacts.forEach { contact ->
+                ContactRow(
+                    contact = contact,
+                    selected = contact.id in uiState.selectedContactIds,
+                    onToggle = { viewModel.onToggleContact(contact.id) },
+                )
+            }
+        }
 
-            Spacer(Modifier.height(12.dp))
-
-            OutlinedTextField(
-                value = uiState.secret,
-                onValueChange = viewModel::onSecretChange,
-                label = { Text(stringResource(R.string.deposit_secret_label)) },
-                isError = uiState.secretError != null,
-                supportingText = uiState.secretError?.let { resId -> { Text(stringResource(resId)) } },
-                minLines = 3,
-                maxLines = 6,
-                modifier = Modifier.fillMaxWidth(),
+        if (uiState.selectionError != null) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = stringResource(uiState.selectionError!!),
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
             )
+        }
 
+        if (uiState.selectedCount >= 2) {
             Spacer(Modifier.height(20.dp))
+            Text(stringResource(R.string.deposit_threshold_title), style = MaterialTheme.typography.titleSmall)
+            Spacer(Modifier.height(8.dp))
+            ThresholdRow(
+                threshold = uiState.threshold,
+                selectedCount = uiState.selectedCount,
+                onDecrement = viewModel::onThresholdDecrement,
+                onIncrement = viewModel::onThresholdIncrement,
+            )
+        }
 
-            Text(stringResource(R.string.deposit_recipients_title), style = MaterialTheme.typography.titleSmall)
+        if (uiState.error != null) {
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = stringResource(uiState.error!!),
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
 
-            if (uiState.contacts.isEmpty()) {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = stringResource(R.string.deposit_no_contacts),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+        Spacer(Modifier.height(24.dp))
+
+        Button(
+            onClick = viewModel::onDepositClick,
+            enabled = !uiState.isDepositing,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            if (uiState.isDepositing) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary,
                 )
             } else {
-                uiState.contacts.forEach { contact ->
-                    ContactRow(
-                        contact = contact,
-                        selected = contact.id in uiState.selectedContactIds,
-                        onToggle = { viewModel.onToggleContact(contact.id) },
-                    )
-                }
+                Text(stringResource(R.string.deposit_button))
             }
-
-            if (uiState.selectionError != null) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = stringResource(uiState.selectionError!!),
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-
-            if (uiState.selectedCount >= 2) {
-                Spacer(Modifier.height(20.dp))
-                Text(stringResource(R.string.deposit_threshold_title), style = MaterialTheme.typography.titleSmall)
-                Spacer(Modifier.height(8.dp))
-                ThresholdRow(
-                    threshold = uiState.threshold,
-                    selectedCount = uiState.selectedCount,
-                    onDecrement = viewModel::onThresholdDecrement,
-                    onIncrement = viewModel::onThresholdIncrement,
-                )
-            }
-
-            if (uiState.error != null) {
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = stringResource(uiState.error!!),
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-
-            Spacer(Modifier.height(24.dp))
-
-            Button(
-                onClick = viewModel::onDepositClick,
-                enabled = !uiState.isDepositing,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                if (uiState.isDepositing) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                    )
-                } else {
-                    Text(stringResource(R.string.deposit_button))
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
         }
+
+        Spacer(Modifier.height(16.dp))
     }
 
     if (uiState.pendingWarnings.isNotEmpty()) {
