@@ -12,12 +12,15 @@ import com.deposplit.driving_ports.ContactManagement
 import com.deposplit.driving_ports.Identity
 import com.deposplit.driving_ports.ShareManagement
 import com.deposplit.shamir.combine
+import com.deposplit.shamir.combineWithIntegrity
 import com.deposplit.shamir.split
 import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.CustodyHeartbeatTuning
 import com.deposplit.value_objects.HeldShare
 import com.deposplit.value_objects.KeyConflict
 import com.deposplit.value_objects.PayloadCanonical
+import com.deposplit.value_objects.ReconstructionIntegrity
+import com.deposplit.value_objects.ReconstructionResult
 import com.deposplit.value_objects.RetainedDepositBlob
 import com.deposplit.value_objects.Role
 import com.deposplit.value_objects.Secret
@@ -198,13 +201,31 @@ class ShareService(
             .flatMap { relay -> runCatching { relay.listShareRequests(Role.SENDER) }.getOrDefault(emptyList()) }
             .filterNot { it.transactionType == ShareTransactionType.DEPOSIT }
 
+    // Item 13 — a holder is worth prioritizing for a fresh retrieval ask when item 12's own
+    // "still counts toward n_live" freshness rule already trusts them: an unexpired
+    // proof-of-custody and no standing opt-out. Recomputed here (not shared with the UI layer's
+    // own FreshnessBucket, which serves display, not targeting) — a small, deliberate duplication
+    // of a threshold check rather than restructuring already-shipped item-12 UI code.
+    private fun isConfirmed(meta: ShareMetadata): Boolean {
+        val contact = contactRepository.getById(meta.contactId) ?: return false
+        if (contact.heartbeatOptedOutAt != null) return false
+        val lastConfirmedAt = meta.lastConfirmedAt ?: return false
+        return Duration.between(lastConfirmedAt, Instant.now()) <= CustodyHeartbeatTuning.lossThreshold
+    }
+
     override fun requestAll(secretId: UUID) {
         val secret = secretRepository.getAll().find { it.id == secretId } ?: return
         val deposited = shareMetadataRepository.getAll().filter { it.secretId == secretId }
         val existing = allRelays().flatMap { relay ->
             runCatching { relay.listShareRequests(Role.SENDER, ShareTransactionType.RETRIEVAL) }.getOrDefault(emptyList())
         }
-        for (meta in deposited) {
+        // Item 13 — fan out to the health-informed fresh set first; widen to everyone only when
+        // there aren't enough confirmed holders to reach k. A retrieval request exists solely to
+        // feed an eventual reconstruct(), so this targeting applies here rather than as a
+        // separate method.
+        val confirmed = deposited.filter(::isConfirmed)
+        val targets = if (confirmed.size >= secret.k) confirmed else deposited
+        for (meta in targets) {
             val contact = contactRepository.getById(meta.contactId) ?: continue
             // Matched on secretId, not the local shareId — a recovered ShareMetadata's id is a
             // freshly generated local UUID with no relay-row counterpart. See item 8.
@@ -241,7 +262,7 @@ class ShareService(
     // Pure read (item 11): collects and decrypts k approved retrieval shares, but never tears down
     // local ShareMetadata or relay rows. Use discardSecret for teardown — reconstruct is now a
     // *step* toward a possible re-split, not an implicit "I'm done with this" signal.
-    override fun reconstruct(secretId: UUID): ByteArray {
+    override fun reconstruct(secretId: UUID): ReconstructionResult {
         val secret = secretRepository.getAll().find { it.id == secretId }
             ?: error("No local record for secret $secretId")
         val allRequests: List<Pair<ShareRelay, ShareRequest>> = allRelays().flatMap { relay ->
@@ -258,12 +279,23 @@ class ShareService(
         }
         check(approved.size >= secret.k) { "Need at least ${secret.k} approved shares (have ${approved.size})" }
         val contacts = contactRepository.getAll()
+        // Item 13 — each decrypted share is kept paired with its originating contact so an
+        // excluded index (from combineWithIntegrity) reports back as a suspect contact, not a
+        // meaningless array position.
+        val contactIds = mutableListOf<UUID>()
         val decrypted = approved.map { (_, req) ->
             val contact = contacts.find { it.edPublicKey.contentEquals(req.recipientKey) }
                 ?: error("Contact not found for recipient key")
+            contactIds.add(contact.id)
             encryption.decrypt(req.ciphertext!!, contact.xPublicKey)
         }
-        return combine(decrypted)
+        val result = combineWithIntegrity(decrypted, secret.k)
+        val integrity = when {
+            !result.hasIntegrityMargin -> ReconstructionIntegrity.NoMargin
+            result.excludedIndices.isEmpty() -> ReconstructionIntegrity.Confirmed
+            else -> ReconstructionIntegrity.ExcludedSuspects(result.excludedIndices.map { contactIds[it] }.toSet())
+        }
+        return ReconstructionResult(result.secret, integrity)
     }
 
     // Fans out a sender-initiated removal to every known holder of secretId and flips the Secret

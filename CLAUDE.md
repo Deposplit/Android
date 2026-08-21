@@ -42,7 +42,10 @@ Packages use snake_case to mirror the Scala relay hexagon (`driving_ports`, `dri
 
 ```
 shamir/
-└── Shamir.kt                      split(...) / combine(...) — SSS implementation
+└── Shamir.kt                      split(...) / combine(...) — SSS implementation; combineWithIntegrity(...) + IntegrityCombineResult +
+                                   ReconstructionIntegrityException (item 13 — bounded-exhaustive maximum-agreement decoding to
+                                   detect/exclude a bad share among a surplus beyond threshold, via the Reed–Solomon
+                                   unique-decoding-radius bound)
 driving_ports/
 ├── Identity.kt                    isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign
 ├── ContactManagement.kt           listContacts, addManually, addFromQr, updateContact (contact-update-in-place,
@@ -51,7 +54,8 @@ driving_ports/
 │                                  revokedEdKeys history; defaults to the contact's current key when none is given;
 │                                  idempotent)
 ├── ShareManagement.kt             deposit, listSecrets, listDistributed, listSentRequests, requestAll, openRequest,
-│                                  reconstruct (pure read, enforces real k), discardSecret, forceForgetSecret,
+│                                  reconstruct (pure read, enforces real k, returns ReconstructionResult — item 13's
+│                                  integrity cross-check on any surplus beyond k), discardSecret, forceForgetSecret,
 │                                  syncInbox, listHeld, listPendingRequests, respond, deleteHeldShare,
 │                                  deleteAllHeldFromSender, pushRecoveryMetadata (item 8 — holder side);
 │                                  pushRotation (item 9, client primitive only — no "regenerate my own identity"
@@ -101,7 +105,10 @@ services/
 │                                  approved inventory pushes, verified against a known contact, rebuilding
 │                                  Secret/ShareMetadata); respond()'s retrieval/removal paths match the holder's HeldShare
 │                                  by secretId, not the sender's local shareId (item 8); reconstruct() is a pure read
-│                                  (enforces Secret.k, no teardown — see item 11); discardSecret() fans out delete
+│                                  (enforces Secret.k, no teardown — see item 11) that now calls combineWithIntegrity
+│                                  and maps its result to ReconstructionResult (item 13); requestAll() targets item 12's
+│                                  Confirmed freshness bucket first via a private isConfirmed helper, widening to every
+│                                  holder only when fewer than k are confirmed (item 13); discardSecret() fans out delete
 │                                  requests + flips Secret to DISCARDING; forceForgetSecret() is the local-only escape
 │                                  hatch; pushRecoveryMetadata(contactId) opens a recoveryMetadata push for every
 │                                  HeldShare held from that contact (item 8); takes a new ContactManagement dependency
@@ -132,6 +139,8 @@ value_objects/
 ├── HeldShare.kt                   HeldShare data class (incl. k/n, item 8 — reported back to the owner during recovery)
 ├── Secret.kt                      Secret data class (id, label, k, n, secretCreatedAt, state) + SecretState enum
 │                                  (ACTIVE/DISCARDING) — sender-side per-secret aggregate, see CLAUDE.md item 11
+├── ReconstructionResult.kt        ReconstructionResult (secret, integrity) + ReconstructionIntegrity sealed class
+│                                  (NoMargin/Confirmed/ExcludedSuspects(excludedContactIds), item 13) — reconstruct()'s return type
 ├── KeyRotation.kt                 KeyRotation data class (item 9) — a signed rotate(K_old→K_new) notice addressed
 │                                  to this device; not a ShareRequest (no secretId, no consent phase)
 ├── Share.kt                       Role, ShareTransactionType (incl. INVENTORY, item 8 — self-approved, no
@@ -207,7 +216,11 @@ ui/
 │               transient DepositViewModel's UiState, dropped immediately on deposit success. discardSecret is called at most
 │               once per flow (confirmed non-idempotent — see ShareService.discardSecret). Entry point is a "Repair" button on
 │               HomeScreen's SecretGroupCard, shown only when SecretHealth is CAUTION or CRITICAL, navigating to
-│               "repair/{secretId}"
+│               "repair/{secretId}". Gained reconstructionIntegrity + contacts in UiState (item 13); the redeposit step
+│               renders a ReconstructionAdvisory above the embedded DepositForm once reconstruct succeeds
+├── reconstruction/  ReconstructionAdvisory composable (item 13) — renders ReconstructionIntegrity's three cases as a
+│               one-line badge (info/checkmark/warning), shared by ShareDetailScreen and RepairScreen; takes a
+│               contactName: (UUID) -> String lambda to resolve ExcludedSuspects' names
 ├── requests/     RequestsViewModel + RecipientRequestsTab   — approve/deny incoming requests; RequestsViewModel
 │               gained keyConflicts: List<KeyConflict> (loaded in load(), soft-failed), keyChangedDaysAgo(request)
 │               (item 10 — gated to RETRIEVAL requests only, per the "key change → quick retrieval" attack
@@ -216,7 +229,9 @@ ui/
 │               Relink flow rather than any new "Accept" action, never auto-resolved) above pending requests, and
 │               RequestItem shows an orange "key changed N days ago" Label when keyChangedDaysAgo is non-null
 ├── sharedetail/  ShareDetailViewModel + ShareDetailScreen   — open RETRIEVAL/REMOVAL + shareManagement.reconstruct(...);
-│               loads both the ShareMetadata and its parent Secret (for label/k)
+│               loads both the ShareMetadata and its parent Secret (for label/k); UiState gained reconstructionIntegrity
+│               (item 13), rendered via a ReconstructionAdvisory under the reconstructed secret; a distinct
+│               share_detail_error_integrity message is shown when ReconstructionIntegrityException is thrown
 ├── qr/           QrPayload (v2, incl. relay field), QrDisplay{ViewModel,Screen}, QrScan{ViewModel,Screen}
 │               (CameraViewfinder composable shared with RelinkContactScreen)
 ├── settings/     SettingsViewModel + SettingsScreen         — edit/reset the default relay (RelaySettings);

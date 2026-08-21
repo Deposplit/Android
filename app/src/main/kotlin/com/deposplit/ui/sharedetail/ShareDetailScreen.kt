@@ -52,6 +52,7 @@ import com.deposplit.ui.biometric.AuthAvailability
 import com.deposplit.ui.biometric.AuthResult
 import com.deposplit.ui.biometric.authenticate
 import com.deposplit.ui.biometric.biometricAvailability
+import com.deposplit.ui.reconstruction.ReconstructionAdvisory
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
@@ -181,6 +182,14 @@ fun ShareDetailScreen(shareId: UUID, onNavigateBack: () -> Unit) {
                                 text = uiState.reconstructedSecret!!,
                                 modifier = Modifier.padding(12.dp),
                                 style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                        uiState.reconstructionIntegrity?.let { integrity ->
+                            val unknownContactLabel = stringResource(R.string.share_detail_unknown_contact)
+                            Spacer(Modifier.height(8.dp))
+                            ReconstructionAdvisory(
+                                integrity = integrity,
+                                contactName = { id -> uiState.contacts.find { it.id == id }?.pseudonym ?: unknownContactLabel },
                             )
                         }
                     } else {

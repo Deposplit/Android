@@ -3,6 +3,7 @@ package com.deposplit.driving_ports
 import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.HeldShare
 import com.deposplit.value_objects.KeyConflict
+import com.deposplit.value_objects.ReconstructionResult
 import com.deposplit.value_objects.Secret
 import com.deposplit.value_objects.ShareMetadata
 import com.deposplit.value_objects.ShareRequest
@@ -18,9 +19,11 @@ interface ShareManagement {
     fun listSentRequests(): List<ShareRequest>
     fun requestAll(secretId: UUID)
     fun openRequest(shareId: UUID, type: ShareTransactionType): ShareRequest
-    // Pure read (item 11) — collects k approved retrieval shares and decrypts them. Never tears
-    // down local ShareMetadata or relay rows; use discardSecret for that.
-    fun reconstruct(secretId: UUID): ByteArray
+    // Pure read (item 11) — collects approved retrieval shares (possibly more than k, item 13)
+    // and decrypts them. Never tears down local ShareMetadata or relay rows; use discardSecret for
+    // that. Cross-checks any surplus beyond k for consistency (item 13) — throws rather than
+    // returning a guessed secret if the surplus can't be reconciled.
+    fun reconstruct(secretId: UUID): ReconstructionResult
     // Fans out a sender-initiated removal request to every known holder of secretId and flips the
     // Secret to DISCARDING immediately (before any holder responds).
     fun discardSecret(secretId: UUID)

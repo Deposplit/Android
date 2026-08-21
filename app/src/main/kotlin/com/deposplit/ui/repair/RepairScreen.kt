@@ -53,6 +53,7 @@ import com.deposplit.ui.biometric.authenticate
 import com.deposplit.ui.biometric.biometricAvailability
 import com.deposplit.ui.deposit.DepositForm
 import com.deposplit.ui.deposit.DepositViewModel
+import com.deposplit.ui.reconstruction.ReconstructionAdvisory
 import com.deposplit.value_objects.ShareRequestState
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -123,7 +124,19 @@ fun RepairScreen(secretId: UUID, onNavigateBack: () -> Unit) {
                             }
                         }
                     }
-                    DepositForm(uiState = depositUiState, viewModel = depositViewModel, contentPadding = padding)
+                    Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+                        uiState.reconstructionIntegrity?.let { integrity ->
+                            val unknownContactLabel = stringResource(R.string.share_detail_unknown_contact)
+                            ReconstructionAdvisory(
+                                integrity = integrity,
+                                contactName = { id -> uiState.contacts.find { it.id == id }?.pseudonym ?: unknownContactLabel },
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            )
+                        }
+                        Box(modifier = Modifier.weight(1f)) {
+                            DepositForm(uiState = depositUiState, viewModel = depositViewModel)
+                        }
+                    }
                 }
             }
 

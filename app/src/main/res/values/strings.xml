@@ -192,6 +192,12 @@
     <string name="share_detail_error_load">Failed to load</string>
     <string name="share_detail_error_open_request">Failed to open request</string>
     <string name="share_detail_error_reconstruct">Reconstruction failed</string>
+    <string name="share_detail_error_integrity">Reconstruction integrity check failed — too many inconsistent shares to safely determine the secret</string>
+
+    <!-- Item 13 — reconstruction integrity advisory -->
+    <string name="reconstruction_advisory_no_margin">Reconstructed from exactly the required shares — no integrity cross-check was possible.</string>
+    <string name="reconstruction_advisory_confirmed">Integrity confirmed — every collected share agreed.</string>
+    <string name="reconstruction_advisory_excluded">Excluded %1$d inconsistent share(s) (from: %2$s). Reconstructed from the remaining consistent shares.</string>
 
     <!-- Item 9 — reconstruct-and-re-split repair flow -->
     <string name="repair_title_format">Repair %1$s</string>
@@ -209,6 +215,7 @@
     <string name="repair_close_button">Close</string>
     <string name="repair_error_load">Failed to load</string>
     <string name="repair_error_reconstruct">Reconstruction failed</string>
+    <string name="repair_error_integrity">Reconstruction integrity check failed — too many inconsistent shares to safely determine the secret</string>
 
     <!-- QR display -->
     <string name="qr_display_title">My QR Code</string>

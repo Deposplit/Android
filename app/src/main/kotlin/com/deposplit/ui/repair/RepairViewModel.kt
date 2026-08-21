@@ -6,7 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.deposplit.R
 import com.deposplit.driving_ports.ContactManagement
 import com.deposplit.driving_ports.ShareManagement
+import com.deposplit.shamir.ReconstructionIntegrityException
 import com.deposplit.ui.deposit.DepositViewModel
+import com.deposplit.value_objects.Contact
+import com.deposplit.value_objects.ReconstructionIntegrity
 import com.deposplit.value_objects.Secret
 import com.deposplit.value_objects.ShareRequestState
 import com.deposplit.value_objects.ShareTransactionType
@@ -49,6 +52,8 @@ class RepairViewModel(
         val approvedCount: Int = 0,
         val depositedHolderCount: Int = 0,
         val prefill: DepositViewModel.Prefill? = null,
+        val reconstructionIntegrity: ReconstructionIntegrity? = null,
+        val contacts: List<Contact> = emptyList(),
         @StringRes val error: Int? = null,
     ) {
         val readyToReconstruct: Boolean get() = secret != null && approvedCount >= secret.k
@@ -56,6 +61,13 @@ class RepairViewModel(
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
+
+    private data class LoadResult(
+        val secret: Secret?,
+        val holders: List<HolderRetrievalStatus>,
+        val approved: Int,
+        val contacts: List<Contact>,
+    )
 
     init {
         load()
@@ -86,12 +98,18 @@ class RepairViewModel(
                             it.state == ShareRequestState.APPROVED &&
                             it.ciphertext != null
                     }
-                    Triple(secret, holders, approved)
+                    LoadResult(secret, holders, approved, contacts)
                 }
             }
-                .onSuccess { (secret, holders, approved) ->
+                .onSuccess { (secret, holders, approved, contacts) ->
                     _uiState.update {
-                        it.copy(isLoading = false, secret = secret, holderStatuses = holders, approvedCount = approved)
+                        it.copy(
+                            isLoading = false,
+                            secret = secret,
+                            holderStatuses = holders,
+                            approvedCount = approved,
+                            contacts = contacts,
+                        )
                     }
                 }
                 .onFailure {
@@ -121,19 +139,31 @@ class RepairViewModel(
             runCatching {
                 withContext(Dispatchers.IO) { shareManagement.reconstruct(secretId) }
             }
-                .onSuccess { secretBytes ->
+                .onSuccess { result ->
                     val currentHolderIds = state.holderStatuses.map { it.contactId }.toSet()
                     val prefill = DepositViewModel.Prefill(
                         label = secret.label,
-                        secretText = secretBytes.toString(Charsets.UTF_8),
+                        secretText = result.secret.toString(Charsets.UTF_8),
                         selectedContactIds = currentHolderIds,
                         threshold = secret.k,
                     )
-                    _uiState.update { it.copy(isActing = false, phase = RepairPhase.REDEPOSIT, prefill = prefill) }
-                }
-                .onFailure {
                     _uiState.update {
-                        it.copy(isActing = false, phase = RepairPhase.GATHERING, error = R.string.repair_error_reconstruct)
+                        it.copy(
+                            isActing = false,
+                            phase = RepairPhase.REDEPOSIT,
+                            prefill = prefill,
+                            reconstructionIntegrity = result.integrity,
+                        )
+                    }
+                }
+                .onFailure { e ->
+                    val errorRes = if (e is ReconstructionIntegrityException) {
+                        R.string.repair_error_integrity
+                    } else {
+                        R.string.repair_error_reconstruct
+                    }
+                    _uiState.update {
+                        it.copy(isActing = false, phase = RepairPhase.GATHERING, error = errorRes)
                     }
                 }
         }

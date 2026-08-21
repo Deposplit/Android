@@ -167,6 +167,12 @@
     <string name="share_detail_error_load">Laden fehlgeschlagen</string>
     <string name="share_detail_error_open_request">Anfrage konnte nicht geöffnet werden</string>
     <string name="share_detail_error_reconstruct">Rekonstruktion fehlgeschlagen</string>
+    <string name="share_detail_error_integrity">Integritätsprüfung der Rekonstruktion fehlgeschlagen — zu viele inkonsistente Anteile, um das Geheimnis sicher zu bestimmen</string>
+
+    <!-- Item 13 — Integritätshinweis bei der Rekonstruktion -->
+    <string name="reconstruction_advisory_no_margin">Aus genau den erforderlichen Anteilen rekonstruiert — eine Integritätsprüfung war nicht möglich.</string>
+    <string name="reconstruction_advisory_confirmed">Integrität bestätigt — alle gesammelten Anteile stimmten überein.</string>
+    <string name="reconstruction_advisory_excluded">%1$d inkonsistente(n) Anteil(e) ausgeschlossen (von: %2$s). Aus den übrigen konsistenten Anteilen rekonstruiert.</string>
 
     <!-- Item 9 — Reparatur-Fluss (Rekonstruieren + neu aufteilen) -->
     <string name="repair_title_format">%1$s reparieren</string>
@@ -184,6 +190,7 @@
     <string name="repair_close_button">Schließen</string>
     <string name="repair_error_load">Laden fehlgeschlagen</string>
     <string name="repair_error_reconstruct">Rekonstruktion fehlgeschlagen</string>
+    <string name="repair_error_integrity">Integritätsprüfung der Rekonstruktion fehlgeschlagen — zu viele inkonsistente Anteile, um das Geheimnis sicher zu bestimmen</string>
 
     <!-- QR display -->
     <string name="qr_display_title">Mein QR-Code</string>

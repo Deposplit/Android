@@ -2,7 +2,9 @@ package com.deposplit.shamir
 
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class ShamirTest {
 
@@ -172,6 +174,103 @@ class ShamirTest {
         // Both shares have x = 0x05 (last byte)
         assertFailsWith<IllegalArgumentException> {
             combine(listOf(byteArrayOf(0x01, 0x05), byteArrayOf(0x02, 0x05)))
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // combineWithIntegrity() — item 13 (reconstruction integrity via over-determination)
+    // -------------------------------------------------------------------------
+
+    // Corrupts every secret byte of a share (leaving its x-coordinate intact), simulating a
+    // tampered/forged/bit-flipped holder response — wrong as a whole, not selectively per-byte.
+    private fun tamper(share: ByteArray): ByteArray {
+        val tampered = share.copyOf()
+        for (i in 0 until tampered.size - 1) {
+            tampered[i] = (tampered[i] + 1).toByte()
+        }
+        return tampered
+    }
+
+    @Test
+    fun `combineWithIntegrity at exactly threshold has no margin`() {
+        val secret = "no margin here".encodeToByteArray()
+        val shares = split(secret, 4, 4)
+        val result = combineWithIntegrity(shares, 4)
+        assertContentEquals(secret, result.secret)
+        assertEquals(false, result.hasIntegrityMargin)
+        assertEquals(emptySet(), result.excludedIndices)
+    }
+
+    @Test
+    fun `combineWithIntegrity with surplus all consistent is confirmed`() {
+        val secret = "all agree".encodeToByteArray()
+        val shares = split(secret, 5, 4)
+        val result = combineWithIntegrity(shares, 4)
+        assertContentEquals(secret, result.secret)
+        assertEquals(true, result.hasIntegrityMargin)
+        assertEquals(emptySet(), result.excludedIndices)
+    }
+
+    @Test
+    fun `combineWithIntegrity at margin 1 with one bad share detects but cannot correct`() {
+        // threshold+1 collected, one bad: can only *detect* a problem exists (CLAUDE.md item 13),
+        // never identify which side is at fault — must throw rather than guess.
+        val secret = "margin one".encodeToByteArray()
+        val shares = split(secret, 5, 4).toMutableList()
+        shares[0] = tamper(shares[0])
+        val e = assertFailsWith<ReconstructionIntegrityException> {
+            combineWithIntegrity(shares, 4)
+        }
+        assertTrue(e.message!!.contains("5"))
+    }
+
+    @Test
+    fun `combineWithIntegrity at margin 2 with one bad share excludes it and reconstructs`() {
+        val secret = "margin two corrects one bad share".encodeToByteArray()
+        val shares = split(secret, 6, 4).toMutableList()
+        shares[2] = tamper(shares[2])
+        val result = combineWithIntegrity(shares, 4)
+        assertContentEquals(secret, result.secret)
+        assertEquals(setOf(2), result.excludedIndices)
+    }
+
+    @Test
+    fun `combineWithIntegrity at margin 3 with two bad shares exceeds correctable bound`() {
+        // floor(margin/2) = floor(3/2) = 1 correctable — two simultaneous bad shares exceed it,
+        // so this must refuse to guess rather than silently pick a spurious "majority".
+        val secret = "margin three cannot correct two bad".encodeToByteArray()
+        val shares = split(secret, 7, 4).toMutableList()
+        shares[1] = tamper(shares[1])
+        shares[5] = tamper(shares[5])
+        assertFailsWith<ReconstructionIntegrityException> {
+            combineWithIntegrity(shares, 4)
+        }
+    }
+
+    @Test
+    fun `combineWithIntegrity at margin 4 with two bad shares excludes both and reconstructs`() {
+        val secret = "margin four corrects two bad shares".encodeToByteArray()
+        val shares = split(secret, 8, 4).toMutableList()
+        shares[0] = tamper(shares[0])
+        shares[7] = tamper(shares[7])
+        val result = combineWithIntegrity(shares, 4)
+        assertContentEquals(secret, result.secret)
+        assertEquals(setOf(0, 7), result.excludedIndices)
+    }
+
+    @Test
+    fun `combineWithIntegrity validates like combine`() {
+        assertFailsWith<IllegalArgumentException> {
+            combineWithIntegrity(listOf(byteArrayOf(0x01, 0x02)), 2)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            combineWithIntegrity(listOf(byteArrayOf(0x01), byteArrayOf(0x02)), 2)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            combineWithIntegrity(listOf(byteArrayOf(0x01, 0x02), byteArrayOf(0x01, 0x02, 0x03)), 2)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            combineWithIntegrity(listOf(byteArrayOf(0x01, 0x05), byteArrayOf(0x02, 0x05), byteArrayOf(0x03, 0x05)), 2)
         }
     }
 }

@@ -189,3 +189,140 @@ fun combine(shares: List<ByteArray>): ByteArray {
         interpolatePolynomial(xSamples, ySamples, 0).toByte()
     }
 }
+
+/**
+ * Result of [combineWithIntegrity]. [hasIntegrityMargin] is `false` only when exactly [threshold]
+ * shares were supplied (nothing to cross-check against — item 13's "reconstructed without
+ * integrity margin" case). [excludedIndices] are positions in the input `shares` list identified
+ * as inconsistent with the rest and excluded from reconstruction; empty when every share agreed.
+ */
+data class IntegrityCombineResult(
+    val secret: ByteArray,
+    val excludedIndices: Set<Int>,
+    val hasIntegrityMargin: Boolean,
+)
+
+/**
+ * Thrown by [combineWithIntegrity] when more shares were collected than [combineWithIntegrity]'s
+ * `threshold`, but no size-`threshold` subset could be found whose agreement with the rest clears
+ * the Reed–Solomon unique-decoding-radius bound (`⌊(collected - threshold) / 2⌋` correctable bad
+ * shares). Never silently guesses a secret.
+ */
+class ReconstructionIntegrityException(message: String) : Exception(message)
+
+// Safety valve against pathological C(m, threshold) blow-up for unrealistically large fan-outs —
+// n is already soft-capped in practice by an app-level operational-burden warning at split time,
+// so this is a generous, documented scope limit rather than a fully general polynomial-time
+// Reed-Solomon decoder (Berlekamp-Welch). Comfortably covers e.g. threshold=6, collected=14
+// (C(14,6) = 3,003).
+private const val MAX_INTEGRITY_COMBINATIONS_TRIED = 5000
+
+/**
+ * Reconstructs from more than [threshold] shares by finding the largest mutually-consistent
+ * subset and using it — classic Shamir has no built-in integrity, so passing extra shares to
+ * plain [combine] would silently mix in a bad one and produce a wrong secret with no error
+ * signal. See deposplit.com/CLAUDE.md item 13.
+ *
+ * Algorithm: bounded-exhaustive maximum-agreement decoding. Every size-[threshold] subset of
+ * [shares] is a "hypothesis"; for each, the implied secret is interpolated and every one of the
+ * `shares.size` inputs is checked against it at *every* byte position (a corrupted or forged
+ * share is wrong as a whole, not selectively per-byte). The hypothesis with the largest agreeing
+ * set wins. This is accepted only if it clears the Reed–Solomon unique-decoding-radius bound
+ * (`agreeing.size >= shares.size - ⌊(shares.size - threshold) / 2⌋`) — a hard mathematical
+ * guarantee (two distinct degree-`<threshold` polynomials can agree on at most `threshold - 1`
+ * points), not a heuristic, so whenever this succeeds the result is provably the unique correct
+ * answer, not a guess.
+ *
+ * @throws ReconstructionIntegrityException if no subset clears that bound — this correctly
+ *   *detects* a problem without guessing which share is at fault when the margin is too thin to
+ *   correct it (e.g. exactly `threshold + 1` shares with one bad one), and correctly refuses to
+ *   pick a spurious "majority" when more shares are bad than the margin can tolerate.
+ */
+fun combineWithIntegrity(shares: List<ByteArray>, threshold: Int): IntegrityCombineResult {
+    require(shares.size in 2..255) { "shares must have at least 2 and at most 255 elements" }
+    require(threshold in 2..255) { "threshold must be at least 2 and at most 255" }
+    require(shares.size >= threshold) { "shares cannot be less than threshold" }
+    val shareLength = shares[0].size
+    require(shareLength >= 2) { "each share must be at least 2 bytes" }
+    require(shares.all { it.size == shareLength }) { "all shares must have the same byte length" }
+
+    val secretLength = shareLength - 1
+    val m = shares.size
+    val xSamples = IntArray(m)
+    val seen = mutableSetOf<Int>()
+    for ((i, share) in shares.withIndex()) {
+        val x = share[shareLength - 1].toInt() and 0xff
+        require(seen.add(x)) { "shares must contain unique x-coordinates but a duplicate was found" }
+        xSamples[i] = x
+    }
+
+    if (m == threshold) {
+        return IntegrityCombineResult(combine(shares), emptySet(), hasIntegrityMargin = false)
+    }
+
+    // Reconstructs from a threshold-sized hypothesis (indices into `shares`), then returns which
+    // of the full `m` shares agree with it at every byte position.
+    fun evaluateHypothesis(hypothesis: IntArray): Pair<ByteArray, Set<Int>> {
+        val hypoX = IntArray(threshold) { xSamples[hypothesis[it]] }
+        val secret = ByteArray(secretLength)
+        val ySamples = IntArray(threshold)
+        for (byteIndex in 0 until secretLength) {
+            for (t in 0 until threshold) ySamples[t] = shares[hypothesis[t]][byteIndex].toInt() and 0xff
+            secret[byteIndex] = interpolatePolynomial(hypoX, ySamples, 0).toByte()
+        }
+        val agreeing = hypothesis.toMutableSet()
+        for (j in 0 until m) {
+            if (j in agreeing) continue
+            var matches = true
+            for (byteIndex in 0 until secretLength) {
+                for (t in 0 until threshold) ySamples[t] = shares[hypothesis[t]][byteIndex].toInt() and 0xff
+                val predicted = interpolatePolynomial(hypoX, ySamples, xSamples[j])
+                if (predicted != (shares[j][byteIndex].toInt() and 0xff)) { matches = false; break }
+            }
+            if (matches) agreeing.add(j)
+        }
+        return secret to agreeing
+    }
+
+    val excess = m - threshold
+    val correctable = excess / 2
+    val acceptThreshold = m - correctable
+
+    var bestSecret: ByteArray? = null
+    var bestAgreeing: Set<Int> = emptySet()
+    var combo = IntArray(threshold) { it }
+    var tried = 0
+    while (true) {
+        val (secret, agreeing) = evaluateHypothesis(combo)
+        tried++
+        if (agreeing.size > bestAgreeing.size) {
+            bestSecret = secret
+            bestAgreeing = agreeing
+            if (bestAgreeing.size == m) break // unanimous — nothing can beat this
+        }
+        if (tried >= MAX_INTEGRITY_COMBINATIONS_TRIED) break
+        combo = nextCombination(combo, m) ?: break
+    }
+
+    if (bestSecret == null || bestAgreeing.size < acceptThreshold) {
+        throw ReconstructionIntegrityException(
+            "Reconstruction integrity check failed: could not find $threshold or more mutually " +
+                "consistent shares among $m collected (largest consistent group: ${bestAgreeing.size})"
+        )
+    }
+    val excludedIndices = (0 until m).toSet() - bestAgreeing
+    return IntegrityCombineResult(bestSecret, excludedIndices, hasIntegrityMargin = true)
+}
+
+// Standard lexicographic "next combination" of size k from n elements (0-based indices); null
+// once the last combination has been produced.
+private fun nextCombination(combo: IntArray, n: Int): IntArray? {
+    val k = combo.size
+    val next = combo.copyOf()
+    var i = k - 1
+    while (i >= 0 && next[i] == n - k + i) i--
+    if (i < 0) return null
+    next[i]++
+    for (j in i + 1 until k) next[j] = next[j - 1] + 1
+    return next
+}

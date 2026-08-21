@@ -6,7 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.deposplit.R
 import com.deposplit.driving_ports.ContactManagement
 import com.deposplit.driving_ports.ShareManagement
+import com.deposplit.shamir.ReconstructionIntegrityException
 import com.deposplit.value_objects.Contact
+import com.deposplit.value_objects.ReconstructionIntegrity
 import com.deposplit.value_objects.Secret
 import com.deposplit.value_objects.ShareMetadata
 import com.deposplit.value_objects.ShareRequest
@@ -39,6 +41,7 @@ class ShareDetailViewModel(
         val isOpeningRemoval: Boolean = false,
         val isReconstructing: Boolean = false,
         val reconstructedSecret: String? = null,
+        val reconstructionIntegrity: ReconstructionIntegrity? = null,
         @StringRes val error: Int? = null,
         @StringRes val actionError: Int? = null,
     )
@@ -130,18 +133,29 @@ class ShareDetailViewModel(
 
     fun reconstruct() {
         val share = _uiState.value.share ?: return
-        _uiState.update { it.copy(isReconstructing = true, actionError = null, reconstructedSecret = null) }
+        _uiState.update {
+            it.copy(isReconstructing = true, actionError = null, reconstructedSecret = null, reconstructionIntegrity = null)
+        }
         viewModelScope.launch {
             runCatching {
-                withContext(Dispatchers.IO) {
-                    shareManagement.reconstruct(share.secretId).toString(Charsets.UTF_8)
-                }
+                withContext(Dispatchers.IO) { shareManagement.reconstruct(share.secretId) }
             }
-                .onSuccess { secret ->
-                    _uiState.update { it.copy(isReconstructing = false, reconstructedSecret = secret) }
+                .onSuccess { result ->
+                    _uiState.update {
+                        it.copy(
+                            isReconstructing = false,
+                            reconstructedSecret = result.secret.toString(Charsets.UTF_8),
+                            reconstructionIntegrity = result.integrity,
+                        )
+                    }
                 }
-                .onFailure {
-                    _uiState.update { it.copy(isReconstructing = false, actionError = R.string.share_detail_error_reconstruct) }
+                .onFailure { e ->
+                    val errorRes = if (e is ReconstructionIntegrityException) {
+                        R.string.share_detail_error_integrity
+                    } else {
+                        R.string.share_detail_error_reconstruct
+                    }
+                    _uiState.update { it.copy(isReconstructing = false, actionError = errorRes) }
                 }
         }
     }
