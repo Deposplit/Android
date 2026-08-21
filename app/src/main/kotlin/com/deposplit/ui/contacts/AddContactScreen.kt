@@ -94,7 +94,7 @@ fun AddContactScreen(onNavigateBack: () -> Unit) {
             OutlinedTextField(
                 value = uiState.edPublicKey,
                 onValueChange = viewModel::onEdKeyChange,
-                label = { Text(stringResource(R.string.add_contact_ed_label)) },
+                label = { Text(stringResource(R.string.add_contact_verify_key_label)) },
                 isError = uiState.edKeyError != null,
                 supportingText = uiState.edKeyError?.let { resId -> { Text(stringResource(resId)) } },
                 singleLine = true,
@@ -104,7 +104,7 @@ fun AddContactScreen(onNavigateBack: () -> Unit) {
             OutlinedTextField(
                 value = uiState.xPublicKey,
                 onValueChange = viewModel::onXKeyChange,
-                label = { Text(stringResource(R.string.add_contact_x_label)) },
+                label = { Text(stringResource(R.string.add_contact_enc_key_label)) },
                 isError = uiState.xKeyError != null,
                 supportingText = uiState.xKeyError?.let { resId -> { Text(stringResource(resId)) } },
                 singleLine = true,

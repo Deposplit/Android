@@ -60,13 +60,13 @@ class AddContactViewModel(private val contactManagement: ContactManagement) : Vi
         val edKeyError = when {
             state.edPublicKey.isBlank() -> R.string.add_contact_error_required
             edKeyBytes == null -> R.string.add_contact_error_invalid_base64url
-            edKeyBytes.size != 32 -> R.string.add_contact_error_ed_length
+            edKeyBytes.size != 32 -> R.string.add_contact_error_verify_key_length
             else -> null
         }
         val xKeyError = when {
             state.xPublicKey.isBlank() -> R.string.add_contact_error_required
             xKeyBytes == null -> R.string.add_contact_error_invalid_base64url
-            xKeyBytes.size != 32 -> R.string.add_contact_error_x_length
+            xKeyBytes.size != 32 -> R.string.add_contact_error_enc_key_length
             else -> null
         }
         if (pseudonymError != null || edKeyError != null || xKeyError != null) {

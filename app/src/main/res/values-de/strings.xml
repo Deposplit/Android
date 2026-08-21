@@ -89,12 +89,12 @@
     <!-- Add contact -->
     <string name="add_contact_title">Kontakt hinzufügen</string>
     <string name="add_contact_name_label">Name</string>
-    <string name="add_contact_ed_label">Öffentlicher Verifizierungsschlüssel (base64url)</string>
-    <string name="add_contact_x_label">Öffentlicher Verschlüsselungsschlüssel (base64url)</string>
+    <string name="add_contact_verify_key_label">Verifizierungsschlüssel (base64url)</string>
+    <string name="add_contact_enc_key_label">Verschlüsselungsschlüssel (base64url)</string>
     <string name="add_contact_error_required">Pflichtfeld</string>
     <string name="add_contact_error_invalid_base64url">Ungültiges base64url</string>
-    <string name="add_contact_error_ed_length">Muss 32 Bytes lang sein (öffentlicher Verifizierungsschlüssel)</string>
-    <string name="add_contact_error_x_length">Muss 32 Bytes lang sein (öffentlicher Verschlüsselungsschlüssel)</string>
+    <string name="add_contact_error_verify_key_length">Muss 32 Bytes lang sein (Verifizierungsschlüssel)</string>
+    <string name="add_contact_error_enc_key_length">Muss 32 Bytes lang sein (Verschlüsselungsschlüssel)</string>
     <string name="add_contact_error_save">Speichern fehlgeschlagen</string>
     <string name="add_contact_verification_label">Verifizierungsstufe</string>
     <string name="add_contact_verification_footer">Wie sicher bist du, dass es wirklich diese Person ist? Zähle deine unabhängigen Bestätigungen: ein vertrauenswürdiger Kanal und/oder ein Live-Nachweis, dass du sie gesehen hast.</string>
