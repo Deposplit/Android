@@ -47,7 +47,11 @@ shamir/
                                    detect/exclude a bad share among a surplus beyond threshold, via the Reed–Solomon
                                    unique-decoding-radius bound)
 driving_ports/
-├── Identity.kt                    isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign
+├── Identity.kt                    isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign;
+│                                  generateNewKeyPair/activateKeyPair (item 9 — regenerate-identity trigger;
+│                                  generateNewKeyPair is pure key generation, not persisted, so a caller can push
+│                                  a rotation notice signed by the old identity before activateKeyPair persists
+│                                  the new one via the existing IdentityStore.save)
 ├── ContactManagement.kt           listContacts, addManually, addFromQr, updateContact (contact-update-in-place,
 │                                  item 8 — key change forces a fresh verificationLevel), deleteContact,
 │                                  markKeyCompromised (item 10 — flags an Ed25519 key into the contact's
@@ -58,9 +62,12 @@ driving_ports/
 │                                  integrity cross-check on any surplus beyond k), discardSecret, forceForgetSecret,
 │                                  syncInbox, listHeld, listPendingRequests, respond, deleteHeldShare,
 │                                  deleteAllHeldFromSender, pushRecoveryMetadata (item 8 — holder side);
-│                                  pushRotation (item 9, client primitive only — no "regenerate my own identity"
-│                                  UI trigger exists yet, see deposplit.com/TODO.md item 9's scope-split note);
-│                                  listKeyConflicts, dismissKeyConflict (item 10, local-only, no relay involvement)
+│                                  pushRotation (item 9, client primitive, reused unchanged by regenerateIdentity);
+│                                  listKeyConflicts, dismissKeyConflict (item 10, local-only, no relay involvement);
+│                                  regenerateIdentity (item 9 — the "regenerate my own identity" trigger: best-effort
+│                                  drains the inbox/distributed state under the old identity, generates new keys,
+│                                  pushes a signed rotation to every contact via pushRotation while still signing
+│                                  as the old identity, then activates the new keys — returns RegenerateIdentityResult)
 └── CatalogManagement.kt           exportCatalog, importCatalog — optional non-secret catalog backup (item 8)
 driven_ports/
 ├── IdentityStore.kt               isRegistered, save, pseudonym, edPublicKey, edPrivateKey, xPublicKey, xPrivateKey
@@ -86,7 +93,8 @@ driven_ports/
 services/
 ├── IdentityService.kt             Implements Identity, ShareEncryption — BouncyCastle keypair generation,
 │                                  Ed25519 signing, X25519+HKDF+ChaCha20-Poly1305 encrypt/decrypt; delegates persistence
-│                                  to IdentityStore
+│                                  to IdentityStore; generateNewKeyPair/activateKeyPair (item 9) share the same
+│                                  key-gen helper register() uses, factored out for reuse
 ├── ContactService.kt              Implements ContactManagement — key-size validation, VerificationLevel assignment,
 │                                  UUID/timestamp generation; delegates persistence to ContactRepository;
 │                                  updateContact requires a fresh verificationLevel whenever either key changes and
@@ -122,7 +130,12 @@ services/
 │                                  the notice's oldEd25519Key against the contact's revokedEdKeys *before* the
 │                                  downgrade/auto-accept branch — on a match it saves a KeyConflict, deletes the relay
 │                                  notice, and skips updateContact entirely (never auto-resolved); listKeyConflicts/
-│                                  dismissKeyConflict (item 10) delegate directly to KeyConflictRepository
+│                                  dismissKeyConflict (item 10) delegate directly to KeyConflictRepository;
+│                                  regenerateIdentity() (item 9) best-effort drains (syncInbox/syncDistributed) under
+│                                  the old identity, generates new keys via identity.generateNewKeyPair(), pushes a
+│                                  rotation to every contact via the unchanged pushRotation (order matters — this
+│                                  must happen before the swap, since pushRotation signs with whatever identity is
+│                                  currently persisted), then calls identity.activateKeyPair()
 └── CatalogService.kt              Implements CatalogManagement — exportCatalog reads Contact/Secret/ShareMetadata
                                    repositories; importCatalog upserts-if-absent-by-id, never overwriting a newer
                                    local record (item 8)
@@ -141,6 +154,9 @@ value_objects/
 │                                  (ACTIVE/DISCARDING) — sender-side per-secret aggregate, see CLAUDE.md item 11
 ├── ReconstructionResult.kt        ReconstructionResult (secret, integrity) + ReconstructionIntegrity sealed class
 │                                  (NoMargin/Confirmed/ExcludedSuspects(excludedContactIds), item 13) — reconstruct()'s return type
+├── KeyPairMaterial.kt             KeyPairMaterial data class (edPublicKey/edPrivateKey/xPublicKey/xPrivateKey, item 9) —
+│                                  a freshly generated keypair not yet persisted as this device's identity
+├── RegenerateIdentityResult.kt    RegenerateIdentityResult (notifiedContacts, totalContacts, item 9) — regenerateIdentity()'s return type
 ├── KeyRotation.kt                 KeyRotation data class (item 9) — a signed rotate(K_old→K_new) notice addressed
 │                                  to this device; not a ShareRequest (no secretId, no consent phase)
 ├── Share.kt                       Role, ShareTransactionType (incl. INVENTORY, item 8 — self-approved, no
@@ -235,7 +251,10 @@ ui/
 ├── qr/           QrPayload (v2, incl. relay field), QrDisplay{ViewModel,Screen}, QrScan{ViewModel,Screen}
 │               (CameraViewfinder composable shared with RelinkContactScreen)
 ├── settings/     SettingsViewModel + SettingsScreen         — edit/reset the default relay (RelaySettings);
-│               "Catalog Backup" section (item 8) — export via SAF CreateDocument, import via SAF OpenDocument
+│               "Catalog Backup" section (item 8) — export via SAF CreateDocument, import via SAF OpenDocument;
+│               "Identity" section (item 9) — "Regenerate My Identity" destructive button + AlertDialog
+│               confirmation (contact count pre-fetched via ContactManagement.listContacts()) calling
+│               shareManagement.regenerateIdentity(); shows a loading state then "Notified X of Y contact(s)."
 └── theme/        Material 3 colour, type, theme
 ```
 

@@ -21,6 +21,7 @@ import com.deposplit.value_objects.KeyConflict
 import com.deposplit.value_objects.PayloadCanonical
 import com.deposplit.value_objects.ReconstructionIntegrity
 import com.deposplit.value_objects.ReconstructionResult
+import com.deposplit.value_objects.RegenerateIdentityResult
 import com.deposplit.value_objects.RetainedDepositBlob
 import com.deposplit.value_objects.Role
 import com.deposplit.value_objects.Secret
@@ -482,6 +483,27 @@ class ShareService(
         val canon = PayloadCanonical.forRotation(contact.edPublicKey, newEd25519Key, newX25519Key)
         val signature = identity.sign(canon)
         relayForContact(contact).pushRotation(contact.edPublicKey, newEd25519Key, newX25519Key, signature)
+    }
+
+    // Item 9's identity-regen trigger. Order matters: the drain and the rotation pushes must both
+    // happen before activateKeyPair, since pushRotation (and the drain's own relay calls) sign
+    // with whatever identity is currently persisted — that's what proves continuity from the old
+    // key to each contact. If the app dies partway through, the old identity is still active
+    // (nothing was persisted yet), so a retry simply regenerates and re-pushes from scratch; any
+    // contact who received an orphaned first attempt auto-corrects on the next successful push,
+    // per item 9's existing K_old-signed auto-accept rule.
+    override fun regenerateIdentity(): RegenerateIdentityResult {
+        runCatching { syncInbox() }
+        runCatching { syncDistributed() }
+        val newKeys = identity.generateNewKeyPair()
+        val contacts = contactRepository.getAll()
+        var notified = 0
+        for (contact in contacts) {
+            val success = runCatching { pushRotation(contact.id, newKeys.edPublicKey, newKeys.xPublicKey) }.isSuccess
+            if (success) notified++
+        }
+        identity.activateKeyPair(newKeys)
+        return RegenerateIdentityResult(notified, contacts.size)
     }
 
     // Identity recovery (item 8) — sender/owner side. Consumes pending recoveryMetadata pushes

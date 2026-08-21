@@ -24,6 +24,8 @@
 
 package com.deposplit.driving_ports
 
+import com.deposplit.value_objects.KeyPairMaterial
+
 interface Identity {
     fun isRegistered(): Boolean
     fun register(pseudonym: String)
@@ -38,4 +40,18 @@ interface Identity {
      * that ride with a ShareRequest row — see [com.deposplit.value_objects.PayloadCanonical].
      */
     fun verify(message: ByteArray, signature: ByteArray, publicKey: ByteArray): Boolean
+
+    /**
+     * Item 9 — generates a fresh Ed25519 + X25519 keypair without touching storage. The caller
+     * (see [com.deposplit.driving_ports.ShareManagement.regenerateIdentity]) is expected to push
+     * a rotation notice signed by the *current* (soon-to-be-old) identity before calling
+     * [activateKeyPair], proving continuity of key control to every contact.
+     */
+    fun generateNewKeyPair(): KeyPairMaterial
+
+    /**
+     * Item 9 — persists [keyPair] as this device's identity, preserving the existing pseudonym.
+     * After this call, [sign]/[edPublicKey]/[xPublicKey] all reflect the new keys.
+     */
+    fun activateKeyPair(keyPair: KeyPairMaterial)
 }

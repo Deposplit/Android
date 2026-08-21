@@ -122,6 +122,14 @@
     <string name="settings_catalog_import">Import…</string>
     <string name="settings_catalog_imported">Imported %1$s new contact(s).</string>
     <string name="settings_catalog_import_error">Failed to import catalog</string>
+    <string name="settings_identity_title">Identity</string>
+    <string name="settings_regenerate_description">Generates a brand-new keypair for this device and automatically notifies all your contacts. Requests still pending with someone else at this moment may become unreachable afterward — best to let those settle first. This cannot be undone.</string>
+    <string name="settings_regenerate_button">Regenerate My Identity</string>
+    <string name="settings_regenerate_confirm_title">Regenerate your identity?</string>
+    <string name="settings_regenerate_confirm_body">This creates a new key pair and notifies %1$d contact(s). Any request currently pending with someone else may be lost.</string>
+    <string name="settings_regenerate_confirm_action">Regenerate</string>
+    <string name="settings_regenerate_result">Notified %1$d of %2$d contact(s).</string>
+    <string name="settings_regenerate_error">Failed to regenerate identity</string>
 
     <!-- Deposit -->
     <string name="deposit_title">Split &amp; Share Secret</string>

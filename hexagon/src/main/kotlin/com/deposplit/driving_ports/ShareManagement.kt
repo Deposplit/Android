@@ -4,6 +4,7 @@ import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.HeldShare
 import com.deposplit.value_objects.KeyConflict
 import com.deposplit.value_objects.ReconstructionResult
+import com.deposplit.value_objects.RegenerateIdentityResult
 import com.deposplit.value_objects.Secret
 import com.deposplit.value_objects.ShareMetadata
 import com.deposplit.value_objects.ShareRequest
@@ -64,4 +65,12 @@ interface ShareManagement {
     // normal per-sender cadence; this resets that contact's lastHeartbeatSentAt so the change
     // reaches them on the very next poll rather than waiting out the interval.
     fun setHeartbeatEmissionOptedOut(contactId: UUID, optedOut: Boolean)
+
+    // ─── Item 9 — the "regenerate my own identity" trigger (proactive rotation while still
+    // holding the device and old keys — distinct from item 8's device-loss recovery). Best-effort
+    // drains the inbox/distributed state under the old identity, generates a fresh keypair, pushes
+    // a signed rotation notice (via the existing pushRotation, unchanged) to every contact while
+    // still signing as the old identity, then activates the new keypair locally. A contact whose
+    // push fails is not retried — same one-shot semantics as pushRotation itself.
+    fun regenerateIdentity(): RegenerateIdentityResult
 }

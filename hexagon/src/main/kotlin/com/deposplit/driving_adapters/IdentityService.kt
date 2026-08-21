@@ -26,6 +26,7 @@ package com.deposplit.driving_adapters
 
 import com.deposplit.driven_ports.IdentityStore
 import com.deposplit.driving_ports.Identity
+import com.deposplit.value_objects.KeyPairMaterial
 import org.bouncycastle.crypto.agreement.X25519Agreement
 import org.bouncycastle.crypto.digests.SHA256Digest
 import org.bouncycastle.crypto.generators.Ed25519KeyPairGenerator
@@ -49,6 +50,17 @@ class IdentityService(private val identityStore: IdentityStore) : Identity, Shar
     override fun isRegistered(): Boolean = identityStore.isRegistered()
 
     override fun register(pseudonym: String) {
+        val material = generateKeyPairMaterial()
+        identityStore.save(pseudonym, material.edPublicKey, material.edPrivateKey, material.xPublicKey, material.xPrivateKey)
+    }
+
+    override fun generateNewKeyPair(): KeyPairMaterial = generateKeyPairMaterial()
+
+    override fun activateKeyPair(keyPair: KeyPairMaterial) {
+        identityStore.save(identityStore.pseudonym(), keyPair.edPublicKey, keyPair.edPrivateKey, keyPair.xPublicKey, keyPair.xPrivateKey)
+    }
+
+    private fun generateKeyPairMaterial(): KeyPairMaterial {
         val random = SecureRandom()
 
         val edGen = Ed25519KeyPairGenerator()
@@ -63,7 +75,7 @@ class IdentityService(private val identityStore: IdentityStore) : Identity, Shar
         val xPk = (xPair.public as X25519PublicKeyParameters).encoded
         val xSk = (xPair.private as X25519PrivateKeyParameters).encoded
 
-        identityStore.save(pseudonym, edPk, edSk, xPk, xSk)
+        return KeyPairMaterial(edPk, edSk, xPk, xSk)
     }
 
     override fun pseudonym(): String = identityStore.pseudonym()
