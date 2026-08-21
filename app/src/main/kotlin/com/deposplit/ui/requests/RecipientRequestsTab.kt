@@ -102,13 +102,13 @@ fun RecipientRequestsTab(
                 items(uiState.keyConflicts, key = { it.id }) { conflict ->
                     KeyConflictItem(
                         conflict = conflict,
-                        contactName = contactName(conflict) ?: keyPreview(conflict.oldEd25519Key),
+                        contactName = contactName(conflict) ?: keyPreview(conflict.oldVerifyKey),
                         onDismiss = { onDismissConflict(conflict.id) },
                     )
                 }
                 items(uiState.requests, key = { it.id }) { request ->
                     val senderName = uiState.contacts
-                        .find { it.edPublicKey.contentEquals(request.senderKey) }
+                        .find { it.verifyKey.contentEquals(request.senderKey) }
                         ?.pseudonym
                         ?: keyPreview(request.senderKey)
                     RequestItem(

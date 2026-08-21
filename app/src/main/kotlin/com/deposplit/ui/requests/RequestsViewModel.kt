@@ -94,7 +94,7 @@ class RequestsViewModel(
     fun keyChangedDaysAgo(request: ShareRequest): Long? {
         if (request.transactionType != ShareTransactionType.RETRIEVAL) return null
         val changedAt = uiState.value.contacts
-            .find { it.edPublicKey.contentEquals(request.senderKey) }
+            .find { it.verifyKey.contentEquals(request.senderKey) }
             ?.keyChangedAt ?: return null
         return Duration.between(changedAt, Instant.now()).toDays()
     }

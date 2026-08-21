@@ -30,8 +30,8 @@ interface Identity {
     fun isRegistered(): Boolean
     fun register(pseudonym: String)
     fun pseudonym(): String
-    fun edPublicKey(): ByteArray
-    fun xPublicKey(): ByteArray
+    fun verifyKey(): ByteArray
+    fun encKey(): ByteArray
     fun sign(message: ByteArray): ByteArray
 
     /**

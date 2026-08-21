@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deposplit.R
 import com.deposplit.driving_ports.ContactManagement
+import com.deposplit.value_objects.CipherSuite
 import com.deposplit.value_objects.VerificationLevel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,14 +38,15 @@ class QrScanViewModel(private val contactManagement: ContactManagement) : ViewMo
         viewModelScope.launch {
             runCatching {
                 val payload = decodeQrPayload(raw)
-                require(payload.v in 1..2) { "Unknown QR payload version: ${payload.v}" }
                 val decoder = Base64.getUrlDecoder()
-                val edKey = decoder.decode(payload.ed)
-                val xKey = decoder.decode(payload.x)
+                val verifyKey = decoder.decode(payload.verifyKey)
+                val encKey = decoder.decode(payload.encKey)
+                val cipherSuite = CipherSuite.fromWire(payload.cipherSuite)
+                    ?: error("Unknown cipher suite in QR payload: ${payload.cipherSuite}")
                 // A QR scan defaults to in-person co-presence, the strongest assurance the current
                 // scan flow can claim (CLAUDE.md item 6). A remote/video-call scan is a weaker
                 // claim, but there's no UI step here to downgrade it yet.
-                contactManagement.addFromQr(payload.pseudonym, edKey, xKey, VerificationLevel.VERY_HIGH, payload.relay)
+                contactManagement.addFromQr(payload.pseudonym, verifyKey, encKey, cipherSuite, VerificationLevel.VERY_HIGH, payload.relay)
             }.onSuccess {
                 _effects.send(Effect.NavigateBack)
             }.onFailure {

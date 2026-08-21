@@ -13,8 +13,8 @@ enum class VerificationLevel { VERY_LOW, LOW, HIGH, VERY_HIGH }
 data class Contact(
     val id: UUID,
     val pseudonym: String,
-    val edPublicKey: ByteArray,
-    val xPublicKey: ByteArray,
+    val verifyKey: ByteArray,
+    val encKey: ByteArray,
     val verificationLevel: VerificationLevel,
     val verifiedAt: Instant?,
     val addedAt: Instant,
@@ -49,6 +49,11 @@ data class Contact(
     // When true, ShareService's emission loop still visits this contact on its normal cadence
     // but sends a signed opt-out notice instead of a normal heartbeat.
     val heartbeatEmissionOptedOut: Boolean = false,
+    // Item 14 — the signing + key-agreement algorithm pairing this contact currently uses.
+    // Defaulted (not required) purely to keep the large item-14 rename from also being a
+    // "thread a new value through every call site" exercise; the default is correct today (every
+    // contact really is on this one suite), not a placeholder.
+    val cipherSuite: CipherSuite = CipherSuite.current,
 ) {
     override fun equals(other: Any?) = other is Contact && id == other.id
     override fun hashCode() = id.hashCode()

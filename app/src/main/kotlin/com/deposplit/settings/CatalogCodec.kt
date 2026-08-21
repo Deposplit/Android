@@ -1,6 +1,7 @@
 package com.deposplit.settings
 
 import com.deposplit.value_objects.Catalog
+import com.deposplit.value_objects.CipherSuite
 import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.Secret
 import com.deposplit.value_objects.SecretState
@@ -28,12 +29,15 @@ object CatalogCodec {
     private data class ContactWire(
         val id: String,
         val pseudonym: String,
-        val edPublicKey: String,
-        val xPublicKey: String,
+        val verifyKey: String,
+        val encKey: String,
         val verificationLevel: String,
         val verifiedAt: String?,
         val addedAt: String,
         val relayBaseUrl: String? = null,
+        // Item 14 — no default/fallback decode shim: Deposplit is pre-launch, local stores are
+        // wiped, not migrated.
+        val cipherSuite: String,
     )
 
     @Serializable
@@ -76,23 +80,25 @@ object CatalogCodec {
     private fun Contact.toWire() = ContactWire(
         id = id.toString(),
         pseudonym = pseudonym,
-        edPublicKey = Base64.getUrlEncoder().withoutPadding().encodeToString(edPublicKey),
-        xPublicKey = Base64.getUrlEncoder().withoutPadding().encodeToString(xPublicKey),
+        verifyKey = Base64.getUrlEncoder().withoutPadding().encodeToString(verifyKey),
+        encKey = Base64.getUrlEncoder().withoutPadding().encodeToString(encKey),
         verificationLevel = verificationLevel.name,
         verifiedAt = verifiedAt?.toString(),
         addedAt = addedAt.toString(),
         relayBaseUrl = relayBaseUrl,
+        cipherSuite = cipherSuite.wireValue,
     )
 
     private fun ContactWire.toDomain() = Contact(
         id = UUID.fromString(id),
         pseudonym = pseudonym,
-        edPublicKey = Base64.getUrlDecoder().decode(edPublicKey),
-        xPublicKey = Base64.getUrlDecoder().decode(xPublicKey),
+        verifyKey = Base64.getUrlDecoder().decode(verifyKey),
+        encKey = Base64.getUrlDecoder().decode(encKey),
         verificationLevel = VerificationLevel.valueOf(verificationLevel),
         verifiedAt = verifiedAt?.let { Instant.parse(it) },
         addedAt = Instant.parse(addedAt),
         relayBaseUrl = relayBaseUrl,
+        cipherSuite = CipherSuite.fromWire(cipherSuite) ?: error("Unknown cipher suite in catalog: $cipherSuite"),
     )
 
     private fun Secret.toWire() = SecretWire(

@@ -7,6 +7,7 @@ import com.deposplit.R
 import com.deposplit.driving_ports.ContactManagement
 import com.deposplit.driving_ports.ShareManagement
 import com.deposplit.ui.qr.decodeQrPayload
+import com.deposplit.value_objects.CipherSuite
 import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.VerificationLevel
 import kotlinx.coroutines.Dispatchers
@@ -53,8 +54,9 @@ class RelinkContactViewModel(
     val effects = _effects.receiveAsFlow()
 
     private val hasScanned = AtomicBoolean(false)
-    private var pendingEd: ByteArray? = null
-    private var pendingX: ByteArray? = null
+    private var pendingVerifyKey: ByteArray? = null
+    private var pendingEncKey: ByteArray? = null
+    private var pendingCipherSuite: CipherSuite? = null
 
     fun load() {
         viewModelScope.launch {
@@ -67,10 +69,11 @@ class RelinkContactViewModel(
         if (!hasScanned.compareAndSet(false, true)) return
         runCatching {
             val payload = decodeQrPayload(raw)
-            require(payload.v in 1..2) { "Unknown QR payload version: ${payload.v}" }
             val decoder = Base64.getUrlDecoder()
-            pendingEd = decoder.decode(payload.ed)
-            pendingX = decoder.decode(payload.x)
+            pendingVerifyKey = decoder.decode(payload.verifyKey)
+            pendingEncKey = decoder.decode(payload.encKey)
+            pendingCipherSuite = CipherSuite.fromWire(payload.cipherSuite)
+                ?: error("Unknown cipher suite in QR payload: ${payload.cipherSuite}")
         }.onSuccess {
             // In-person re-scan is the strongest assurance this flow can claim (item 6) —
             // defaulted, but always shown for confirmation since a key change forces a fresh
@@ -87,13 +90,14 @@ class RelinkContactViewModel(
     }
 
     fun confirm() {
-        val ed = pendingEd ?: return
-        val x = pendingX ?: return
+        val verifyKey = pendingVerifyKey ?: return
+        val encKey = pendingEncKey ?: return
+        val cipherSuite = pendingCipherSuite ?: return
         val level = _uiState.value.pendingLevel ?: return
         viewModelScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    contactManagement.updateContact(contactId, edPublicKey = ed, xPublicKey = x, verificationLevel = level)
+                    contactManagement.updateContact(contactId, verifyKey = verifyKey, encKey = encKey, cipherSuite = cipherSuite, verificationLevel = level)
                     shareManagement.pushRecoveryMetadata(contactId)
                 }
             }.onSuccess {

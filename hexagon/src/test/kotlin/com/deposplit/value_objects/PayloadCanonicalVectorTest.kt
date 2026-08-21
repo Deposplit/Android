@@ -83,22 +83,25 @@ class PayloadCanonicalVectorTest {
     // forOpen so both vectors are anchored to one known keypair.
 
     private val rotationRecipientKey: ByteArray = ByteArray(32) { 0x03 }
-    private val newEd25519Key: ByteArray = ByteArray(32) { 0x04 }
-    private val newX25519Key: ByteArray = ByteArray(32) { 0x05 }
+    private val newVerifyKey: ByteArray = ByteArray(32) { 0x04 }
+    private val newEncKey: ByteArray = ByteArray(32) { 0x05 }
+    // item 14 — appended as a 4th line; the pre-item-14 fields above are byte-identical to the
+    // original vector.
+    private val newCipherSuite = CipherSuite.current
     private val expectedRotationSignatureBase64Url =
-        "Fs4kRoHL0q5uN2ECfmXdcJnYzSz_yvO-8VNz6AIJYAcMR3QJmPQlu8AyiJpYOfeUGXag0M4VdZtPQ3AoWjPBDQ"
+        "EH45bL4chGQALZ6J9IDhfUAtPNovGHmqlJvF6HBKa8sqkF3SU1NhMGWmSTGM87isxdHIxoQCHFITplmzN1zeDg"
 
     @Test
     fun `forRotation produces the fixed canonical bytes`() {
-        val canon = PayloadCanonical.forRotation(rotationRecipientKey, newEd25519Key, newX25519Key)
+        val canon = PayloadCanonical.forRotation(rotationRecipientKey, newVerifyKey, newEncKey, newCipherSuite)
         val expected =
-            "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM\nBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ\nBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQU"
+            "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM\nBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ\nBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQU\ned25519+x25519-v1"
         assertEquals(expected, String(canon, Charsets.UTF_8))
     }
 
     @Test
     fun `signing the rotation canonical bytes with the fixed seed reproduces the fixed signature`() {
-        val canon = PayloadCanonical.forRotation(rotationRecipientKey, newEd25519Key, newX25519Key)
+        val canon = PayloadCanonical.forRotation(rotationRecipientKey, newVerifyKey, newEncKey, newCipherSuite)
         val privKey = Ed25519PrivateKeyParameters(privateKeySeed, 0)
         val signer = Ed25519Signer()
         signer.init(true, privKey)
@@ -109,7 +112,7 @@ class PayloadCanonicalVectorTest {
 
     @Test
     fun `the fixed rotation signature verifies against the fixed public key`() {
-        val canon = PayloadCanonical.forRotation(rotationRecipientKey, newEd25519Key, newX25519Key)
+        val canon = PayloadCanonical.forRotation(rotationRecipientKey, newVerifyKey, newEncKey, newCipherSuite)
         val pubKeyBytes = Base64.getUrlDecoder().decode(expectedPublicKeyBase64Url)
         val sigBytes = Base64.getUrlDecoder().decode(expectedRotationSignatureBase64Url)
         val verifier = Ed25519Signer()

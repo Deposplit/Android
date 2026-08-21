@@ -2,6 +2,7 @@ package com.deposplit.api
 
 import com.deposplit.driving_ports.Identity
 import com.deposplit.driven_ports.ShareRelay
+import com.deposplit.value_objects.CipherSuite
 import com.deposplit.value_objects.CustodyHeartbeat
 import com.deposplit.value_objects.KeyRotation
 import com.deposplit.value_objects.Role
@@ -122,12 +123,13 @@ class DeposplitApiAdapter(
         execute("POST", "/share-requests/withdraw$query")
     }
 
-    override fun pushRotation(recipientKey: ByteArray, newEd25519Key: ByteArray, newX25519Key: ByteArray, signature: ByteArray) {
+    override fun pushRotation(recipientKey: ByteArray, newVerifyKey: ByteArray, newEncKey: ByteArray, newCipherSuite: CipherSuite, signature: ByteArray) {
         val body = json.encodeToString(
             PushRotationJson(
                 recipientKey = recipientKey.encodeBase64Url(),
-                newEd25519Key = newEd25519Key.encodeBase64Url(),
-                newX25519Key = newX25519Key.encodeBase64Url(),
+                newVerifyKey = newVerifyKey.encodeBase64Url(),
+                newEncKey = newEncKey.encodeBase64Url(),
+                newCipherSuite = newCipherSuite.wireValue,
                 signature = signature.encodeBase64Url(),
             )
         )
@@ -170,7 +172,7 @@ class DeposplitApiAdapter(
             conn.connectTimeout = 10_000
             conn.readTimeout = 30_000
             conn.setRequestProperty("Accept", "application/json")
-            conn.setRequestProperty("X-Deposplit-Public-Key", auth.edPublicKey().encodeBase64Url())
+            conn.setRequestProperty("X-Deposplit-Verify-Key", auth.verifyKey().encodeBase64Url())
             conn.setRequestProperty("X-Deposplit-Nonce", nonce)
             conn.setRequestProperty("X-Deposplit-Signature", sig.encodeBase64Url())
             if (body != null) {
@@ -222,18 +224,20 @@ class DeposplitApiAdapter(
     @Serializable
     private data class PushRotationJson(
         val recipientKey: String,
-        val newEd25519Key: String,
-        val newX25519Key: String,
+        val newVerifyKey: String,
+        val newEncKey: String,
+        val newCipherSuite: String,
         val signature: String,
     )
 
     @Serializable
     private data class KeyRotationJson(
         val id: String,
-        val oldEd25519Key: String,
+        val oldVerifyKey: String,
         val recipientKey: String,
-        val newEd25519Key: String,
-        val newX25519Key: String,
+        val newVerifyKey: String,
+        val newEncKey: String,
+        val newCipherSuite: String,
         val signature: String,
         val createdAt: String,
     )
@@ -306,10 +310,11 @@ class DeposplitApiAdapter(
 
     private fun KeyRotationJson.toDomain() = KeyRotation(
         id = UUID.fromString(id),
-        oldEd25519Key = oldEd25519Key.decodeBase64Url(),
+        oldVerifyKey = oldVerifyKey.decodeBase64Url(),
         recipientKey = recipientKey.decodeBase64Url(),
-        newEd25519Key = newEd25519Key.decodeBase64Url(),
-        newX25519Key = newX25519Key.decodeBase64Url(),
+        newVerifyKey = newVerifyKey.decodeBase64Url(),
+        newEncKey = newEncKey.decodeBase64Url(),
+        newCipherSuite = CipherSuite.fromWire(newCipherSuite) ?: error("Unknown cipher suite: $newCipherSuite"),
         signature = signature.decodeBase64Url(),
         createdAt = Instant.parse(createdAt),
     )

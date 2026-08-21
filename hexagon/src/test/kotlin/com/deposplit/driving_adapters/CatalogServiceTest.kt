@@ -17,7 +17,7 @@ import kotlin.test.assertEquals
 private class InMemoryContactRepositoryForCatalogTest : ContactRepository {
     private val contacts = mutableListOf<Contact>()
     override fun getAll() = contacts.toList()
-    override fun getByEdKey(edPublicKey: ByteArray) = contacts.find { it.edPublicKey.contentEquals(edPublicKey) }
+    override fun getByEdKey(edPublicKey: ByteArray) = contacts.find { it.verifyKey.contentEquals(edPublicKey) }
     override fun getById(id: UUID) = contacts.find { it.id == id }
     override fun save(contact: Contact) {
         contacts.removeAll { it.id == contact.id }
@@ -49,8 +49,8 @@ private class InMemoryShareMetadataRepositoryForCatalogTest : ShareMetadataRepos
 private fun makeContact(name: String) = Contact(
     id = UUID.randomUUID(),
     pseudonym = name,
-    edPublicKey = ByteArray(32) { 0x01 },
-    xPublicKey = ByteArray(32) { 0x02 },
+    verifyKey = ByteArray(32) { 0x01 },
+    encKey = ByteArray(32) { 0x02 },
     verificationLevel = VerificationLevel.VERY_HIGH,
     verifiedAt = Instant.now(),
     addedAt = Instant.now(),

@@ -27,6 +27,8 @@ package com.deposplit.driving_adapters
 import com.deposplit.driven_ports.IdentityStore
 import com.deposplit.driving_ports.Identity
 import com.deposplit.value_objects.KeyPairMaterial
+import com.deposplit.value_objects.TransportSuite
+import com.deposplit.value_objects.UnsupportedTransportSuiteException
 import org.bouncycastle.crypto.agreement.X25519Agreement
 import org.bouncycastle.crypto.digests.SHA256Digest
 import org.bouncycastle.crypto.generators.Ed25519KeyPairGenerator
@@ -51,13 +53,13 @@ class IdentityService(private val identityStore: IdentityStore) : Identity, Shar
 
     override fun register(pseudonym: String) {
         val material = generateKeyPairMaterial()
-        identityStore.save(pseudonym, material.edPublicKey, material.edPrivateKey, material.xPublicKey, material.xPrivateKey)
+        identityStore.save(pseudonym, material.verifyKey, material.signKey, material.encKey, material.decKey)
     }
 
     override fun generateNewKeyPair(): KeyPairMaterial = generateKeyPairMaterial()
 
     override fun activateKeyPair(keyPair: KeyPairMaterial) {
-        identityStore.save(identityStore.pseudonym(), keyPair.edPublicKey, keyPair.edPrivateKey, keyPair.xPublicKey, keyPair.xPrivateKey)
+        identityStore.save(identityStore.pseudonym(), keyPair.verifyKey, keyPair.signKey, keyPair.encKey, keyPair.decKey)
     }
 
     private fun generateKeyPairMaterial(): KeyPairMaterial {
@@ -66,26 +68,26 @@ class IdentityService(private val identityStore: IdentityStore) : Identity, Shar
         val edGen = Ed25519KeyPairGenerator()
         edGen.init(Ed25519KeyGenerationParameters(random))
         val edPair = edGen.generateKeyPair()
-        val edPk = (edPair.public as Ed25519PublicKeyParameters).encoded
-        val edSk = (edPair.private as Ed25519PrivateKeyParameters).encoded
+        val verifyKey = (edPair.public as Ed25519PublicKeyParameters).encoded
+        val signKey = (edPair.private as Ed25519PrivateKeyParameters).encoded
 
         val xGen = X25519KeyPairGenerator()
         xGen.init(X25519KeyGenerationParameters(random))
         val xPair = xGen.generateKeyPair()
-        val xPk = (xPair.public as X25519PublicKeyParameters).encoded
-        val xSk = (xPair.private as X25519PrivateKeyParameters).encoded
+        val encKey = (xPair.public as X25519PublicKeyParameters).encoded
+        val decKey = (xPair.private as X25519PrivateKeyParameters).encoded
 
-        return KeyPairMaterial(edPk, edSk, xPk, xSk)
+        return KeyPairMaterial(verifyKey, signKey, encKey, decKey)
     }
 
     override fun pseudonym(): String = identityStore.pseudonym()
 
-    override fun edPublicKey(): ByteArray = identityStore.edPublicKey()
+    override fun verifyKey(): ByteArray = identityStore.verifyKey()
 
-    override fun xPublicKey(): ByteArray = identityStore.xPublicKey()
+    override fun encKey(): ByteArray = identityStore.encKey()
 
     override fun sign(message: ByteArray): ByteArray {
-        val sk = Ed25519PrivateKeyParameters(identityStore.edPrivateKey())
+        val sk = Ed25519PrivateKeyParameters(identityStore.signKey())
         val signer = Ed25519Signer()
         signer.init(true, sk)
         signer.update(message, 0, message.size)
@@ -101,8 +103,11 @@ class IdentityService(private val identityStore: IdentityStore) : Identity, Shar
         false
     }
 
+    // Item 14 — wire format is now suiteTag(1) || nonce(12) || ciphertext+tag. No persistent state
+    // needed: a device always encrypts with its current preferred TransportSuite, and a decrypting
+    // device dispatches on the tag it reads.
     override fun encrypt(plaintext: ByteArray, recipientXPublicKey: ByteArray): ByteArray {
-        val sk = X25519PrivateKeyParameters(identityStore.xPrivateKey())
+        val sk = X25519PrivateKeyParameters(identityStore.decKey())
         val nonce = ByteArray(NONCE_BYTES).also { secureRandom.nextBytes(it) }
         val key = deriveKey(sk, X25519PublicKeyParameters(recipientXPublicKey), nonce)
         val cipher = ChaCha20Poly1305()
@@ -110,13 +115,18 @@ class IdentityService(private val identityStore: IdentityStore) : Identity, Shar
         val out = ByteArray(cipher.getOutputSize(plaintext.size))
         var len = cipher.processBytes(plaintext, 0, plaintext.size, out, 0)
         len += cipher.doFinal(out, len)
-        return nonce + out.copyOf(len)
+        return byteArrayOf(TransportSuite.current.tag) + nonce + out.copyOf(len)
     }
 
     override fun decrypt(noncePlusCiphertext: ByteArray, recipientXPublicKey: ByteArray): ByteArray {
-        val sk = X25519PrivateKeyParameters(identityStore.xPrivateKey())
-        val nonce = noncePlusCiphertext.copyOfRange(0, NONCE_BYTES)
-        val ciphertext = noncePlusCiphertext.copyOfRange(NONCE_BYTES, noncePlusCiphertext.size)
+        val tag = noncePlusCiphertext.getOrNull(0)
+            ?: throw UnsupportedTransportSuiteException("ciphertext is empty — no transport suite tag")
+        if (TransportSuite.fromTag(tag) == null) {
+            throw UnsupportedTransportSuiteException("this share used an encryption scheme this app version doesn't support")
+        }
+        val sk = X25519PrivateKeyParameters(identityStore.decKey())
+        val nonce = noncePlusCiphertext.copyOfRange(1, 1 + NONCE_BYTES)
+        val ciphertext = noncePlusCiphertext.copyOfRange(1 + NONCE_BYTES, noncePlusCiphertext.size)
         val key = deriveKey(sk, X25519PublicKeyParameters(recipientXPublicKey), nonce)
         val cipher = ChaCha20Poly1305()
         cipher.init(false, AEADParameters(KeyParameter(key), TAG_BITS, nonce))

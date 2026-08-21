@@ -100,12 +100,12 @@
     <!-- Add contact -->
     <string name="add_contact_title">Add Contact</string>
     <string name="add_contact_name_label">Name</string>
-    <string name="add_contact_ed_label">Ed25519 public key (base64url)</string>
-    <string name="add_contact_x_label">X25519 public key (base64url)</string>
+    <string name="add_contact_ed_label">Verify key (base64url)</string>
+    <string name="add_contact_x_label">Encryption key (base64url)</string>
     <string name="add_contact_error_required">Required</string>
     <string name="add_contact_error_invalid_base64url">Invalid base64url</string>
-    <string name="add_contact_error_ed_length">Must be 32 bytes (Ed25519 public key)</string>
-    <string name="add_contact_error_x_length">Must be 32 bytes (X25519 public key)</string>
+    <string name="add_contact_error_ed_length">Must be 32 bytes (verify key)</string>
+    <string name="add_contact_error_x_length">Must be 32 bytes (encryption key)</string>
     <string name="add_contact_error_save">Failed to save</string>
     <string name="add_contact_relay_label">Relay override (optional, BYOR)</string>
     <string name="add_contact_verification_label">Verification Level</string>

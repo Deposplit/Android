@@ -2,6 +2,7 @@ package com.deposplit.contacts
 
 import android.content.Context
 import com.deposplit.driven_ports.ContactRepository
+import com.deposplit.value_objects.CipherSuite
 import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.VerificationLevel
 import kotlinx.serialization.Serializable
@@ -21,8 +22,8 @@ class LocalContactRepository(context: Context) : ContactRepository {
     private data class ContactWire(
         val id: String,
         val pseudonym: String,
-        val edPublicKey: String,
-        val xPublicKey: String,
+        val verifyKey: String,
+        val encKey: String,
         val verificationLevel: String,
         val verifiedAt: String?,
         val addedAt: String,
@@ -36,6 +37,9 @@ class LocalContactRepository(context: Context) : ContactRepository {
         val heartbeatOptedOutAt: String?,
         val lastHeartbeatSentAt: String?,
         val heartbeatEmissionOptedOut: Boolean,
+        // Item 14 — no default/fallback decode shim: Deposplit is pre-launch, local stores are
+        // wiped, not migrated.
+        val cipherSuite: String,
     )
 
     @Synchronized
@@ -43,7 +47,7 @@ class LocalContactRepository(context: Context) : ContactRepository {
 
     @Synchronized
     override fun getByEdKey(edPublicKey: ByteArray): Contact? =
-        load().find { Base64.getUrlDecoder().decode(it.edPublicKey).contentEquals(edPublicKey) }?.toDomain()
+        load().find { Base64.getUrlDecoder().decode(it.verifyKey).contentEquals(edPublicKey) }?.toDomain()
 
     @Synchronized
     override fun getById(id: UUID): Contact? =
@@ -76,8 +80,8 @@ class LocalContactRepository(context: Context) : ContactRepository {
     private fun ContactWire.toDomain() = Contact(
         id = UUID.fromString(id),
         pseudonym = pseudonym,
-        edPublicKey = Base64.getUrlDecoder().decode(edPublicKey),
-        xPublicKey = Base64.getUrlDecoder().decode(xPublicKey),
+        verifyKey = Base64.getUrlDecoder().decode(verifyKey),
+        encKey = Base64.getUrlDecoder().decode(encKey),
         verificationLevel = VerificationLevel.valueOf(verificationLevel),
         verifiedAt = verifiedAt?.let { Instant.parse(it) },
         addedAt = Instant.parse(addedAt),
@@ -87,13 +91,14 @@ class LocalContactRepository(context: Context) : ContactRepository {
         heartbeatOptedOutAt = heartbeatOptedOutAt?.let { Instant.parse(it) },
         lastHeartbeatSentAt = lastHeartbeatSentAt?.let { Instant.parse(it) },
         heartbeatEmissionOptedOut = heartbeatEmissionOptedOut,
+        cipherSuite = CipherSuite.fromWire(cipherSuite) ?: error("Unknown cipher suite in local store: $cipherSuite"),
     )
 
     private fun Contact.toWire() = ContactWire(
         id = id.toString(),
         pseudonym = pseudonym,
-        edPublicKey = Base64.getUrlEncoder().withoutPadding().encodeToString(edPublicKey),
-        xPublicKey = Base64.getUrlEncoder().withoutPadding().encodeToString(xPublicKey),
+        verifyKey = Base64.getUrlEncoder().withoutPadding().encodeToString(verifyKey),
+        encKey = Base64.getUrlEncoder().withoutPadding().encodeToString(encKey),
         verificationLevel = verificationLevel.name,
         verifiedAt = verifiedAt?.toString(),
         addedAt = addedAt.toString(),
@@ -103,5 +108,6 @@ class LocalContactRepository(context: Context) : ContactRepository {
         heartbeatOptedOutAt = heartbeatOptedOutAt?.toString(),
         lastHeartbeatSentAt = lastHeartbeatSentAt?.toString(),
         heartbeatEmissionOptedOut = heartbeatEmissionOptedOut,
+        cipherSuite = cipherSuite.wireValue,
     )
 }

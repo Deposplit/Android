@@ -1,5 +1,6 @@
 package com.deposplit.driven_ports
 
+import com.deposplit.value_objects.CipherSuite
 import com.deposplit.value_objects.CustodyHeartbeat
 import com.deposplit.value_objects.KeyRotation
 import com.deposplit.value_objects.Role
@@ -47,10 +48,11 @@ interface ShareRelay {
 
     /**
      * Pushes a signed rotation notice to one contact. [signature] must verify against the
-     * caller's own current Ed25519 key (the relay's `oldEd25519Key`) over
-     * [com.deposplit.value_objects.PayloadCanonical.forRotation].
+     * caller's own current verify key (the relay's `oldVerifyKey`) over
+     * [com.deposplit.value_objects.PayloadCanonical.forRotation]. [newCipherSuite] (item 14) is
+     * the signing + key-agreement algorithm pairing [newVerifyKey]/[newEncKey] use.
      */
-    fun pushRotation(recipientKey: ByteArray, newEd25519Key: ByteArray, newX25519Key: ByteArray, signature: ByteArray)
+    fun pushRotation(recipientKey: ByteArray, newVerifyKey: ByteArray, newEncKey: ByteArray, newCipherSuite: CipherSuite, signature: ByteArray)
     /** Rotation notices addressed to this device. */
     fun listRotations(): List<KeyRotation>
     /** Deletes a rotation notice once consumed. */

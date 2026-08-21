@@ -47,16 +47,19 @@ shamir/
                                    detect/exclude a bad share among a surplus beyond threshold, via the Reed–Solomon
                                    unique-decoding-radius bound)
 driving_ports/
-├── Identity.kt                    isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign;
+├── Identity.kt                    isRegistered, register, pseudonym, verifyKey, encKey, sign (item 14 — renamed
+│                                  from edPublicKey/xPublicKey; names describe role, not algorithm);
 │                                  generateNewKeyPair/activateKeyPair (item 9 — regenerate-identity trigger;
 │                                  generateNewKeyPair is pure key generation, not persisted, so a caller can push
 │                                  a rotation notice signed by the old identity before activateKeyPair persists
 │                                  the new one via the existing IdentityStore.save)
-├── ContactManagement.kt           listContacts, addManually, addFromQr, updateContact (contact-update-in-place,
-│                                  item 8 — key change forces a fresh verificationLevel), deleteContact,
-│                                  markKeyCompromised (item 10 — flags an Ed25519 key into the contact's
-│                                  revokedEdKeys history; defaults to the contact's current key when none is given;
-│                                  idempotent)
+├── ContactManagement.kt           listContacts, addManually, addFromQr (item 14 — gains a required cipherSuite
+│                                  param; the QR/link payload is where this self-describing fact originates),
+│                                  updateContact (contact-update-in-place, item 8 — key change forces a fresh
+│                                  verificationLevel; item 14 — a cipherSuite-only change forces the same fresh
+│                                  level), deleteContact, markKeyCompromised (item 10 — flags a verify key into
+│                                  the contact's revokedEdKeys history; defaults to the contact's current key
+│                                  when none is given; idempotent)
 ├── ShareManagement.kt             deposit, listSecrets, listDistributed, listSentRequests, requestAll, openRequest,
 │                                  reconstruct (pure read, enforces real k, returns ReconstructionResult — item 13's
 │                                  integrity cross-check on any surplus beyond k), discardSecret, forceForgetSecret,
@@ -70,7 +73,8 @@ driving_ports/
 │                                  as the old identity, then activates the new keys — returns RegenerateIdentityResult)
 └── CatalogManagement.kt           exportCatalog, importCatalog — optional non-secret catalog backup (item 8)
 driven_ports/
-├── IdentityStore.kt               isRegistered, save, pseudonym, edPublicKey, edPrivateKey, xPublicKey, xPrivateKey
+├── IdentityStore.kt               isRegistered, save, pseudonym, verifyKey, signKey, encKey, decKey (item 14 —
+│                                  renamed from edPublicKey/edPrivateKey/xPublicKey/xPrivateKey)
 ├── ContactRepository.kt           getAll, getById, getByEdKey, save, delete
 ├── ShareRepository.kt             getAll, getPlaintextShare (keyed on secretId, not the pickup relay-row id —
 │                                  item 8), save, delete (local held-share storage)
@@ -85,7 +89,8 @@ driven_ports/
 │                                  withdrawShareRequests (item 9 — best-effort tombstone, not a hard delete),
 │                                  pushRotation/listRotations/deleteRotation (item 9's signed rotate(K_old→K_new)
 │                                  push — grouped onto this interface rather than a separate one since it's the
-│                                  same physical relay + BYOR routing; see KeyRotation.kt)
+│                                  same physical relay + BYOR routing; see KeyRotation.kt; pushRotation gained a
+│                                  newCipherSuite param, item 14)
 ├── ShareRelayResolver.kt          resolve(relayBaseUrl: String?): ShareRelay — BYOR factory/cache, not a fan-out
 │                                  mechanism; null resolves to the device's default relay (RelaySettings)
 └── RelaySettings.kt               getDefaultRelayBaseUrl, setDefaultRelayBaseUrl — device's runtime-configurable
@@ -94,15 +99,20 @@ services/
 ├── IdentityService.kt             Implements Identity, ShareEncryption — BouncyCastle keypair generation,
 │                                  Ed25519 signing, X25519+HKDF+ChaCha20-Poly1305 encrypt/decrypt; delegates persistence
 │                                  to IdentityStore; generateNewKeyPair/activateKeyPair (item 9) share the same
-│                                  key-gen helper register() uses, factored out for reuse
-├── ContactService.kt              Implements ContactManagement — key-size validation, VerificationLevel assignment,
-│                                  UUID/timestamp generation; delegates persistence to ContactRepository;
-│                                  updateContact requires a fresh verificationLevel whenever either key changes and
-│                                  now also carries revokedEdKeys forward and stamps keyChangedAt when a key
+│                                  key-gen helper register() uses, factored out for reuse; encrypt/decrypt prepend/
+│                                  dispatch on a TransportSuite tag byte (item 14), throwing UnsupportedTransportSuiteException
+│                                  on an unrecognized tag
+├── ContactService.kt              Implements ContactManagement — suite-aware key-length validation (against the
+│                                  resolved CipherSuite, item 14 — replaces the old bare 32-byte checks),
+│                                  VerificationLevel assignment, UUID/timestamp generation; delegates persistence
+│                                  to ContactRepository; updateContact requires a fresh verificationLevel whenever
+│                                  either key OR the cipherSuite changes (item 14 extends item 8/10's rule) and
+│                                  now also carries revokedEdKeys forward and stamps keyChangedAt when the identity
 │                                  actually changes (item 10); markKeyCompromised (item 10) is idempotent
 ├── ShareEncryption.kt             Intra-hexagon interface: encrypt(plaintext, recipientXPublicKey),
 │                                  decrypt(noncePlusCiphertext, recipientXPublicKey) — consumed by ShareService,
-│                                  implemented by IdentityService
+│                                  implemented by IdentityService; wire format is suiteTag(1) || nonce(12) ||
+│                                  ciphertext+tag (item 14 — was nonce(12) || ciphertext+tag)
 ├── ShareService.kt                Implements ShareManagement — Shamir.split/combine + ShareEncryption.encrypt/decrypt +
 │                                  ShareRelay + ShareRepository + ShareMetadataRepository + SecretRepository + ContactRepository;
 │                                  deposit() opens a Deposit request (incl. k/n) + writes ShareMetadata + a Secret to local
@@ -127,38 +137,54 @@ services/
 │                                  relay before deleting locally (item 9); syncDistributed() drops the local
 │                                  ShareMetadata pointer and deletes the relay row when it observes a WITHDRAWN deposit;
 │                                  takes a new KeyConflictRepository dependency (item 10) so processRotations() checks
-│                                  the notice's oldEd25519Key against the contact's revokedEdKeys *before* the
+│                                  the notice's oldVerifyKey against the contact's revokedEdKeys *before* the
 │                                  downgrade/auto-accept branch — on a match it saves a KeyConflict, deletes the relay
 │                                  notice, and skips updateContact entirely (never auto-resolved); listKeyConflicts/
 │                                  dismissKeyConflict (item 10) delegate directly to KeyConflictRepository;
-│                                  regenerateIdentity() (item 9) best-effort drains (syncInbox/syncDistributed) under
-│                                  the old identity, generates new keys via identity.generateNewKeyPair(), pushes a
-│                                  rotation to every contact via the unchanged pushRotation (order matters — this
-│                                  must happen before the swap, since pushRotation signs with whatever identity is
-│                                  currently persisted), then calls identity.activateKeyPair()
+│                                  processRotations() threads the notice's newCipherSuite through to updateContact,
+│                                  applying item 10's min(level, LOW) downgrade to a cipher-suite-only change too
+│                                  (item 14); regenerateIdentity() (item 9) best-effort drains (syncInbox/syncDistributed)
+│                                  under the old identity, generates new keys via identity.generateNewKeyPair(), pushes a
+│                                  rotation (asserting CipherSuite.current, item 14) to every contact via the unchanged
+│                                  pushRotation (order matters — this must happen before the swap, since pushRotation
+│                                  signs with whatever identity is currently persisted), then calls identity.activateKeyPair()
 └── CatalogService.kt              Implements CatalogManagement — exportCatalog reads Contact/Secret/ShareMetadata
                                    repositories; importCatalog upserts-if-absent-by-id, never overwriting a newer
                                    local record (item 8)
 value_objects/
 ├── Catalog.kt                     Catalog data class (contacts, secrets, shareMetadata) — item 8's optional backup
 ├── Contact.kt                     Contact data class (incl. relayBaseUrl BYOR override) + VerificationLevel enum;
-│                                  gained revokedEdKeys: List<ByteArray> (item 10 — historical set, not a single
-│                                  flag, so a later legitimate relink to a genuinely new key is never blocked) and
+│                                  fields renamed edPublicKey/xPublicKey → verifyKey/encKey (item 14); gained
+│                                  revokedEdKeys: List<ByteArray> (item 10 — historical set, not a single
+│                                  flag, so a later legitimate relink to a genuinely new key is never blocked),
 │                                  keyChangedAt: Instant? (item 10 — stamped by updateContact on any key change,
-│                                  surfaced as "key changed N days ago" on retrieve-approval)
-├── KeyConflict.kt                 KeyConflict data class (item 10) — id, contactId, oldEd25519Key, newEd25519Key,
-│                                  newX25519Key, detectedAt; captured the instant a rotation notice's old key is
+│                                  surfaced as "key changed N days ago" on retrieve-approval), and cipherSuite:
+│                                  CipherSuite = CipherSuite.current (item 14 — defaulted, not required, so the
+│                                  rename didn't also become a thread-through-every-call-site exercise)
+├── KeyConflict.kt                 KeyConflict data class (item 10) — id, contactId, oldVerifyKey, newVerifyKey,
+│                                  newEncKey (renamed from oldEd25519Key/newEd25519Key/newX25519Key, item 14),
+│                                  detectedAt; captured the instant a rotation notice's old key is
 │                                  found in revokedEdKeys, durable and local, never re-derived from the relay
 ├── HeldShare.kt                   HeldShare data class (incl. k/n, item 8 — reported back to the owner during recovery)
 ├── Secret.kt                      Secret data class (id, label, k, n, secretCreatedAt, state) + SecretState enum
 │                                  (ACTIVE/DISCARDING) — sender-side per-secret aggregate, see CLAUDE.md item 11
 ├── ReconstructionResult.kt        ReconstructionResult (secret, integrity) + ReconstructionIntegrity sealed class
 │                                  (NoMargin/Confirmed/ExcludedSuspects(excludedContactIds), item 13) — reconstruct()'s return type
-├── KeyPairMaterial.kt             KeyPairMaterial data class (edPublicKey/edPrivateKey/xPublicKey/xPrivateKey, item 9) —
-│                                  a freshly generated keypair not yet persisted as this device's identity
+├── KeyPairMaterial.kt             KeyPairMaterial data class (verifyKey/signKey/encKey/decKey — renamed from
+│                                  edPublicKey/edPrivateKey/xPublicKey/xPrivateKey, item 14; item 9) —
+│                                  a freshly generated keypair not yet persisted as this device's identity; no
+│                                  cipherSuite field (only one suite exists to produce — see CipherSuite.kt)
 ├── RegenerateIdentityResult.kt    RegenerateIdentityResult (notifiedContacts, totalContacts, item 9) — regenerateIdentity()'s return type
 ├── KeyRotation.kt                 KeyRotation data class (item 9) — a signed rotate(K_old→K_new) notice addressed
-│                                  to this device; not a ShareRequest (no secretId, no consent phase)
+│                                  to this device; not a ShareRequest (no secretId, no consent phase); fields
+│                                  oldVerifyKey/newVerifyKey/newEncKey (renamed, item 14) + newCipherSuite:
+│                                  CipherSuite (item 14 — no oldCipherSuite field, already pinned on the contact)
+├── CipherSuite.kt                 CipherSuite enum (item 14) — the signing + key-agreement algorithm pairing an
+│                                  identity currently uses; wireValue-per-case (mirrors ShareTransactionType),
+│                                  verifyKeyLength/encKeyLength; one case today, "ed25519+x25519-v1"; .current
+├── TransportSuite.kt              TransportSuite enum (item 14) — a ciphertext-only 1-byte tag, not JSON-facing;
+│                                  one case today (tag 1); .current, .fromTag
+├── UnsupportedTransportSuiteException.kt  Thrown by ShareEncryption.decrypt (item 14) on an unrecognized suite tag
 ├── Share.kt                       Role, ShareTransactionType (incl. INVENTORY, item 8 — self-approved, no
 │                                  consent phase), ShareRequestState (incl. WITHDRAWN — item 9, deposit-only
 │                                  best-effort tombstone), ShareMetadata (id/secretId/contactId only —
@@ -166,6 +192,7 @@ value_objects/
 │                                  senderSignature/recipientSignature)
 ├── PayloadCanonical.kt            forOpen (incl. k/n, item 8, appended at the end of the signed sequence)/forRespond
 │                                  — canonical byte constructions signed for senderSignature/recipientSignature;
+│                                  forRotation gained a newCipherSuite param, appended as a 4th signed line (item 14);
 │                                  mirrors deposplit.com's PayloadCanonical
 └── SignatureVerificationException.kt  Thrown by respond()/reconstruct() on an unverifiable signature
 ```
@@ -182,7 +209,8 @@ auth/
 api/
 ├── DeposplitApiAdapter.kt   HTTP adapter implementing ShareRelay: HttpURLConnection, Ed25519 request signing,
 │                            JSON via kotlinx.serialization; senderSignature/recipientSignature and k/n (item 8) wired through;
-│                            POST /share-requests/withdraw and POST/GET /key-rotations + DELETE /key-rotations/{id} (item 9)
+│                            POST /share-requests/withdraw and POST/GET /key-rotations + DELETE /key-rotations/{id} (item 9);
+│                            key-rotation JSON fields renamed newVerifyKey/newEncKey/newCipherSuite, oldVerifyKey (item 14)
 ├── DeposplitRelayResolver.kt  Implements ShareRelayResolver — memoizes one DeposplitApiAdapter per resolved base
 │                            URL; null resolves via RelaySettings.getDefaultRelayBaseUrl()
 └── RelayDefaults.kt         FALLBACK_BASE_URL constant ("https://api.deposplit.com") — plain Kotlin, decoupled
@@ -191,15 +219,18 @@ settings/
 ├── SharedPreferencesRelaySettings.kt  Implements RelaySettings — same "deposplit" SharedPreferences file
 │                            AndroidIdentityStore uses
 └── CatalogCodec.kt          JSON (de)serialization for Catalog (item 8) — lives in the app layer since the
-                             hexagon has no JSON dependency; mirrors the Local*Repository wire-shape conventions
+                             hexagon has no JSON dependency; mirrors the Local*Repository wire-shape conventions;
+                             ContactWire gained a cipherSuite field (item 14) for full catalog round-trip fidelity
 contacts/
 ├── LocalContactRepository.kt  JSON file in filesDir; @Synchronized; kotlinx.serialization wire types; ContactWire
-│                            gained non-optional revokedEdKeys: List<String> (base64url) and keyChangedAt: String?
-│                            (item 10 — no optional/fallback decode shim, since Deposplit is pre-launch and local
-│                            stores are wiped, not migrated)
+│                            fields renamed edPublicKey/xPublicKey → verifyKey/encKey and gained non-optional
+│                            revokedEdKeys: List<String> (base64url) and keyChangedAt: String? (item 10) and
+│                            cipherSuite: String (item 14) — no optional/fallback decode shim, since Deposplit is
+│                            pre-launch and local stores are wiped, not migrated
 └── LocalKeyConflictRepository.kt  JSON file in filesDir (key_conflicts.json) (item 10) — structurally identical
                              to LocalShareMetadataRepository.kt: @Synchronized, kotlinx.serialization wire type,
-                             base64url keys, ISO-8601 timestamps
+                             base64url keys, ISO-8601 timestamps; wire fields renamed oldVerifyKey/newVerifyKey/
+                             newEncKey (item 14)
 shares/
 ├── LocalShareRepository.kt         JSON file in filesDir (shares.json); @Synchronized; stores HeldShare (plaintext share + metadata, incl. k/n) keyed by share ID; getPlaintextShare keyed on secretId (item 8)
 ├── LocalSecretRepository.kt        JSON file in filesDir (secrets.json); @Synchronized; local store of sender-side Secret aggregates
@@ -248,7 +279,8 @@ ui/
 │               loads both the ShareMetadata and its parent Secret (for label/k); UiState gained reconstructionIntegrity
 │               (item 13), rendered via a ReconstructionAdvisory under the reconstructed secret; a distinct
 │               share_detail_error_integrity message is shown when ReconstructionIntegrityException is thrown
-├── qr/           QrPayload (v2, incl. relay field), QrDisplay{ViewModel,Screen}, QrScan{ViewModel,Screen}
+├── qr/           QrPayload (v3, incl. relay field and a required cipherSuite field — item 14, no
+│               back-compat decode path for a pre-v3 payload), QrDisplay{ViewModel,Screen}, QrScan{ViewModel,Screen}
 │               (CameraViewfinder composable shared with RelinkContactScreen)
 ├── settings/     SettingsViewModel + SettingsScreen         — edit/reset the default relay (RelaySettings);
 │               "Catalog Backup" section (item 8) — export via SAF CreateDocument, import via SAF OpenDocument;
@@ -339,7 +371,7 @@ Flow:
 3. Both private keys are stored in the Android Keystore (wrapped with AES-256-GCM) and never leave the device
 4. Both public keys are shared with contacts out-of-band (QR code scan, share link via Signal/Threema, etc.) — the Web app/service never stores or indexes them
 
-Subsequent API requests are authenticated by signing a canonical request representation with the Ed25519 private key; the Web app/service verifies against the Ed25519 public key supplied in the `X-Deposplit-Public-Key` header. No pre-registration is required.
+Subsequent API requests are authenticated by signing a canonical request representation with the Ed25519 private key; the Web app/service verifies against the Ed25519 public key supplied in the `X-Deposplit-Verify-Key` header (renamed from `X-Deposplit-Public-Key`, item 14). No pre-registration is required.
 
 Session state (the "has completed onboarding" flag) is persisted via plain `SharedPreferences`. Private keys are managed by the Android Keystore — the app never handles raw key material directly.
 

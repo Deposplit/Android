@@ -33,7 +33,7 @@ class QrDisplayViewModel(private val auth: Identity, private val relaySettings: 
     private fun generate() {
         viewModelScope.launch(Dispatchers.Default) {
             runCatching {
-                val payload = encodeQrPayload(auth.pseudonym(), auth.edPublicKey(), auth.xPublicKey(), relaySettings.getDefaultRelayBaseUrl())
+                val payload = encodeQrPayload(auth.pseudonym(), auth.verifyKey(), auth.encKey(), relaySettings.getDefaultRelayBaseUrl())
                 val bitMatrix = QRCodeWriter().encode(payload, BarcodeFormat.QR_CODE, 512, 512)
                 val w = bitMatrix.width
                 val h = bitMatrix.height

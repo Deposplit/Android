@@ -20,9 +20,9 @@ class LocalKeyConflictRepository(context: Context) : KeyConflictRepository {
     private data class KeyConflictWire(
         val id: String,
         val contactId: String,
-        val oldEd25519Key: String,
-        val newEd25519Key: String,
-        val newX25519Key: String,
+        val oldVerifyKey: String,
+        val newVerifyKey: String,
+        val newEncKey: String,
         val detectedAt: String,
     )
 
@@ -56,18 +56,18 @@ class LocalKeyConflictRepository(context: Context) : KeyConflictRepository {
     private fun KeyConflictWire.toDomain() = KeyConflict(
         id = UUID.fromString(id),
         contactId = UUID.fromString(contactId),
-        oldEd25519Key = Base64.getUrlDecoder().decode(oldEd25519Key),
-        newEd25519Key = Base64.getUrlDecoder().decode(newEd25519Key),
-        newX25519Key = Base64.getUrlDecoder().decode(newX25519Key),
+        oldVerifyKey = Base64.getUrlDecoder().decode(oldVerifyKey),
+        newVerifyKey = Base64.getUrlDecoder().decode(newVerifyKey),
+        newEncKey = Base64.getUrlDecoder().decode(newEncKey),
         detectedAt = Instant.parse(detectedAt),
     )
 
     private fun KeyConflict.toWire() = KeyConflictWire(
         id = id.toString(),
         contactId = contactId.toString(),
-        oldEd25519Key = Base64.getUrlEncoder().withoutPadding().encodeToString(oldEd25519Key),
-        newEd25519Key = Base64.getUrlEncoder().withoutPadding().encodeToString(newEd25519Key),
-        newX25519Key = Base64.getUrlEncoder().withoutPadding().encodeToString(newX25519Key),
+        oldVerifyKey = Base64.getUrlEncoder().withoutPadding().encodeToString(oldVerifyKey),
+        newVerifyKey = Base64.getUrlEncoder().withoutPadding().encodeToString(newVerifyKey),
+        newEncKey = Base64.getUrlEncoder().withoutPadding().encodeToString(newEncKey),
         detectedAt = detectedAt.toString(),
     )
 }

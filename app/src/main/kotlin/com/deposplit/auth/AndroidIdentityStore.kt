@@ -18,27 +18,27 @@ class AndroidIdentityStore(context: Context) : IdentityStore {
 
     override fun isRegistered(): Boolean = prefs.getBoolean("registered", false)
 
-    override fun save(pseudonym: String, edPk: ByteArray, edSk: ByteArray, xPk: ByteArray, xSk: ByteArray) {
+    override fun save(pseudonym: String, verifyKey: ByteArray, signKey: ByteArray, encKey: ByteArray, decKey: ByteArray) {
         val masterKey = loadOrCreateMasterKey()
         prefs.edit()
             .putString("pseudonym", pseudonym)
-            .putString("ed_pk", edPk.encodeBase64())
-            .putEncrypted(masterKey, "ed_sk", edSk)
-            .putString("x_pk", xPk.encodeBase64())
-            .putEncrypted(masterKey, "x_sk", xSk)
+            .putString("verify_key", verifyKey.encodeBase64())
+            .putEncrypted(masterKey, "sign_key", signKey)
+            .putString("enc_key", encKey.encodeBase64())
+            .putEncrypted(masterKey, "dec_key", decKey)
             .putBoolean("registered", true)
             .apply()
     }
 
     override fun pseudonym(): String = requirePref("pseudonym")
 
-    override fun edPublicKey(): ByteArray = requirePref("ed_pk").decodeBase64()
+    override fun verifyKey(): ByteArray = requirePref("verify_key").decodeBase64()
 
-    override fun edPrivateKey(): ByteArray = prefs.getDecrypted(loadOrCreateMasterKey(), "ed_sk")
+    override fun signKey(): ByteArray = prefs.getDecrypted(loadOrCreateMasterKey(), "sign_key")
 
-    override fun xPublicKey(): ByteArray = requirePref("x_pk").decodeBase64()
+    override fun encKey(): ByteArray = requirePref("enc_key").decodeBase64()
 
-    override fun xPrivateKey(): ByteArray = prefs.getDecrypted(loadOrCreateMasterKey(), "x_sk")
+    override fun decKey(): ByteArray = prefs.getDecrypted(loadOrCreateMasterKey(), "dec_key")
 
     private fun requirePref(key: String): String =
         prefs.getString(key, null) ?: error("Not registered — '$key' missing")

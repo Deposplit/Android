@@ -32,10 +32,10 @@ package com.deposplit.driven_ports
  */
 interface IdentityStore {
     fun isRegistered(): Boolean
-    fun save(pseudonym: String, edPk: ByteArray, edSk: ByteArray, xPk: ByteArray, xSk: ByteArray)
+    fun save(pseudonym: String, verifyKey: ByteArray, signKey: ByteArray, encKey: ByteArray, decKey: ByteArray)
     fun pseudonym(): String
-    fun edPublicKey(): ByteArray
-    fun edPrivateKey(): ByteArray
-    fun xPublicKey(): ByteArray
-    fun xPrivateKey(): ByteArray
+    fun verifyKey(): ByteArray
+    fun signKey(): ByteArray
+    fun encKey(): ByteArray
+    fun decKey(): ByteArray
 }
