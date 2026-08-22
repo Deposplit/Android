@@ -330,6 +330,8 @@ SKIP_BIOMETRIC=true
 
 When set, `ShareDetailScreen` shows the Reconstruct button unconditionally and calls `viewModel.reconstruct()` directly, bypassing `BiometricGate`. The release build always enforces biometric regardless of this key. Gradle reads `local.properties` at sync time — rebuild the app after editing.
 
+**Precedent for a future dev-bypass.** `deposplit.com/CLAUDE.md`'s item 5 (freemium) will gate the Settings screen's default-relay editor on `isPremium()`, which removes the always-available way to point a dev build at a local relay (see "Environment configuration" above). Once item 5 ships, it needs its own debug-only fake-Premium `PurchaseRepository` to restore that — same shape as `SKIP_BIOMETRIC` here: a `local.properties`/`BuildConfig` flag, real enforcement always on in release. Tracked in `deposplit.com/TODO.md` item 5.
+
 ## Key decisions to preserve
 
 - `minSdk = 29` — do not lower; see `deposplit.com/CLAUDE.md` for rationale.
