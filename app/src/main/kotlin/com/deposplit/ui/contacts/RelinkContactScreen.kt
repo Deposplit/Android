@@ -45,6 +45,7 @@ import com.deposplit.DeposplitApp
 import com.deposplit.R
 import com.deposplit.ui.qr.CameraViewfinder
 import com.deposplit.value_objects.VerificationLevel
+import com.deposplit.value_objects.displayName
 import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -81,7 +82,7 @@ fun RelinkContactScreen(contactId: UUID, onNavigateBack: () -> Unit) {
         }
     }
 
-    val title = uiState.contact?.pseudonym?.let { stringResource(R.string.relink_title, it) } ?: stringResource(R.string.relink_title, "")
+    val title = uiState.contact?.displayName?.let { stringResource(R.string.relink_title, it) } ?: stringResource(R.string.relink_title, "")
 
     Scaffold(
         topBar = {
@@ -101,7 +102,7 @@ fun RelinkContactScreen(contactId: UUID, onNavigateBack: () -> Unit) {
                 .padding(padding)
                 .padding(16.dp)) {
                 uiState.contact?.let {
-                    Text(stringResource(R.string.relink_scanned_message, it.pseudonym), style = MaterialTheme.typography.bodyLarge)
+                    Text(stringResource(R.string.relink_scanned_message, it.displayName), style = MaterialTheme.typography.bodyLarge)
                 }
                 Spacer(Modifier.height(16.dp))
                 VerificationLevel.entries.forEach { level ->

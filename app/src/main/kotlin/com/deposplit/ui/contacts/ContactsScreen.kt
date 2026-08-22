@@ -19,6 +19,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.PersonAdd
@@ -34,6 +35,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -58,6 +60,7 @@ import com.deposplit.DeposplitApp
 import com.deposplit.R
 import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.VerificationLevel
+import com.deposplit.value_objects.displayName
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -149,6 +152,7 @@ fun ContactsScreen(
                         onRelink = { onNavigateToRelinkContact(contact) },
                         onMarkCompromised = { viewModel.markKeyCompromised(contact.id) },
                         onToggleHeartbeatEmission = { viewModel.toggleHeartbeatEmission(contact) },
+                        onRename = { nickname -> viewModel.rename(contact.id, nickname) },
                     )
                 }
             }
@@ -163,8 +167,10 @@ private fun ContactItem(
     onRelink: () -> Unit,
     onMarkCompromised: () -> Unit,
     onToggleHeartbeatEmission: () -> Unit,
+    onRename: (String?) -> Unit,
 ) {
     var showCompromiseConfirm by remember { mutableStateOf(false) }
+    var showRenameDialog by remember { mutableStateOf(false) }
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -173,7 +179,7 @@ private fun ContactItem(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(contact.pseudonym, style = MaterialTheme.typography.titleMedium)
+                    Text(contact.displayName, style = MaterialTheme.typography.titleMedium)
                     if (contact.revokedEdKeys.isNotEmpty()) {
                         Spacer(Modifier.width(6.dp))
                         Icon(
@@ -193,6 +199,15 @@ private fun ContactItem(
                         )
                     }
                 }
+                if (contact.nickname != null) {
+                    // The only name value that ever left the counterparty's device — kept visible
+                    // as a secondary line so it can actually be cross-checked. See CLAUDE.md item 15.
+                    Text(
+                        text = contact.pseudonym,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 if (contact.verificationLevel != VerificationLevel.VERY_LOW) {
                     Spacer(Modifier.height(4.dp))
                     Text(
@@ -202,10 +217,16 @@ private fun ContactItem(
                     )
                 }
             }
+            IconButton(onClick = { showRenameDialog = true }) {
+                Icon(
+                    Icons.Default.Edit,
+                    contentDescription = stringResource(R.string.contacts_rename_description, contact.displayName),
+                )
+            }
             IconButton(onClick = onRelink) {
                 Icon(
                     Icons.Default.Autorenew,
-                    contentDescription = stringResource(R.string.contacts_relink_description, contact.pseudonym),
+                    contentDescription = stringResource(R.string.contacts_relink_description, contact.displayName),
                 )
             }
             IconButton(onClick = onToggleHeartbeatEmission) {
@@ -217,21 +238,21 @@ private fun ContactItem(
                         } else {
                             R.string.contacts_pause_heartbeats_description
                         },
-                        contact.pseudonym,
+                        contact.displayName,
                     ),
                 )
             }
             IconButton(onClick = { showCompromiseConfirm = true }) {
                 Icon(
                     Icons.Default.Shield,
-                    contentDescription = stringResource(R.string.contacts_mark_compromised_description, contact.pseudonym),
+                    contentDescription = stringResource(R.string.contacts_mark_compromised_description, contact.displayName),
                     tint = MaterialTheme.colorScheme.error,
                 )
             }
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = stringResource(R.string.contacts_delete_description, contact.pseudonym),
+                    contentDescription = stringResource(R.string.contacts_delete_description, contact.displayName),
                     tint = MaterialTheme.colorScheme.error,
                 )
             }
@@ -242,7 +263,7 @@ private fun ContactItem(
         AlertDialog(
             onDismissRequest = { showCompromiseConfirm = false },
             title = { Text(stringResource(R.string.contacts_mark_compromised_title)) },
-            text = { Text(stringResource(R.string.contacts_mark_compromised_message, contact.pseudonym)) },
+            text = { Text(stringResource(R.string.contacts_mark_compromised_message, contact.displayName)) },
             confirmButton = {
                 TextButton(onClick = {
                     showCompromiseConfirm = false
@@ -251,6 +272,31 @@ private fun ContactItem(
             },
             dismissButton = {
                 TextButton(onClick = { showCompromiseConfirm = false }) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
+    }
+
+    if (showRenameDialog) {
+        var nicknameInput by remember { mutableStateOf(contact.nickname.orEmpty()) }
+        AlertDialog(
+            onDismissRequest = { showRenameDialog = false },
+            title = { Text(stringResource(R.string.contacts_rename_title)) },
+            text = {
+                OutlinedTextField(
+                    value = nicknameInput,
+                    onValueChange = { nicknameInput = it },
+                    label = { Text(stringResource(R.string.contacts_rename_label)) },
+                    singleLine = true,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showRenameDialog = false
+                    onRename(nicknameInput.trim().ifBlank { null })
+                }) { Text(stringResource(R.string.action_save)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRenameDialog = false }) { Text(stringResource(R.string.action_cancel)) }
             },
         )
     }

@@ -289,6 +289,7 @@ fun HomeScreen(
                                             label = display.share.label,
                                             createdAt = display.share.createdAt,
                                             sender = display.senderName,
+                                            senderSubtitle = display.senderSubtitle,
                                             onDelete = { pendingDelete = display },
                                         )
                                     }
@@ -493,6 +494,13 @@ private fun HolderRow(holder: HolderStatus, onClick: () -> Unit) {
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(holder.recipientName, style = MaterialTheme.typography.bodyMedium)
+            if (holder.recipientSubtitle != null) {
+                Text(
+                    text = holder.recipientSubtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             // Item 12 — early nudge, surfaced before the holder actually drops out of n_live.
             when {
                 holder.isGettingStale -> FreshnessLabel(R.string.home_freshness_stale, Icons.Filled.Schedule, MaterialTheme.colorScheme.tertiary)
@@ -530,6 +538,8 @@ private fun ShareItem(
     label: String,
     createdAt: Instant,
     sender: String? = null,
+    // Item 15 — the sender's pseudonym, shown only when `sender` above is actually a nickname.
+    senderSubtitle: String? = null,
     onDelete: (() -> Unit)? = null,
     onClick: (() -> Unit)? = null,
 ) {
@@ -554,6 +564,13 @@ private fun ShareItem(
                 if (sender != null) {
                     Text(
                         text = stringResource(R.string.home_held_from, sender),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (senderSubtitle != null) {
+                    Text(
+                        text = senderSubtitle,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

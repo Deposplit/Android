@@ -38,6 +38,8 @@ object CatalogCodec {
         // Item 14 — no default/fallback decode shim: Deposplit is pre-launch, local stores are
         // wiped, not migrated.
         val cipherSuite: String,
+        // Item 15 — for full catalog round-trip fidelity, same reasoning as cipherSuite above.
+        val nickname: String? = null,
     )
 
     @Serializable
@@ -87,6 +89,7 @@ object CatalogCodec {
         addedAt = addedAt.toString(),
         relayBaseUrl = relayBaseUrl,
         cipherSuite = cipherSuite.wireValue,
+        nickname = nickname,
     )
 
     private fun ContactWire.toDomain() = Contact(
@@ -99,6 +102,7 @@ object CatalogCodec {
         addedAt = Instant.parse(addedAt),
         relayBaseUrl = relayBaseUrl,
         cipherSuite = CipherSuite.fromWire(cipherSuite) ?: error("Unknown cipher suite in catalog: $cipherSuite"),
+        nickname = nickname,
     )
 
     private fun Secret.toWire() = SecretWire(

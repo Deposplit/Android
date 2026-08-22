@@ -59,7 +59,9 @@ driving_ports/
 │                                  verificationLevel; item 14 — a cipherSuite-only change forces the same fresh
 │                                  level), deleteContact, markKeyCompromised (item 10 — flags a verify key into
 │                                  the contact's revokedEdKeys history; defaults to the contact's current key
-│                                  when none is given; idempotent)
+│                                  when none is given; idempotent), renameContact (item 15 — purely local
+│                                  disambiguation label, deliberately separate from updateContact so a rename
+│                                  never triggers its fresh-verification-level gate)
 ├── ShareManagement.kt             deposit, listSecrets, listDistributed, listSentRequests, requestAll, openRequest,
 │                                  reconstruct (pure read, enforces real k, returns ReconstructionResult — item 13's
 │                                  integrity cross-check on any surplus beyond k), discardSecret, forceForgetSecret,
@@ -108,7 +110,9 @@ services/
 │                                  to ContactRepository; updateContact requires a fresh verificationLevel whenever
 │                                  either key OR the cipherSuite changes (item 14 extends item 8/10's rule) and
 │                                  now also carries revokedEdKeys forward and stamps keyChangedAt when the identity
-│                                  actually changes (item 10); markKeyCompromised (item 10) is idempotent
+│                                  actually changes (item 10); markKeyCompromised (item 10) is idempotent;
+│                                  renameContact (item 15) never touches keys/level/cipherSuite; addManually/
+│                                  addFromQr thread a normalized nickname (trim, blank→null)
 ├── ShareEncryption.kt             Intra-hexagon interface: encrypt(plaintext, recipientXPublicKey),
 │                                  decrypt(noncePlusCiphertext, recipientXPublicKey) — consumed by ShareService,
 │                                  implemented by IdentityService; wire format is suiteTag(1) || nonce(12) ||
@@ -160,7 +164,10 @@ value_objects/
 │                                  keyChangedAt: Instant? (item 10 — stamped by updateContact on any key change,
 │                                  surfaced as "key changed N days ago" on retrieve-approval), and cipherSuite:
 │                                  CipherSuite = CipherSuite.current (item 14 — defaulted, not required, so the
-│                                  rename didn't also become a thread-through-every-call-site exercise)
+│                                  rename didn't also become a thread-through-every-call-site exercise), and
+│                                  nickname: String? = null (item 15 — purely local disambiguation label, never
+│                                  transmitted anywhere); Contact.displayName extension property (nickname ?:
+│                                  pseudonym), reused at every render call site
 ├── KeyConflict.kt                 KeyConflict data class (item 10) — id, contactId, oldVerifyKey, newVerifyKey,
 │                                  newEncKey (renamed from oldEd25519Key/newEd25519Key/newX25519Key, item 14),
 │                                  detectedAt; captured the instant a rotation notice's old key is
@@ -220,13 +227,16 @@ settings/
 │                            AndroidIdentityStore uses
 └── CatalogCodec.kt          JSON (de)serialization for Catalog (item 8) — lives in the app layer since the
                              hexagon has no JSON dependency; mirrors the Local*Repository wire-shape conventions;
-                             ContactWire gained a cipherSuite field (item 14) for full catalog round-trip fidelity
+                             ContactWire gained a cipherSuite field (item 14) for full catalog round-trip fidelity,
+                             and a nickname field (item 15) for the same reason
 contacts/
 ├── LocalContactRepository.kt  JSON file in filesDir; @Synchronized; kotlinx.serialization wire types; ContactWire
 │                            fields renamed edPublicKey/xPublicKey → verifyKey/encKey and gained non-optional
 │                            revokedEdKeys: List<String> (base64url) and keyChangedAt: String? (item 10) and
 │                            cipherSuite: String (item 14) — no optional/fallback decode shim, since Deposplit is
-│                            pre-launch and local stores are wiped, not migrated
+│                            pre-launch and local stores are wiped, not migrated; nickname: String? = null
+│                            (item 15) is defaulted, matching relayBaseUrl's pattern, for smooth decode of
+│                            pre-existing local contacts.json files
 └── LocalKeyConflictRepository.kt  JSON file in filesDir (key_conflicts.json) (item 10) — structurally identical
                              to LocalShareMetadataRepository.kt: @Synchronized, kotlinx.serialization wire type,
                              base64url keys, ISO-8601 timestamps; wire fields renamed oldVerifyKey/newVerifyKey/
@@ -243,8 +253,10 @@ ui/
 │                                                              requestAll, discardSecret, forceForgetSecret, setHeldSortOrder, deleteSingleShare, deleteAllFromSender
 ├── contacts/     ContactsViewModel + ContactsScreen (contactManagement.listContacts/deleteContact, "Relink" icon per row;
 │               a red warning badge when revokedEdKeys is non-empty, a "Mark Key Compromised" IconButton +
-│               AlertDialog confirmation, item 10 — viewModel.markKeyCompromised),
-│               AddContactViewModel + AddContactScreen (contactManagement.addManually),
+│               AlertDialog confirmation, item 10 — viewModel.markKeyCompromised; a nickname subtitle line +
+│               a "Rename" IconButton + AlertDialog text field, item 15 — viewModel.rename),
+│               AddContactViewModel + AddContactScreen (contactManagement.addManually; an optional
+│               "Nickname (optional)" field, item 15),
 │               QrScanViewModel uses contactManagement.addFromQr,
 │               RelinkContactViewModel + RelinkContactScreen (item 8) — scans a re-presented QR code, calls
 │               contactManagement.updateContact then shareManagement.pushRecoveryMetadata; distinct from

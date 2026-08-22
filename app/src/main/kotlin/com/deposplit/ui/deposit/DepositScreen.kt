@@ -47,6 +47,7 @@ import com.deposplit.ui.contacts.badgeColor
 import com.deposplit.ui.contacts.displayName
 import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.VerificationLevel
+import com.deposplit.value_objects.displayName
 import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -259,7 +260,14 @@ private fun ContactRow(contact: Contact, selected: Boolean, onToggle: () -> Unit
     ) {
         Checkbox(checked = selected, onCheckedChange = { onToggle() })
         Column(modifier = Modifier.weight(1f)) {
-            Text(contact.pseudonym, style = MaterialTheme.typography.bodyLarge)
+            Text(contact.displayName, style = MaterialTheme.typography.bodyLarge)
+            if (contact.nickname != null) {
+                Text(
+                    text = contact.pseudonym,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             if (contact.verificationLevel != VerificationLevel.VERY_LOW) {
                 Text(
                     text = contact.verificationLevel.displayName(),

@@ -56,6 +56,12 @@
     <string name="contacts_error_load">Laden fehlgeschlagen</string>
     <string name="contacts_error_delete">Löschen fehlgeschlagen</string>
 
+    <!-- Item 15 — lokale Kontakt-Spitznamen -->
+    <string name="contacts_rename_description">%1$s umbenennen</string>
+    <string name="contacts_rename_title">Kontakt umbenennen</string>
+    <string name="contacts_rename_label">Spitzname</string>
+    <string name="contacts_error_rename">Umbenennen fehlgeschlagen</string>
+
     <!-- Item 10 — Kompromittierung des Schlüssels -->
     <string name="contacts_mark_compromised_description">Schlüssel von %1$s als kompromittiert markieren</string>
     <string name="contacts_revoked_badge_description">Ein früherer Schlüssel dieses Kontakts ist als kompromittiert markiert</string>
@@ -96,6 +102,7 @@
     <string name="add_contact_error_verify_key_length">Muss 32 Bytes lang sein (Verifizierungsschlüssel)</string>
     <string name="add_contact_error_enc_key_length">Muss 32 Bytes lang sein (Verschlüsselungsschlüssel)</string>
     <string name="add_contact_error_save">Speichern fehlgeschlagen</string>
+    <string name="add_contact_nickname_label">Spitzname (optional)</string>
     <string name="add_contact_verification_label">Verifizierungsstufe</string>
     <string name="add_contact_verification_footer">Wie sicher bist du, dass es wirklich diese Person ist? Zähle deine unabhängigen Bestätigungen: ein vertrauenswürdiger Kanal und/oder ein Live-Nachweis, dass du sie gesehen hast.</string>
 

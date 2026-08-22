@@ -14,6 +14,7 @@ import com.deposplit.value_objects.SecretState
 import com.deposplit.value_objects.ShareMetadata
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareTransactionType
+import com.deposplit.value_objects.displayName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -46,6 +47,9 @@ data class HolderStatus(
     val retrievalRequest: ShareRequest?,
     val lastConfirmedAt: Instant?,
     val heartbeatOptedOutAt: Instant?,
+    // Item 15 — the contact's pseudonym, shown as a secondary line, but only when recipientName
+    // is actually a nickname (i.e. there's something to disambiguate); null otherwise.
+    val recipientSubtitle: String? = null,
 ) {
     val freshnessBucket: FreshnessBucket
         get() = when {
@@ -88,6 +92,10 @@ data class SecretGroup(
 data class HeldShareDisplay(
     val share: HeldShare,
     val senderName: String,
+    // Item 15 — the contact's pseudonym, shown as a secondary line, but only when senderName is
+    // actually a nickname; null otherwise (including when there's no local Contact at all, in
+    // which case senderName already falls back to HeldShare's own denormalized senderPseudonym).
+    val senderSubtitle: String? = null,
 )
 
 enum class HeldSortOrder { DATE, LABEL, SENDER }
@@ -254,10 +262,11 @@ class HomeViewModel(
                     HolderStatus(
                         shareId = share.id,
                         contactId = share.contactId,
-                        recipientName = contact?.pseudonym ?: "?",
+                        recipientName = contact?.displayName ?: "?",
                         retrievalRequest = latestRetrieval,
                         lastConfirmedAt = share.lastConfirmedAt,
                         heartbeatOptedOutAt = contact?.heartbeatOptedOutAt,
+                        recipientSubtitle = contact?.takeIf { it.nickname != null }?.pseudonym,
                     )
                 }
                 SecretGroup(secret = secret, holders = holders)
@@ -271,8 +280,9 @@ class HomeViewModel(
         order: HeldSortOrder,
     ): List<HeldShareDisplay> = held
         .map { share ->
-            val name = contacts.find { it.id == share.contactId }?.pseudonym ?: share.senderPseudonym
-            HeldShareDisplay(share = share, senderName = name)
+            val contact = contacts.find { it.id == share.contactId }
+            val name = contact?.displayName ?: share.senderPseudonym
+            HeldShareDisplay(share = share, senderName = name, senderSubtitle = contact?.takeIf { it.nickname != null }?.pseudonym)
         }
         .sortedWith(sortComparator(order))
 

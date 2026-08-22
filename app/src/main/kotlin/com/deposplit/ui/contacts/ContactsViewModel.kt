@@ -72,4 +72,14 @@ class ContactsViewModel(
                 .onSuccess { load() }
         }
     }
+
+    // Item 15 — purely local disambiguation label; never touches keys/level/cipherSuite. Pass
+    // null (or a blank string, normalized service-side) to clear an existing nickname.
+    fun rename(contactId: UUID, nickname: String?) {
+        viewModelScope.launch {
+            runCatching { withContext(Dispatchers.IO) { contactManagement.renameContact(contactId, nickname) } }
+                .onSuccess { load() }
+                .onFailure { _uiState.update { it.copy(error = R.string.contacts_error_rename) } }
+        }
+    }
 }

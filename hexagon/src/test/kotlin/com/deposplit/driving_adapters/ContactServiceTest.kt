@@ -212,4 +212,84 @@ class ContactServiceTest {
         assertEquals(VerificationLevel.LOW, updated.verificationLevel)
         assertTrue(updated.keyChangedAt != null)
     }
+
+    // ── Item 15: local contact nicknames ──────────────────────────────────────
+
+    @Test
+    fun `renameContact sets a nickname without touching keys, level, or keyChangedAt`() {
+        val repo = InMemoryContactRepositoryForContactServiceTest()
+        val svc = ContactService(repo)
+        val original = makeContact()
+        repo.save(original)
+
+        svc.renameContact(original.id, "Coworker Paul")
+
+        val updated = repo.getById(original.id)!!
+        assertEquals("Coworker Paul", updated.nickname)
+        assertEquals(original.pseudonym, updated.pseudonym)
+        assertTrue(updated.verifyKey.contentEquals(original.verifyKey))
+        assertTrue(updated.encKey.contentEquals(original.encKey))
+        assertEquals(original.verificationLevel, updated.verificationLevel)
+        assertEquals(original.verifiedAt, updated.verifiedAt)
+        assertEquals(null, updated.keyChangedAt)
+    }
+
+    @Test
+    fun `renameContact trims and collapses a blank nickname to null`() {
+        val repo = InMemoryContactRepositoryForContactServiceTest()
+        val svc = ContactService(repo)
+        val original = makeContact()
+        repo.save(original)
+
+        svc.renameContact(original.id, "  Paul  ")
+        assertEquals("Paul", repo.getById(original.id)!!.nickname)
+
+        svc.renameContact(original.id, "   ")
+        assertEquals(null, repo.getById(original.id)!!.nickname)
+    }
+
+    @Test
+    fun `renameContact can clear an existing nickname`() {
+        val repo = InMemoryContactRepositoryForContactServiceTest()
+        val svc = ContactService(repo)
+        val original = makeContact().copy(nickname = "Paul")
+        repo.save(original)
+
+        svc.renameContact(original.id, null)
+
+        assertEquals(null, repo.getById(original.id)!!.nickname)
+    }
+
+    @Test
+    fun `renameContact throws for an unknown contactId`() {
+        val repo = InMemoryContactRepositoryForContactServiceTest()
+        val svc = ContactService(repo)
+
+        assertFailsWith<IllegalStateException> {
+            svc.renameContact(UUID.randomUUID(), "Paul")
+        }
+    }
+
+    @Test
+    fun `addManually and addFromQr trim and normalize the nickname`() {
+        val repo = InMemoryContactRepositoryForContactServiceTest()
+        val svc = ContactService(repo)
+
+        svc.addManually("bob", ByteArray(32) { 0x01 }, ByteArray(32) { 0x02 }, VerificationLevel.LOW, nickname = "  Bobby  ")
+        svc.addFromQr("carol", ByteArray(32) { 0x03 }, ByteArray(32) { 0x04 }, CipherSuite.current, VerificationLevel.VERY_HIGH, nickname = "   ")
+
+        val contacts = repo.getAll()
+        assertEquals("Bobby", contacts.single { it.pseudonym == "bob" }.nickname)
+        assertEquals(null, contacts.single { it.pseudonym == "carol" }.nickname)
+    }
+
+    @Test
+    fun `addManually and addFromQr default the nickname to null when omitted`() {
+        val repo = InMemoryContactRepositoryForContactServiceTest()
+        val svc = ContactService(repo)
+
+        svc.addManually("bob", ByteArray(32) { 0x01 }, ByteArray(32) { 0x02 }, VerificationLevel.LOW)
+
+        assertEquals(null, repo.getAll().single().nickname)
+    }
 }

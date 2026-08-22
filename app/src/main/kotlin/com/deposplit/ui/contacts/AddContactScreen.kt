@@ -118,6 +118,14 @@ fun AddContactScreen(onNavigateBack: () -> Unit) {
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = uiState.nickname,
+                onValueChange = viewModel::onNicknameChange,
+                label = { Text(stringResource(R.string.add_contact_nickname_label)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
             Spacer(Modifier.height(20.dp))
             Text(
                 text = stringResource(R.string.add_contact_verification_label),

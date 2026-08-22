@@ -40,6 +40,9 @@ class LocalContactRepository(context: Context) : ContactRepository {
         // Item 14 — no default/fallback decode shim: Deposplit is pre-launch, local stores are
         // wiped, not migrated.
         val cipherSuite: String,
+        // Item 15 — defaulted (like relayBaseUrl) so decoding a contacts.json written before this
+        // field existed doesn't need a migration shim.
+        val nickname: String? = null,
     )
 
     @Synchronized
@@ -92,6 +95,7 @@ class LocalContactRepository(context: Context) : ContactRepository {
         lastHeartbeatSentAt = lastHeartbeatSentAt?.let { Instant.parse(it) },
         heartbeatEmissionOptedOut = heartbeatEmissionOptedOut,
         cipherSuite = CipherSuite.fromWire(cipherSuite) ?: error("Unknown cipher suite in local store: $cipherSuite"),
+        nickname = nickname,
     )
 
     private fun Contact.toWire() = ContactWire(
@@ -109,5 +113,6 @@ class LocalContactRepository(context: Context) : ContactRepository {
         lastHeartbeatSentAt = lastHeartbeatSentAt?.toString(),
         heartbeatEmissionOptedOut = heartbeatEmissionOptedOut,
         cipherSuite = cipherSuite.wireValue,
+        nickname = nickname,
     )
 }

@@ -55,6 +55,7 @@ import com.deposplit.ui.deposit.DepositForm
 import com.deposplit.ui.deposit.DepositViewModel
 import com.deposplit.ui.reconstruction.ReconstructionAdvisory
 import com.deposplit.value_objects.ShareRequestState
+import com.deposplit.value_objects.displayName
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -129,7 +130,7 @@ fun RepairScreen(secretId: UUID, onNavigateBack: () -> Unit) {
                             val unknownContactLabel = stringResource(R.string.share_detail_unknown_contact)
                             ReconstructionAdvisory(
                                 integrity = integrity,
-                                contactName = { id -> uiState.contacts.find { it.id == id }?.pseudonym ?: unknownContactLabel },
+                                contactName = { id -> uiState.contacts.find { it.id == id }?.displayName ?: unknownContactLabel },
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                             )
                         }
@@ -197,7 +198,16 @@ private fun GatheringContent(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        Text(holder.pseudonym, style = MaterialTheme.typography.bodyMedium)
+                        Column {
+                            Text(holder.pseudonym, style = MaterialTheme.typography.bodyMedium)
+                            if (holder.subtitle != null) {
+                                Text(
+                                    text = holder.subtitle,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
                         Text(
                             text = holder.requestState.label(),
                             style = MaterialTheme.typography.bodySmall,

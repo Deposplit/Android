@@ -13,6 +13,7 @@ import com.deposplit.value_objects.ReconstructionIntegrity
 import com.deposplit.value_objects.Secret
 import com.deposplit.value_objects.ShareRequestState
 import com.deposplit.value_objects.ShareTransactionType
+import com.deposplit.value_objects.displayName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -41,6 +42,9 @@ class RepairViewModel(
         val contactId: UUID,
         val pseudonym: String,
         val requestState: ShareRequestState?,
+        // Item 15 — the contact's actual pseudonym, shown as a secondary line, but only when
+        // `pseudonym` above is actually a nickname; null otherwise.
+        val subtitle: String? = null,
     )
 
     data class UiState(
@@ -89,8 +93,9 @@ class RepairViewModel(
                             .maxByOrNull { it.requestedAt }
                         HolderRetrievalStatus(
                             contactId = share.contactId,
-                            pseudonym = contact?.pseudonym ?: "?",
+                            pseudonym = contact?.displayName ?: "?",
                             requestState = latestRetrieval?.state,
+                            subtitle = contact?.takeIf { it.nickname != null }?.pseudonym,
                         )
                     }
                     val approved = requests.count {

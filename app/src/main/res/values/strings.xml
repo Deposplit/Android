@@ -67,6 +67,12 @@
     <string name="contacts_error_load">Failed to load</string>
     <string name="contacts_error_delete">Failed to delete</string>
 
+    <!-- Item 15 — local contact nicknames -->
+    <string name="contacts_rename_description">Rename %1$s</string>
+    <string name="contacts_rename_title">Rename contact</string>
+    <string name="contacts_rename_label">Nickname</string>
+    <string name="contacts_error_rename">Failed to rename</string>
+
     <!-- Item 10 — stolen-key revocation -->
     <string name="contacts_mark_compromised_description">Mark %1$s\'s key compromised</string>
     <string name="contacts_revoked_badge_description">A previous key for this contact is flagged compromised</string>
@@ -108,6 +114,7 @@
     <string name="add_contact_error_enc_key_length">Must be 32 bytes (encryption key)</string>
     <string name="add_contact_error_save">Failed to save</string>
     <string name="add_contact_relay_label">Relay override (optional, BYOR)</string>
+    <string name="add_contact_nickname_label">Nickname (optional)</string>
     <string name="add_contact_verification_label">Verification Level</string>
     <string name="add_contact_verification_footer">How sure are you this is really them? Count your independent assurances: a trusted channel, and/or live proof you saw them.</string>
 

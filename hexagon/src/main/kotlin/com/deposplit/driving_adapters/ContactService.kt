@@ -16,7 +16,7 @@ class ContactService(
 
     // No cipherSuite parameter: manual entry has no wire payload to read one from, and only one
     // suite exists to assume — see ContactManagement.addManually.
-    override fun addManually(pseudonym: String, verifyKey: ByteArray, encKey: ByteArray, verificationLevel: VerificationLevel, relayBaseUrl: String?) {
+    override fun addManually(pseudonym: String, verifyKey: ByteArray, encKey: ByteArray, verificationLevel: VerificationLevel, relayBaseUrl: String?, nickname: String?) {
         val cipherSuite = CipherSuite.current
         require(pseudonym.isNotBlank()) { "Pseudonym must not be blank" }
         require(verifyKey.size == cipherSuite.verifyKeyLength) { "Verify key must be ${cipherSuite.verifyKeyLength} bytes for $cipherSuite" }
@@ -36,11 +36,12 @@ class ContactService(
                 addedAt = now,
                 relayBaseUrl = relayBaseUrl,
                 cipherSuite = cipherSuite,
+                nickname = normalizeNickname(nickname),
             )
         )
     }
 
-    override fun addFromQr(pseudonym: String, verifyKey: ByteArray, encKey: ByteArray, cipherSuite: CipherSuite, verificationLevel: VerificationLevel, relayBaseUrl: String?) {
+    override fun addFromQr(pseudonym: String, verifyKey: ByteArray, encKey: ByteArray, cipherSuite: CipherSuite, verificationLevel: VerificationLevel, relayBaseUrl: String?, nickname: String?) {
         require(pseudonym.isNotBlank()) { "Pseudonym must not be blank" }
         require(verifyKey.size == cipherSuite.verifyKeyLength) { "Verify key must be ${cipherSuite.verifyKeyLength} bytes for $cipherSuite" }
         require(encKey.size == cipherSuite.encKeyLength) { "Enc key must be ${cipherSuite.encKeyLength} bytes for $cipherSuite" }
@@ -56,6 +57,7 @@ class ContactService(
                 addedAt = now,
                 relayBaseUrl = relayBaseUrl,
                 cipherSuite = cipherSuite,
+                nickname = normalizeNickname(nickname),
             )
         )
     }
@@ -84,6 +86,13 @@ class ContactService(
         )
     }
 
+    // Item 15 — deliberately separate from updateContact: never touches keys, cipherSuite,
+    // verificationLevel, verifiedAt, or keyChangedAt. Pass null to clear an existing nickname.
+    override fun renameContact(contactId: UUID, nickname: String?) {
+        val existing = contactRepository.getById(contactId) ?: error("Contact not found for id $contactId")
+        contactRepository.save(existing.copy(nickname = normalizeNickname(nickname)))
+    }
+
     override fun deleteContact(contactId: UUID) = contactRepository.delete(contactId)
 
     // Item 10 — idempotent: a no-op if the key is already in revokedEdKeys.
@@ -93,4 +102,8 @@ class ContactService(
         if (existing.revokedEdKeys.any { it.contentEquals(keyToFlag) }) return
         contactRepository.save(existing.copy(revokedEdKeys = existing.revokedEdKeys + keyToFlag))
     }
+
+    // Item 15 — trim, then collapse blank to absent. Lives here (not the UI layer) so every
+    // caller — UI, tests, a future relink flow — gets consistent normalization for free.
+    private fun normalizeNickname(nickname: String?): String? = nickname?.trim()?.ifBlank { null }
 }

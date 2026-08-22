@@ -34,6 +34,7 @@ import com.deposplit.R
 import com.deposplit.value_objects.KeyConflict
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareTransactionType
+import com.deposplit.value_objects.displayName
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -107,13 +108,12 @@ fun RecipientRequestsTab(
                     )
                 }
                 items(uiState.requests, key = { it.id }) { request ->
-                    val senderName = uiState.contacts
-                        .find { it.verifyKey.contentEquals(request.senderKey) }
-                        ?.pseudonym
-                        ?: keyPreview(request.senderKey)
+                    val senderContact = uiState.contacts.find { it.verifyKey.contentEquals(request.senderKey) }
+                    val senderName = senderContact?.displayName ?: keyPreview(request.senderKey)
                     RequestItem(
                         request = request,
                         senderName = senderName,
+                        senderSubtitle = senderContact?.takeIf { it.nickname != null }?.pseudonym,
                         keyChangedDaysAgo = keyChangedDaysAgo(request),
                         isResponding = request.id in uiState.respondingIds,
                         onRespond = { approved -> onRespond(request.id, approved) },
@@ -164,6 +164,8 @@ private fun KeyConflictItem(conflict: KeyConflict, contactName: String, onDismis
 private fun RequestItem(
     request: ShareRequest,
     senderName: String,
+    // Item 15 — the sender's pseudonym, shown only when senderName above is actually a nickname.
+    senderSubtitle: String? = null,
     keyChangedDaysAgo: Long?,
     isResponding: Boolean,
     onRespond: (Boolean) -> Unit,
@@ -219,6 +221,13 @@ private fun RequestItem(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (senderSubtitle != null) {
+                Text(
+                    text = senderSubtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             Text(
                 text = formatDate(request.requestedAt),
                 style = MaterialTheme.typography.bodySmall,

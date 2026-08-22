@@ -54,7 +54,16 @@ data class Contact(
     // "thread a new value through every call site" exercise; the default is correct today (every
     // contact really is on this one suite), not a placeholder.
     val cipherSuite: CipherSuite = CipherSuite.current,
+    // Item 15 — a purely local, optional label to disambiguate contacts who share the same
+    // sender-asserted pseudonym (e.g. two different "Paul"s). Never transmitted anywhere — not in
+    // the QR/link payload, any relay row, or any rotation/heartbeat/inventory push. Trimmed and
+    // blank-collapsed-to-null by ContactService before it ever reaches this field.
+    val nickname: String? = null,
 ) {
     override fun equals(other: Any?) = other is Contact && id == other.id
     override fun hashCode() = id.hashCode()
 }
+
+// Item 15 — the display-precedence policy ("nickname when set, else pseudonym") lives once on the
+// domain object rather than being re-derived at every one of the app's render call sites.
+val Contact.displayName: String get() = nickname ?: pseudonym

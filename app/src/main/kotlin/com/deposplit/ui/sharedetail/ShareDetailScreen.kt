@@ -48,6 +48,7 @@ import com.deposplit.R
 import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareRequestState
+import com.deposplit.value_objects.displayName
 import com.deposplit.ui.biometric.AuthAvailability
 import com.deposplit.ui.biometric.AuthResult
 import com.deposplit.ui.biometric.authenticate
@@ -129,7 +130,7 @@ fun ShareDetailScreen(shareId: UUID, onNavigateBack: () -> Unit) {
 
                 val recipientName = uiState.contacts
                     .find { it.id == uiState.share!!.contactId }
-                    ?.pseudonym
+                    ?.displayName
                     ?: stringResource(R.string.share_detail_unknown_contact)
 
                 LabeledValue(stringResource(R.string.share_detail_recipient_label), recipientName)
@@ -189,7 +190,7 @@ fun ShareDetailScreen(shareId: UUID, onNavigateBack: () -> Unit) {
                             Spacer(Modifier.height(8.dp))
                             ReconstructionAdvisory(
                                 integrity = integrity,
-                                contactName = { id -> uiState.contacts.find { it.id == id }?.pseudonym ?: unknownContactLabel },
+                                contactName = { id -> uiState.contacts.find { it.id == id }?.displayName ?: unknownContactLabel },
                             )
                         }
                     } else {

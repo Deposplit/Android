@@ -10,6 +10,7 @@ import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.KeyConflict
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareTransactionType
+import com.deposplit.value_objects.displayName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -100,7 +101,7 @@ class RequestsViewModel(
     }
 
     fun contactName(conflict: KeyConflict): String? =
-        uiState.value.contacts.find { it.id == conflict.contactId }?.pseudonym
+        uiState.value.contacts.find { it.id == conflict.contactId }?.displayName
 
     // Item 10 — resolving "yes, this really was them" goes through the existing Relink flow (a
     // fresh human-verified re-scan), not through this dismiss action — dismissing only

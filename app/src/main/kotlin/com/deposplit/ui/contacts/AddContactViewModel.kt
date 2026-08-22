@@ -24,6 +24,9 @@ class AddContactViewModel(private val contactManagement: ContactManagement) : Vi
         val edPublicKey: String = "",
         val xPublicKey: String = "",
         val relayBaseUrl: String = "",
+        // Item 15 — purely local, optional; set at add-time or later via the Contacts screen's
+        // Rename action.
+        val nickname: String = "",
         // .VERY_HIGH is deliberately excluded: physical co-presence can't be asserted by typing
         // a key in by hand — that's what the in-person QR scan flow is for. See CLAUDE.md item 6.
         val verificationLevel: VerificationLevel = VerificationLevel.VERY_LOW,
@@ -50,6 +53,7 @@ class AddContactViewModel(private val contactManagement: ContactManagement) : Vi
     fun onEdKeyChange(value: String) = _uiState.update { it.copy(edPublicKey = value, edKeyError = null) }
     fun onXKeyChange(value: String) = _uiState.update { it.copy(xPublicKey = value, xKeyError = null) }
     fun onRelayBaseUrlChange(value: String) = _uiState.update { it.copy(relayBaseUrl = value) }
+    fun onNicknameChange(value: String) = _uiState.update { it.copy(nickname = value) }
     fun onVerificationLevelChange(value: VerificationLevel) = _uiState.update { it.copy(verificationLevel = value) }
 
     fun save() {
@@ -84,6 +88,7 @@ class AddContactViewModel(private val contactManagement: ContactManagement) : Vi
                         xKeyBytes!!,
                         state.verificationLevel,
                         state.relayBaseUrl.trim().ifBlank { null },
+                        state.nickname.trim().ifBlank { null },
                     )
                 }
             }
