@@ -24,7 +24,7 @@ class ApiException(val statusCode: Int, body: String) : Exception("HTTP $statusC
 
 class DeposplitApiAdapter(
     private val auth: Identity,
-    private val baseUrl: String = "https://api.deposplit.com",
+    private val baseUrl: String = RelayDefaults.FALLBACK_BASE_URL,
 ) : ShareRelay {
 
     private val json = Json { ignoreUnknownKeys = true }
