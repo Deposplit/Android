@@ -299,15 +299,11 @@ sbt run -Dconfig.file=conf/localhost.conf
 
 It listens on port 9000.
 
-**Run on an emulator** — the emulator reaches your host machine via the special alias `10.0.2.2`, which is the default debug `BASE_URL`. Open `Android/` in Android Studio, create an AVD (API 29+), then **Run ▶**. No extra configuration needed.
+The relay URL is not a build-time property — `RelayDefaults.FALLBACK_BASE_URL` (`app/.../api/RelayDefaults.kt`) is a single fixed fallback (`https://api.deposplit.com`), and the app resolves its actual default relay at runtime via `RelaySettings`. Point a debug/emulator build at a local `sbt run` instance from the in-app **Settings** screen (gear icon on Home) instead of editing a config file:
 
-**Run on a physical device** — the `10.0.2.2` alias is emulator-only. Add your machine's LAN IP to `local.properties` (already gitignored):
+**Run on an emulator** — open `Android/` in Android Studio, create an AVD (API 29+), then **Run ▶**. On first launch, open **Settings** and set the default relay to `http://10.0.2.2:9000` — the special alias the emulator uses to reach your host machine (cleartext HTTP to that one host is already permitted via `app/src/debug/res/xml/network_security_config.xml`). This is a one-time step per fresh install; the setting persists in `SharedPreferences` across app restarts.
 
-```
-BASE_URL=http://192.168.x.x:9000
-```
-
-`local.properties` is read at Gradle sync time; rebuild the app after editing it. Remove or comment out the line to revert to the emulator default. Android Studio regenerates `local.properties` when you change the SDK path, but it only rewrites the `sdk.dir` line — custom properties like `BASE_URL` survive.
+**Run on a physical device** — the `10.0.2.2` alias is emulator-only. In **Settings**, set the default relay to your machine's LAN IP instead (e.g. `http://192.168.x.x:9000`); both devices must be on the same network.
 
 ### Three-AVD setup
 
