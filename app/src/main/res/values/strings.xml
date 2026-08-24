@@ -26,8 +26,6 @@
     <string name="home_empty_distributed">No secrets split &amp; shared yet</string>
     <string name="home_empty_held">No secrets kept safe yet</string>
     <string name="home_request_all">Request Retrieval</string>
-    <string name="home_holder_delivered">Delivered</string>
-    <string name="home_holder_awaiting_pickup">Awaiting pickup</string>
     <string name="home_held_from">From: %1$s</string>
     <string name="home_sort_date">Date</string>
     <string name="home_sort_label">Label</string>
