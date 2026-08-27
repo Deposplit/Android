@@ -43,10 +43,17 @@ host JDK here is 25 while the target is JVM 21 bytecode, so `jvmToolchain(21)` f
 modules share one resolved version. Never declare a plugin version inside
 `app/build.gradle.kts` or `hexagon/build.gradle.kts`.
 
-**If a local build fails in `:app:compileDebugJavaWithJavac` (`JdkImageTransform`)**, suspect
-Gradle's toolchain auto-detection picking up a broken bundled JRE — VS Code's `redhat.java`
-extension ships one that lacks `jlink` — rather than `JAVA_HOME`. CI is unaffected, so a
-failure that reproduces only locally is usually this and not the code.
+**`gradle.properties` sets `org.gradle.java.installations.auto-detect=false`. Do not remove
+it.** Gradle otherwise scans well-known locations for JDKs, including VS Code extension
+directories, and VS Code's `redhat.java` extension ships a trimmed Java 21 image with no
+`jlink`. Since the project targets JVM 21 bytecode, Gradle would pick that image for AGP's
+`JdkImageTransform`, which shells out to `jlink`, and `:app:compileDebugJavaWithJavac` fails
+locally while CI stays green. With auto-detection off, Gradle uses only the JVM `gradlew`
+launched — the one on `JAVA_HOME`. Safe because the build uses `compileOptions` rather than
+`jvmToolchain(N)`, so no toolchain resolution is needed.
+
+A running daemon caches the old setting, so after changing anything in this area run
+`./gradlew --stop` once before believing the result.
 
 Versions are pinned in `gradle/libs.versions.toml`: AGP 9.3.2, Kotlin 2.4.0, BouncyCastle
 1.85.2, Compose BOM 2026.06.01, biometric 1.1.0. Gradle wrapper 9.6.1. compileSdk 37,
@@ -108,10 +115,16 @@ not supported there.
   `OpenDocument` to import.
 - **All UI is Jetpack Compose.** No XML layouts.
 
-> **`CatalogCodec.kt` is a trap.** It hand-writes the catalog's wire DTO rather than
-> serialising the domain type, so **every new field on `Contact` or `Secret` must be added
-> there by hand** or it is silently dropped on export/import. Kotlin's `copy()` protects the
-> rest of the codebase from this class of bug; this file is the exception.
+> **`CatalogCodec.kt` is a trap, now guarded.** It hand-writes the catalog's wire DTO rather
+> than serialising the domain type, so **every new field on `Contact`, `Secret` or
+> `ShareMetadata` must be added there by hand** or it is silently dropped on export/import.
+> Kotlin's `copy()` protects the rest of the codebase from this class of bug; this file is the
+> exception. Six fields had already been lost this way before `CatalogCodecTest` was written.
+>
+> That test now derives its expectation from the domain types by reflection, so a forgotten
+> field fails by name. Note why it cannot simply compare whole objects: `Contact.equals`
+> compares `id` alone, so a naive round-trip assertion passes even when every other field has
+> been dropped.
 
 ## Navigation
 
@@ -141,15 +154,21 @@ own debug-only fake-Premium `PurchaseRepository` in the same shape as `SKIP_BIOM
 ## Build and test
 
 ```bash
-./gradlew test                    # JVM unit tests (115 in :hexagon) — what CI runs
+./gradlew test                    # JVM unit tests (115 in :hexagon, 20 in :app) — what CI runs
 ./gradlew :hexagon:test           # domain only
 ./gradlew :hexagon:test --tests "com.deposplit.shamir.ShamirTest"
 ./gradlew assembleDebug           # → app/build/outputs/apk/debug/app-debug.apk
 ./gradlew connectedAndroidTest    # needs a device or emulator
 ```
 
-`:hexagon` tests use `kotlin.test` on a JUnit 4 backend. `:app` has only Android Studio's
-scaffold stubs. Deploying to a device needs Android Studio or `adb install`.
+`:hexagon` tests use `kotlin.test` on a JUnit 4 backend. `:app` tests use **plain JUnit 4**
+instead — `kotlin("test")` is unavailable there, because `:app` deliberately does not apply
+the Kotlin plugin (see the AGP 9 note above).
+
+`:app` tests cover the two files that are pure Kotlin and hand-write a wire format:
+`CatalogCodec` and `QrPayload`. Everything else in `:app` needs Context, Compose or a device
+and is covered by the manual end-to-end flows instead. Deploying to a device needs Android
+Studio or `adb install`.
 
 Manual end-to-end flows are in the hub's
 [testing.md](https://github.com/Deposplit/deposplit.com/blob/main/docs/testing.md).

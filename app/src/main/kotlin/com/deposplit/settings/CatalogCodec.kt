@@ -40,6 +40,16 @@ object CatalogCodec {
         val cipherSuite: String,
         // Item 15 — for full catalog round-trip fidelity, same reasoning as cipherSuite above.
         val nickname: String? = null,
+        // Trust state. Defaulted so an export written before these were carried still decodes.
+        // revokedEdKeys is the security-relevant one: losing it on a restore silently re-enables
+        // auto-accept of rotation notices signed by a key the user marked compromised.
+        val revokedEdKeys: List<String> = emptyList(),
+        val keyChangedAt: String? = null,
+        // Custody-monitoring state. Losing these makes a privacy-opted-out holder read as
+        // silent-overdue after a restore.
+        val heartbeatOptedOutAt: String? = null,
+        val lastHeartbeatSentAt: String? = null,
+        val heartbeatEmissionOptedOut: Boolean = false,
     )
 
     @Serializable
@@ -53,7 +63,14 @@ object CatalogCodec {
     )
 
     @Serializable
-    private data class ShareMetadataWire(val id: String, val secretId: String, val contactId: String)
+    private data class ShareMetadataWire(
+        val id: String,
+        val secretId: String,
+        val contactId: String,
+        // Last proof-of-custody. Losing it on a restore makes every holder read as
+        // never-confirmed, so every secret shows as lost until fresh heartbeats arrive.
+        val lastConfirmedAt: String? = null,
+    )
 
     @Serializable
     private data class CatalogWire(
@@ -66,7 +83,9 @@ object CatalogCodec {
         CatalogWire(
             contacts = catalog.contacts.map { it.toWire() },
             secrets = catalog.secrets.map { it.toWire() },
-            shareMetadata = catalog.shareMetadata.map { ShareMetadataWire(it.id.toString(), it.secretId.toString(), it.contactId.toString()) },
+            shareMetadata = catalog.shareMetadata.map {
+                ShareMetadataWire(it.id.toString(), it.secretId.toString(), it.contactId.toString(), it.lastConfirmedAt?.toString())
+            },
         )
     ).toByteArray(Charsets.UTF_8)
 
@@ -75,7 +94,14 @@ object CatalogCodec {
         return Catalog(
             contacts = wire.contacts.map { it.toDomain() },
             secrets = wire.secrets.map { it.toDomain() },
-            shareMetadata = wire.shareMetadata.map { ShareMetadata(UUID.fromString(it.id), UUID.fromString(it.secretId), UUID.fromString(it.contactId)) },
+            shareMetadata = wire.shareMetadata.map {
+                ShareMetadata(
+                    UUID.fromString(it.id),
+                    UUID.fromString(it.secretId),
+                    UUID.fromString(it.contactId),
+                    it.lastConfirmedAt?.let(Instant::parse),
+                )
+            },
         )
     }
 
@@ -90,6 +116,11 @@ object CatalogCodec {
         relayBaseUrl = relayBaseUrl,
         cipherSuite = cipherSuite.wireValue,
         nickname = nickname,
+        revokedEdKeys = revokedEdKeys.map { Base64.getUrlEncoder().withoutPadding().encodeToString(it) },
+        keyChangedAt = keyChangedAt?.toString(),
+        heartbeatOptedOutAt = heartbeatOptedOutAt?.toString(),
+        lastHeartbeatSentAt = lastHeartbeatSentAt?.toString(),
+        heartbeatEmissionOptedOut = heartbeatEmissionOptedOut,
     )
 
     private fun ContactWire.toDomain() = Contact(
@@ -103,6 +134,11 @@ object CatalogCodec {
         relayBaseUrl = relayBaseUrl,
         cipherSuite = CipherSuite.fromWire(cipherSuite) ?: error("Unknown cipher suite in catalog: $cipherSuite"),
         nickname = nickname,
+        revokedEdKeys = revokedEdKeys.map { Base64.getUrlDecoder().decode(it) },
+        keyChangedAt = keyChangedAt?.let(Instant::parse),
+        heartbeatOptedOutAt = heartbeatOptedOutAt?.let(Instant::parse),
+        lastHeartbeatSentAt = lastHeartbeatSentAt?.let(Instant::parse),
+        heartbeatEmissionOptedOut = heartbeatEmissionOptedOut,
     )
 
     private fun Secret.toWire() = SecretWire(

@@ -30,21 +30,21 @@ AGP 9.3.2, Kotlin 2.4.0, Gradle 9.6.1, compileSdk 37, targetSdk 36, minSdk 29.
 ## Build and test
 
 ```bash
-./gradlew test                    # JVM unit tests — no device needed (115 in :hexagon)
+./gradlew test                    # JVM unit tests — no device needed (115 :hexagon, 20 :app)
 ./gradlew :hexagon:test           # the domain only
 ./gradlew :hexagon:test --tests "com.deposplit.shamir.ShamirTest"
 ./gradlew assembleDebug           # → app/build/outputs/apk/debug/app-debug.apk
 ./gradlew connectedAndroidTest    # instrumented tests — needs a device or emulator
 ```
 
-`./gradlew test` is what CI runs. `:app` currently has only Android Studio's scaffold test
-stubs; the real coverage is in `:hexagon`.
+`./gradlew test` is what CI runs. Most coverage is in `:hexagon`; `:app` tests cover the two
+files that are pure Kotlin and hand-write a wire format — `CatalogCodec` (catalog backup) and
+`QrPayload` (contact exchange). The rest of `:app` needs Context, Compose or a device, and is
+covered by the [manual end-to-end
+flows](https://github.com/Deposplit/deposplit.com/blob/main/docs/testing.md) instead.
 
-> If `./gradlew test` fails locally in `:app:compileDebugJavaWithJavac` with a
-> `JdkImageTransform` error, that is a toolchain-detection problem, not a code problem —
-> Gradle has picked up a broken bundled JRE instead of `JAVA_HOME`. CI is unaffected.
-> `./gradlew :hexagon:test` runs the real suite and does not go through AGP. See
-> [CLAUDE.md](CLAUDE.md).
+`gradle.properties` pins Gradle to the JDK on `JAVA_HOME`; see [CLAUDE.md](CLAUDE.md) for why
+that matters on Windows.
 
 ## Modules
 
