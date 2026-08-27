@@ -1,372 +1,131 @@
 # Deposplit — Android
 
-Kotlin Android app for [Deposplit](https://github.com/Deposplit/deposplit.com): a secret-sharing app built on Shamir's Secret Sharing (SSS). Secrets are split into *n* shares and distributed to contacts via the deposplit.com Web app/service; reconstruction requires at least *k* holders to cooperate.
+The Android app, plus the Kotlin port of Shamir's Secret Sharing.
 
-This document is written for a developer who knows Kotlin well but has limited Android experience.
+Deposplit splits a secret into *n* shares, gives each to a person you choose, and
+reconstructs it from any *k*. Fewer than *k* shares reveal nothing. All cryptography happens
+on the device; the relay only stores and forwards bytes it cannot read.
 
----
+**Design documentation lives in the hub repository** and covers all three platforms:
 
-## Table of contents
+- [Architecture](https://github.com/Deposplit/deposplit.com/blob/main/docs/architecture.md)
+- [Protocol](https://github.com/Deposplit/deposplit.com/blob/main/docs/protocol.md)
+- [Security](https://github.com/Deposplit/deposplit.com/blob/main/docs/security.md)
+- [Trust model](https://github.com/Deposplit/deposplit.com/blob/main/docs/trust-model.md)
+- [Manual testing](https://github.com/Deposplit/deposplit.com/blob/main/docs/testing.md)
 
-1. [Android concepts you need](#android-concepts-you-need)
-2. [Project structure](#project-structure)
-3. [Architecture](#architecture)
-4. [The registration flow](#the-registration-flow)
-5. [Building and running](#building-and-running)
-6. [What is next](#what-is-next)
+This README covers only what is specific to building and running the Android app.
+Android-specific guidance for Claude Code is in [CLAUDE.md](CLAUDE.md).
 
----
+## Requirements
 
-## Android concepts you need
+- **JDK 25** (Temurin). The project targets JVM 21 bytecode but builds on 25.
+- **Android Studio** for running on a device or emulator. Command-line builds work without
+  it, but deployment does not.
+- An AVD on **API 29 or later**, or a physical device.
 
-### Activities and the Application class
+Versions are pinned in `gradle/libs.versions.toml` and `gradle/wrapper/gradle-wrapper.properties`:
+AGP 9.3.2, Kotlin 2.4.0, Gradle 9.6.1, compileSdk 37, targetSdk 36, minSdk 29.
 
-An Android app does not have a `main()` function. Instead, the OS launches a designated **Activity** — a class that owns a window. Deposplit has one: `MainActivity`.
-
-The **Application** class (`DeposplitApp`) is instantiated before any Activity and lives for the lifetime of the process. It is the right place for app-wide singletons (e.g., the auth adapter).
-
-### Jetpack Compose
-
-Deposplit uses **Jetpack Compose** for all UI — there are no XML layout files. Compose is a declarative UI toolkit: you write `@Composable` functions that describe what the screen should look like given the current state, and Compose re-runs ("recomposes") them when state changes. If you have used Kotlin's standard library extensively, you will recognise the lambda-heavy style immediately.
-
-Key primitives:
-- `@Composable fun MyScreen() { ... }` — a UI function
-- `remember { }` / `rememberSaveable { }` — survive recomposition (and screen rotation, for `rememberSaveable`)
-- `LaunchedEffect(key) { ... }` — launches a coroutine scoped to the composable's lifetime; re-launched when `key` changes
-- `Scaffold` — provides the standard Material 3 chrome (top bar, FAB slot, padding)
-
-### ViewModel
-
-A `ViewModel` survives Android configuration changes (e.g., screen rotation), unlike an Activity or composable. It holds UI state and business logic, and is obtained via `viewModel()` inside a composable. ViewModels use `viewModelScope` for coroutines — the scope is cancelled automatically when the ViewModel is cleared (i.e., when the user navigates away permanently).
-
-### StateFlow and effects channels
-
-UI state in Deposplit follows a standard pattern:
-
-```kotlin
-// In ViewModel:
-private val _uiState = MutableStateFlow(UiState())
-val uiState: StateFlow<UiState> = _uiState.asStateFlow()
-
-// In Composable:
-val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-```
-
-One-shot events (navigate, open browser) that should not be replayed on recomposition are sent via a `Channel` and exposed as a `Flow`:
-
-```kotlin
-private val _effects = Channel<Effect>(Channel.BUFFERED)
-val effects = _effects.receiveAsFlow()
-```
-
-The composable collects effects inside a `LaunchedEffect(Unit)` block.
-
-### Navigation Compose
-
-Navigation between screens is handled by `NavHost` in `MainActivity`. Each screen is registered as a `composable("route_name") { ... }` block. Navigation is triggered by calling `navController.navigate("route_name")`, typically in response to an effect from a ViewModel.
-
-### Context
-
-`Context` is Android's handle to the OS. It is required for reading files, accessing shared preferences, starting activities, and much more. Inside a composable, `LocalContext.current` provides it. In `DeposplitApp` and adapters, the Application itself is a `Context`.
-
-### Manifest and permissions
-
-`AndroidManifest.xml` declares:
-- The `Application` subclass (`android:name=".DeposplitApp"`)
-- Each `Activity`, its launch mode, and any intent filters
-- Permissions the app requires (e.g., `INTERNET`)
-
-Deposplit's manifest currently has only the launcher intent filter. Deep-link intent filters will be added when the app needs to handle incoming URIs (e.g., share links for key exchange).
-
----
-
-## Project structure
-
-The project has two Gradle modules, enforcing the Ports & Adapters boundary at the build level:
-
-| Module | Role | Plugins |
-|---|---|---|
-| `:hexagon` | Pure Kotlin/JVM — domain model, value types, ports, framework-free tests. No Android or infrastructure imports. | `org.jetbrains.kotlin.jvm` |
-| `:app` | Android application — adapters (HTTP, Android Keystore, local JSON) + UI (Compose + navigation). Depends on `:hexagon`. | AGP (registers `kotlin` itself) + `kotlin.plugin.compose` + `kotlin.plugin.serialization` |
-
-`:hexagon` must not depend on `:app`, AGP, or any Android library. This mirrors the sbt `hexagon` subproject / root Play app split in `deposplit.com`.
-
-```
-Android/
-├── hexagon/
-│   ├── src/
-│   │   ├── main/kotlin/com/deposplit/
-│   │   │   ├── shamir/
-│   │   │   │   └── Shamir.kt            SSS library (split / combine)
-│   │   │   ├── driving_ports/
-│   │   │   │   ├── Identity.kt          Port: isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign
-│   │   │   │   ├── ContactManagement.kt Port: listContacts, addManually, addFromQr, updateContact (item 8 —
-│   │   │   │   │                        contact-update-in-place, key change forces a fresh verificationLevel), deleteContact
-│   │   │   │   ├── ShareManagement.kt   Port: deposit, listSecrets, syncDistributed, listDistributed, listSentRequests, requestAll,
-│   │   │   │   │                        openRequest, reconstruct (pure read, real k), discardSecret, forceForgetSecret, syncInbox,
-│   │   │   │   │                        listHeld, listPendingRequests, respond, deleteHeldShare, deleteAllHeldFromSender,
-│   │   │   │   │                        pushRecoveryMetadata (item 8, holder side)
-│   │   │   │   └── CatalogManagement.kt Port: exportCatalog, importCatalog — optional non-secret catalog backup (item 8)
-│   │   │   ├── driven_ports/
-│   │   │   │   ├── IdentityStore.kt     Credential store interface (save/load keys + pseudonym)
-│   │   │   │   ├── ContactRepository.kt Contact persistence interface
-│   │   │   │   ├── ShareRepository.kt   Local share storage interface; getPlaintextShare keyed on secretId, not the
-│   │   │   │   │                        pickup relay-row id (item 8)
-│   │   │   │   ├── SecretRepository.kt  Local store interface for sender-side Secret aggregates (item 11)
-│   │   │   │   ├── ShareMetadataRepository.kt  Local store interface for distributed ShareMetadata
-│   │   │   │   └── ShareRelay.kt        Raw relay API interface (openShareRequest incl. k/n — item 8, listShareRequests,
-│   │   │   │                            getShareRequest, respondToShareRequest, deleteShareRequest, deleteShareRequests)
-│   │   │   ├── services/
-│   │   │   │   ├── IdentityService.kt   Implements Identity, ShareEncryption — BouncyCastle keypair generation,
-│   │   │   │   │                        Ed25519 signing, X25519+HKDF+ChaCha20-Poly1305 encrypt/decrypt; delegates persistence to IdentityStore
-│   │   │   │   ├── ContactService.kt    Implements ContactManagement — key-size validation, VerificationLevel, UUID/timestamp
-│   │   │   │   ├── ShareEncryption.kt   Intra-hexagon interface: encrypt(plaintext, recipientXPublicKey),
-│   │   │   │   │                        decrypt(noncePlusCiphertext, recipientXPublicKey) — consumed by ShareService
-│   │   │   │   ├── ShareService.kt      Implements ShareManagement — SSS split/combine + ShareEncryption.encrypt/decrypt + relay + ShareMetadataRepository + SecretRepository;
-│   │   │   │   │                        deposit() writes ShareMetadata + a Secret to local store (incl. k/n on the deposit); listDistributed()/listSecrets() read from local store;
-│   │   │   │   │                        syncDistributed() syncs field updates from relay (upserts, never deletes) then reconciles DISCARDING secrets;
-│   │   │   │   │                        syncInbox() also calls processRecoveryMetadata() (item 8) to rebuild Secret/ShareMetadata from verified holder pushes;
-│   │   │   │   │                        respond() matches retrieve/delete by secretId, not the sender's local shareId (item 8);
-│   │   │   │   │                        reconstruct() is a pure read (item 11); discardSecret()/forceForgetSecret() are the teardown primitives;
-│   │   │   │   │                        pushRecoveryMetadata(contactId) opens a recoveryMetadata push per HeldShare from that contact (item 8)
-│   │   │   │   └── CatalogService.kt    Implements CatalogManagement — exportCatalog/importCatalog (upsert-if-absent), item 8
-│   │   │   └── value_objects/
-│   │   │       ├── Catalog.kt           Catalog (contacts, secrets, shareMetadata) — item 8's optional backup
-│   │   │       ├── Contact.kt           Contact + VerificationLevel
-│   │   │       ├── HeldShare.kt         HeldShare (plaintext share + metadata + k/n, held by the recipient)
-│   │   │       ├── Secret.kt            Secret (id, label, k, n, secretCreatedAt, state) + SecretState — sender-side per-secret
-│   │   │       │                        aggregate, see CLAUDE.md item 11
-│   │   │       └── Share.kt             Role, ShareTransactionType (incl. INVENTORY — item 8), ShareRequestState,
-│   │   │                                ShareMetadata (id/secretId/contactId only), ShareRequest (incl. k/n)
-│   │   └── test/kotlin/com/deposplit/shamir/
-│   │       └── ShamirTest.kt            SSS unit tests
-│   └── build.gradle.kts
-├── app/
-│   ├── src/
-│   │   ├── main/
-│   │   │   ├── kotlin/com/deposplit/
-│   │   │   │   ├── DeposplitApp.kt          Application subclass; wires adapters into ContactService + ShareService + CatalogService;
-│   │   │   │   │                            exposes contactManagement + shareManagement + catalogManagement
-│   │   │   │   ├── MainActivity.kt          Single FragmentActivity; NavHost root (incl. relink_contact/{contactId}, item 8)
-│   │   │   │   ├── auth/
-│   │   │   │   │   └── AndroidIdentityStore.kt  Android Keystore AES-256-GCM wrapping of private keys; public keys + pseudonym in SharedPreferences
-│   │   │   │   ├── api/
-│   │   │   │   │   └── DeposplitApiAdapter.kt   HTTP adapter — implements ShareRelay; all /share-requests operations + request signing (incl. k/n, item 8)
-│   │   │   │   ├── contacts/
-│   │   │   │   │   └── LocalContactRepository.kt JSON file in filesDir
-│   │   │   │   ├── settings/
-│   │   │   │   │   ├── SharedPreferencesRelaySettings.kt  Implements RelaySettings
-│   │   │   │   │   └── CatalogCodec.kt         JSON (de)serialization for Catalog (item 8) — app layer, not the hexagon
-│   │   │   │   ├── shares/
-│   │   │   │   │   ├── LocalShareRepository.kt         JSON file in filesDir (shares.json); plaintext share + metadata + k/n for held shares;
-│   │   │   │   │   │                                    getPlaintextShare keyed on secretId (item 8)
-│   │   │   │   │   ├── LocalSecretRepository.kt        JSON file in filesDir (secrets.json); local store of sender-side Secret aggregates
-│   │   │   │   │   └── LocalShareMetadataRepository.kt JSON file in filesDir (distributed_shares.json); local store of distributed ShareMetadata
-│   │   │   │   └── ui/
-│   │   │   │       ├── signin/       SignInViewModel + SignInScreen
-│   │   │   │       ├── home/         HomeViewModel + HomeScreen (My Shared Secrets / Their Secret Shares / Requests tabs);
-│   │   │   │       │                 SecretGroup (wraps a Secret) + SecretHealth badge, discard/force-forget actions (item 11)
-│   │   │   │       ├── contacts/     Contacts{ViewModel,Screen} (incl. "Relink" per-row action), AddContact{ViewModel,Screen},
-│   │   │   │       │                 RelinkContact{ViewModel,Screen} (item 8) — QR re-scan → updateContact + pushRecoveryMetadata
-│   │   │   │       ├── deposit/      Deposit{ViewModel,Screen} — contactManagement.listContacts + shareManagement.deposit;
-│   │   │   │       │                 SplitTimeWarning + confirmation dialog before an oversized/thin-margin deposit (item 11)
-│   │   │   │       ├── requests/     RequestsViewModel + RecipientRequestsTab
-│   │   │   │       ├── sharedetail/  ShareDetail{ViewModel,Screen} — open requests + reconstruct; loads the parent Secret for label/k
-│   │   │   │       ├── qr/           QrPayload, QrDisplay{ViewModel,Screen}, QrScan{ViewModel,Screen} (CameraViewfinder shared with RelinkContactScreen)
-│   │   │   │       ├── biometric/    BiometricGate — availability probe + suspend authenticate(...)
-│   │   │   │       ├── settings/     SettingsViewModel + SettingsScreen — default relay + "Catalog Backup" export/import (item 8)
-│   │   │   │       └── theme/        Material 3 colour/type/theme
-│   │   │   ├── res/                         App icons, string resources
-│   │   │   └── AndroidManifest.xml
-│   └── build.gradle.kts
-├── gradle/
-│   └── libs.versions.toml                   Dependency version catalog
-├── build.gradle.kts
-├── settings.gradle.kts
-├── CLAUDE.md                                Claude Code guidance (Android-specific)
-└── README.md                                This file
-```
-
-### Dependency catalog (`gradle/libs.versions.toml`)
-
-Gradle version catalogs centralise dependency coordinates and versions. Instead of writing `"androidx.core:core-ktx:1.17.0"` in a build file, you write `libs.androidx.core.ktx` — the catalog entry resolves the coordinates. All versions are in one place, making upgrades straightforward.
-
----
-
-## Architecture
-
-Deposplit follows **Ports & Adapters (Hexagonal Architecture)** for the domain and infrastructure layers. The UI layer uses standard Android MVVM.
-
-```
-┌──────────────────────────────────────────────────────┐
-│  UI Layer (Compose)                                  │
-│  SignInScreen ──► SignInViewModel                    │
-└─────────────────────────┬────────────────────────────┘
-                          │ calls port interface
-┌─────────────────────────▼────────────────────────────┐
-│  Domain (Port)                                       │
-│  Identity  ◄──── IdentityService (Service)           │
-└──────────────────────────────────────────────────────┘
-```
-
-**Port (`Identity`)** — a Kotlin interface defined by the domain. It expresses what the app needs ("register with a pseudonym") without knowing anything about keypair generation or key storage.
-
-**Service (`IdentityService`)** — implements the port using BouncyCastle keypair generation, Ed25519 signing, and X25519+HKDF+ChaCha20-Poly1305 encryption. Delegates key persistence to the `IdentityStore` driven port.
-
-**Adapter (`AndroidIdentityStore`)** — implements `IdentityStore` using Android Keystore AES-256-GCM wrapping for private keys. Changing the storage strategy only requires changing this class.
-
-**ViewModel (`SignInViewModel`)** — sits at the UI/domain boundary. It calls the port, holds `UiState`, and emits one-shot `Effect`s (navigate). It does not know anything about Compose.
-
-**Application (`DeposplitApp`)** — creates the adapter and exposes it to ViewModels.
-
-The domain hexagon lives in its own pure Kotlin module (`:hexagon`) that `:app` depends on. Gradle enforces the boundary: `:hexagon` has no Android or infrastructure dependencies and cannot accidentally import adapter code.
-
----
-
-## The registration flow
-
-Deposplit does not use OIDC, passwords, or email. Registration is keypair-first.
-
-```
-1. User enters a pseudonym (display name only — no personal information required)
-        │
-2. App generates an Ed25519 keypair (API auth) and an X25519 keypair (share encryption)
-        │  → Both private keys stored in Android Keystore (never leave the device)
-        │  → Pseudonym stored in SharedPreferences (local only, never sent to the Web app/service)
-        │
-3. App calls Identity.register(pseudonym)
-        │  → IdentityService persists the "is registered" flag via AndroidIdentityStore
-        │  → No server call — the keypair IS the identity; no registration endpoint exists
-        │
-4. ViewModel emits Effect.NavigateToHome
-        │  → NavController pops sign-in, pushes home
-```
-
-Identity *is* the keypair pair. If Alice loses her device, she generates new keypairs on a new device and initiates a k-of-n social recovery request that her existing contacts approve.
-
----
-
-## Building and running
-
-### Prerequisites
-
-- **Android Studio** (latest stable) — required for the Android emulator and device deployment
-- **JDK 21+** on `JAVA_HOME` (the Gradle wrapper handles the rest)
-- An Android device or AVD (Android Virtual Device) running API 29+
-
-### Common commands
+## Build and test
 
 ```bash
-# from Android/
-
-# Build a debug APK
-./gradlew assembleDebug
-
-# Run JVM unit tests (no device needed)
-./gradlew test
-
-# Run only the hexagon (domain) tests
-./gradlew :hexagon:test
-
-# Run a single test class
+./gradlew test                    # JVM unit tests — no device needed (115 in :hexagon)
+./gradlew :hexagon:test           # the domain only
 ./gradlew :hexagon:test --tests "com.deposplit.shamir.ShamirTest"
-
-# Run instrumented tests (requires a connected device or running emulator)
-./gradlew connectedAndroidTest
+./gradlew assembleDebug           # → app/build/outputs/apk/debug/app-debug.apk
+./gradlew connectedAndroidTest    # instrumented tests — needs a device or emulator
 ```
 
-The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`. Install it with `adb install app/build/outputs/apk/debug/app-debug.apk` or use Android Studio's Run button.
+`./gradlew test` is what CI runs. `:app` currently has only Android Studio's scaffold test
+stubs; the real coverage is in `:hexagon`.
 
-### First run
+> If `./gradlew test` fails locally in `:app:compileDebugJavaWithJavac` with a
+> `JdkImageTransform` error, that is a toolchain-detection problem, not a code problem —
+> Gradle has picked up a broken bundled JRE instead of `JAVA_HOME`. CI is unaffected.
+> `./gradlew :hexagon:test` runs the real suite and does not go through AGP. See
+> [CLAUDE.md](CLAUDE.md).
 
-On first launch the app shows the sign-in screen. Enter a pseudonym (display name only — stored locally, never sent to the Web app/service). Tapping **Register** generates Ed25519 and X25519 keypairs via BouncyCastle, stores the private keys in the Android Keystore, and navigates to the home screen.
+## Modules
 
-### Continuous Integration
+| Module | What | Depends on |
+|---|---|---|
+| `:hexagon` | The domain — pure Kotlin/JVM, no Android APIs | BouncyCastle only |
+| `:app` | Adapters and UI — AGP, Compose, Keystore, HTTP | `:hexagon` |
 
-A GitHub Actions workflow (`.github/workflows/test.yml`) runs `./gradlew test` on every push and on pull requests targeting `main`. Dependabot (`.github/dependabot.yml`) keeps GitHub Actions and Gradle dependencies (including the `gradle/libs.versions.toml` version catalog) current on a weekly schedule.
+`:hexagon` must never depend on `:app`, on AGP, or on any Android library. It is a plain
+Kotlin module precisely so that an accidental Android import fails to compile rather than
+quietly eroding the boundary. New domain logic goes in `hexagon/src/main/kotlin/com/deposplit/…`;
+adapters and anything UI go in `app/src/main/kotlin/com/deposplit/…`.
 
----
+Packages use `snake_case` to mirror the Scala relay hexagon.
 
-## Testing against a local Web app/service
+## Where things live
 
-### Setup
+**`:hexagon`** — `driving_ports/` (`Identity`, `ContactManagement`, `ShareManagement`,
+`CatalogManagement`), `driving_adapters/` (the services implementing them, plus
+`ShareEncryption`), `driven_ports/` (ten interfaces the domain needs from the world:
+`IdentityStore`, `ContactRepository`, `ShareRepository`, `ShareMetadataRepository`,
+`SecretRepository`, `RetainedDepositRepository`, `KeyConflictRepository`, `ShareRelay`,
+`ShareRelayResolver`, `RelaySettings`), `value_objects/`, and `shamir/Shamir.kt`.
 
-**Start the Web app/service** (from `deposplit.com/`):
+**`:app`** — `api/` (relay client, resolver, defaults), `auth/` (Keystore-backed identity
+store), `contacts/` and `shares/` (JSON-file repositories), `settings/`, and `ui/` split by
+screen: `home`, `contacts`, `deposit`, `sharedetail`, `repair`, `requests`, `qr`,
+`settings`, `signin`, `biometric`, `reconstruction`, `theme`.
+
+Adapters may depend on `:hexagon` ports and on Android libraries. They must never depend on
+UI code.
+
+## Pointing at a local relay
+
+The relay URL is **not** a build-time property. `RelayDefaults.FALLBACK_BASE_URL` supplies a
+single fixed fallback (`https://api.deposplit.com`), and the app resolves its actual default
+at runtime through `RelaySettings`, backed by `SharedPreferences`.
+
+Start a relay from `deposplit.com/`:
 
 ```bash
 sbt run -Dconfig.file=conf/localhost.conf
 ```
 
-It listens on port 9000.
+Then, in the app's **Settings** screen (gear icon on Home), set the default relay to:
 
-The relay URL is not a build-time property — `RelayDefaults.FALLBACK_BASE_URL` (`app/.../api/RelayDefaults.kt`) is a single fixed fallback (`https://api.deposplit.com`), and the app resolves its actual default relay at runtime via `RelaySettings`. Point a debug/emulator build at a local `sbt run` instance from the in-app **Settings** screen (gear icon on Home) instead of editing a config file:
+- `http://10.0.2.2:9000` on an emulator — the alias the emulator uses to reach your host.
+  Cleartext to that host is already permitted by
+  `app/src/debug/res/xml/network_security_config.xml`.
+- `http://<your-LAN-IP>:9000` on a physical device, on the same Wi-Fi. The `10.0.2.2` alias
+  is emulator-only.
 
-**Run on an emulator** — open `Android/` in Android Studio, create an AVD (API 29+), then **Run ▶**. On first launch, open **Settings** and set the default relay to `http://10.0.2.2:9000` — the special alias the emulator uses to reach your host machine (cleartext HTTP to that one host is already permitted via `app/src/debug/res/xml/network_security_config.xml`). This is a one-time step per fresh install; the setting persists in `SharedPreferences` across app restarts.
+One-time per fresh install; the setting persists across restarts. No rebuild needed.
 
-**Run on a physical device** — the `10.0.2.2` alias is emulator-only. In **Settings**, set the default relay to your machine's LAN IP instead (e.g. `http://192.168.x.x:9000`); both devices must be on the same network.
+A contact may additionally carry its own `relayBaseUrl` override, which takes precedence for
+that contact's traffic — see the architecture doc on Bring Your Own Relay.
 
-### Three-AVD setup
+## Skipping biometric during development
 
-You need **three AVD instances** (or three physical devices on the same WiFi, using your machine's LAN IP instead of `10.0.2.2`) to exercise the full social flow with a 2-of-2 threshold split across two holders. Create two additional AVDs in the Device Manager and launch them alongside the first.
+Emulators often have no enrolled biometric, which blocks the reconstruct flow. Add to
+`local.properties`:
 
-> The **My Shared Secrets** tab groups shares by `secretId`: a deposit to Bob and Carol shows as a single expandable card. Tap it to see delivery status and retrieve-request state per holder, and use **Request Retrieval** to open requests for all holders at once.
+```
+SKIP_BIOMETRIC=true
+```
 
-### Flow 1 — Happy path (2-of-2 threshold, 2 holders)
+The reconstruct button then appears unconditionally and bypasses the biometric gate. **The
+release build always enforces biometric regardless of this key.** Gradle reads
+`local.properties` at sync time, so rebuild after editing.
 
-| Step | Device | What to do |
-|---|---|---|
-| 1 | AVD-A | Launch → register as "Alice" |
-| 2 | AVD-B | Launch → register as "Bob" |
-| 3 | AVD-C | Launch → register as "Carol" |
-| 4 | AVD-A | TopAppBar QR icon → screenshot Alice's QR code |
-| 5 | AVD-B | Contacts → **Add contact** → paste Alice's keys manually (or scan the screenshot if camera emulation supports it); then TopAppBar QR icon → screenshot Bob's QR |
-| 6 | AVD-C | Contacts → **Add contact** → paste Alice's keys; then TopAppBar QR icon → screenshot Carol's QR |
-| 7 | AVD-A | Add Bob as a contact; add Carol as a contact |
-| 8 | AVD-A | FAB (＋) → enter a label (e.g. "test secret"), a secret text, select Bob and Carol, choose threshold 2-of-2 → **Deposit** |
-| 9 | AVD-A | **My Shared Secrets** tab → one grouped card for the secret; expand it to see Bob and Carol as holders |
-| 10 | AVD-B | **Their Secret Shares** tab → Bob's inbox shows Alice's Deposit request → app automatically approves it, decrypts the share, and stores it as plaintext locally; relay clears the ciphertext |
-| 11 | AVD-C | **Their Secret Shares** tab → Carol's inbox shows Alice's Deposit request → app approves the same way |
-| 12 | AVD-A | Expand the card → tap **Request Retrieval** (opens Retrieval requests for Bob and Carol at once) |
-| 13 | AVD-B | **Requests** tab → a Retrieval request from Alice appears → app re-encrypts the locally-stored plaintext to Alice's current key → tap **Approve** (ciphertext sent in response body) |
-| 14 | AVD-C | **Requests** tab → a Retrieval request from Alice appears → tap **Approve** |
-| 15 | AVD-A | Expand the card → both holders show "Approved" → tap **Reconstruct** in `ShareDetailScreen` → biometric prompt → secret appears |
+## Localisation
 
-The threshold logic (`Shamir.combine`) is already fully tested in the hexagon unit tests; the manual test above validates the full end-to-end path including encryption and transport.
+English and German, in `app/src/main/res/values/strings.xml` and `values-de/`. Both must be
+kept in sync.
 
-### Flow 2 — Deny and re-request
+## Continuous integration
 
-After step 12 above: Bob taps **Deny** → on Alice's side the Retrieve section shows "Denied" and a **Retry** button → Alice re-requests → Bob approves.
+`.github/workflows/test.yml` runs `./gradlew test` on every push and on pull requests
+targeting `main`. No emulator or device is involved. Dependabot updates Gradle dependencies
+and pinned action SHAs weekly.
 
-### Flow 3 — Sender-initiated deletion
+## Licence
 
-Alice taps **Request Removal** on a share (via `ShareDetailScreen`) → Bob's Requests tab shows a Removal request → Bob approves → Bob's Deposit row is deleted (cascade-deleting any related Retrieval/Removal rows) → the share disappears from Bob's **Their Secret Shares** tab.
-
-### Flow 4 — Recipient-initiated deletion
-
-On AVD-B, Bob taps the delete icon on Alice's share in the **Their Secret Shares** tab → confirmation dialog → **Delete**. The share disappears locally. If Bob has multiple shares from Alice, the dialog also offers **Delete all shares from Alice**. Verify what Alice's **My Shared Secrets** tab shows on refresh.
-
-### Flow 5 — Offline / error states
-
-Kill the Web app/service → open or refresh the app:
-- **My Shared Secrets** and **Their Secret Shares** tabs render from device storage; a small warning banner ("Relay not reachable") replaces the blocking error.
-- **Requests** tab queries the relay for pending events, which aren't stored locally, and will show an error.
-
-Restart the Web app/service → navigate away and back (or re-open the app) → warning clears, data refreshes from relay.
-
-### Flow 6 — Locale
-
-On the emulator: **Settings → General management → Language** → add German, make it primary → relaunch Deposplit → all strings should appear in German and dates in `dd.MM.yyyy` format.
-
-### Key edge cases to verify
-
-- Re-registering (clear app data, launch again) generates fresh keypairs — existing contacts cannot decrypt new shares with the old keys.
-- The **Reconstruct** button is hidden until ≥ 2 approved retrieve shares exist for the same `secretId`.
-- The biometric prompt on API 30+ offers "or use PIN"; on API 29 it shows biometric only (the combined `BIOMETRIC_STRONG | DEVICE_CREDENTIAL` authenticator is not supported on API 29).
-- 2-of-3 threshold: splitting across three contacts and having only 2 approve should still reconstruct the secret successfully.
-- Contacts added by manual key entry default to `VerificationLevel.VERY_LOW` and can be raised to `LOW`/`HIGH` via the level picker (`VERY_HIGH` is not offered — it requires physical co-presence); contacts added by QR scan default to `VERY_HIGH` (shown with a colored level label; no label at `VERY_LOW`).
-
----
-
-## What is next
-
-The Android app is feature-complete for v0.1. Next Android-specific work depends on cross-platform priorities — see `deposplit.com/CLAUDE.md` for the current roadmap.
+MIT. Copyright © 2026 [Squeng AG](https://www.squeng.com).
