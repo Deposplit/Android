@@ -29,7 +29,7 @@ interface ContactManagement {
     // verification level). Pass null to clear an existing nickname.
     fun renameContact(contactId: UUID, nickname: String?)
     fun deleteContact(contactId: UUID)
-    // Item 10 — flags a verify key into the contact's revokedEdKeys history, out-of-band-
+    // Item 10 — flags a verify key into the contact's revokedVerifyKeys history, out-of-band-
     // triggered (the user has some independent reason to believe it was stolen). Defaults to the
     // contact's *current* verifyKey when verifyKey is null. From this point, any signed rotation
     // notice claiming continuity from that key is refused auto-accept; only a fresh

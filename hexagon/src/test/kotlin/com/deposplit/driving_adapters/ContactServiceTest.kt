@@ -119,8 +119,8 @@ class ContactServiceTest {
         svc.markKeyCompromised(original.id)
 
         val updated = repo.getById(original.id)!!
-        assertEquals(1, updated.revokedEdKeys.size)
-        assertTrue(updated.revokedEdKeys.first().contentEquals(original.verifyKey))
+        assertEquals(1, updated.revokedVerifyKeys.size)
+        assertTrue(updated.revokedVerifyKeys.first().contentEquals(original.verifyKey))
     }
 
     @Test
@@ -128,11 +128,11 @@ class ContactServiceTest {
         val repo = InMemoryContactRepositoryForContactServiceTest()
         val svc = ContactService(repo)
         val original = makeContact()
-        repo.save(original.copy(revokedEdKeys = listOf(original.verifyKey)))
+        repo.save(original.copy(revokedVerifyKeys = listOf(original.verifyKey)))
 
         svc.markKeyCompromised(original.id)
 
-        assertEquals(1, repo.getById(original.id)!!.revokedEdKeys.size)
+        assertEquals(1, repo.getById(original.id)!!.revokedVerifyKeys.size)
     }
 
     @Test
@@ -146,9 +146,9 @@ class ContactServiceTest {
         svc.markKeyCompromised(original.id, verifyKey = oldKey)
 
         val updated = repo.getById(original.id)!!
-        assertEquals(1, updated.revokedEdKeys.size)
-        assertTrue(updated.revokedEdKeys.first().contentEquals(oldKey))
-        assertTrue(!updated.revokedEdKeys.first().contentEquals(original.verifyKey))
+        assertEquals(1, updated.revokedVerifyKeys.size)
+        assertTrue(updated.revokedVerifyKeys.first().contentEquals(oldKey))
+        assertTrue(!updated.revokedVerifyKeys.first().contentEquals(original.verifyKey))
     }
 
     // ── Item 14: crypto agility — cipher suite threading + suite-aware length validation ────────

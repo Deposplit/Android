@@ -88,11 +88,11 @@ class CatalogCodecTest {
         // A restore that loses this silently re-enables auto-accept of rotation notices signed by
         // a key the user marked compromised. See docs/trust-model.md.
         val revoked = listOf(ByteArray(32) { 0x03 }, ByteArray(32) { 0x04 })
-        val original = fullyPopulatedContact().copy(revokedEdKeys = revoked)
+        val original = fullyPopulatedContact().copy(revokedVerifyKeys = revoked)
         val decoded = roundTrip(Catalog(listOf(original), emptyList(), emptyList())).contacts.single()
 
-        assertEquals(2, decoded.revokedEdKeys.size)
-        assertTrue(decoded.revokedEdKeys.zip(revoked).all { (a, b) -> a.contentEquals(b) })
+        assertEquals(2, decoded.revokedVerifyKeys.size)
+        assertTrue(decoded.revokedVerifyKeys.zip(revoked).all { (a, b) -> a.contentEquals(b) })
     }
 
     // --- decode failures ----------------------------------------------------------------------
@@ -125,7 +125,7 @@ class CatalogCodecTest {
         val contact = decoded.contacts.single()
 
         assertEquals("bob", contact.pseudonym)
-        assertTrue(contact.revokedEdKeys.isEmpty())
+        assertTrue(contact.revokedVerifyKeys.isEmpty())
         assertEquals(null, contact.keyChangedAt)
         assertEquals(null, contact.heartbeatOptedOutAt)
         assertEquals(null, contact.lastHeartbeatSentAt)
@@ -173,7 +173,7 @@ class CatalogCodecTest {
         verifiedAt = Instant.parse("2026-01-02T03:04:05Z"),
         addedAt = Instant.parse("2026-01-01T00:00:00Z"),
         relayBaseUrl = "https://relay.example.com",
-        revokedEdKeys = listOf(ByteArray(32) { 0x03 }, ByteArray(32) { 0x04 }),
+        revokedVerifyKeys = listOf(ByteArray(32) { 0x03 }, ByteArray(32) { 0x04 }),
         keyChangedAt = Instant.parse("2026-02-03T04:05:06Z"),
         heartbeatOptedOutAt = Instant.parse("2026-03-04T05:06:07Z"),
         lastHeartbeatSentAt = Instant.parse("2026-04-05T06:07:08Z"),

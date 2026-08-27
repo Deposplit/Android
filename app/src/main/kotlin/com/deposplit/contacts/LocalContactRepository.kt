@@ -30,7 +30,7 @@ class LocalContactRepository(context: Context) : ContactRepository {
         val relayBaseUrl: String? = null,
         // Item 10 — no default/fallback decode shim: Deposplit is pre-launch, local stores are
         // wiped, not migrated.
-        val revokedEdKeys: List<String>,
+        val revokedVerifyKeys: List<String>,
         val keyChangedAt: String?,
         // Item 12 — no default/fallback decode shim: Deposplit is pre-launch, local stores are
         // wiped, not migrated.
@@ -89,7 +89,7 @@ class LocalContactRepository(context: Context) : ContactRepository {
         verifiedAt = verifiedAt?.let { Instant.parse(it) },
         addedAt = Instant.parse(addedAt),
         relayBaseUrl = relayBaseUrl,
-        revokedEdKeys = revokedEdKeys.map { Base64.getUrlDecoder().decode(it) },
+        revokedVerifyKeys = revokedVerifyKeys.map { Base64.getUrlDecoder().decode(it) },
         keyChangedAt = keyChangedAt?.let { Instant.parse(it) },
         heartbeatOptedOutAt = heartbeatOptedOutAt?.let { Instant.parse(it) },
         lastHeartbeatSentAt = lastHeartbeatSentAt?.let { Instant.parse(it) },
@@ -107,7 +107,7 @@ class LocalContactRepository(context: Context) : ContactRepository {
         verifiedAt = verifiedAt?.toString(),
         addedAt = addedAt.toString(),
         relayBaseUrl = relayBaseUrl,
-        revokedEdKeys = revokedEdKeys.map { Base64.getUrlEncoder().withoutPadding().encodeToString(it) },
+        revokedVerifyKeys = revokedVerifyKeys.map { Base64.getUrlEncoder().withoutPadding().encodeToString(it) },
         keyChangedAt = keyChangedAt?.toString(),
         heartbeatOptedOutAt = heartbeatOptedOutAt?.toString(),
         lastHeartbeatSentAt = lastHeartbeatSentAt?.toString(),

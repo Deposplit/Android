@@ -451,7 +451,7 @@ class ShareService(
                 // must never be relied on to keep the alert alive. Skip updateContact entirely —
                 // the contact record is left untouched; only a fresh human-verified relink can move
                 // it forward.
-                if (contact.revokedEdKeys.any { it.contentEquals(notice.oldVerifyKey) }) {
+                if (contact.revokedVerifyKeys.any { it.contentEquals(notice.oldVerifyKey) }) {
                     runCatching {
                         keyConflictRepository.save(
                             KeyConflict(

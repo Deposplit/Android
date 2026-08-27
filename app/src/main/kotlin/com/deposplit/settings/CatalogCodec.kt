@@ -41,9 +41,9 @@ object CatalogCodec {
         // Item 15 — for full catalog round-trip fidelity, same reasoning as cipherSuite above.
         val nickname: String? = null,
         // Trust state. Defaulted so an export written before these were carried still decodes.
-        // revokedEdKeys is the security-relevant one: losing it on a restore silently re-enables
+        // revokedVerifyKeys is the security-relevant one: losing it on a restore silently re-enables
         // auto-accept of rotation notices signed by a key the user marked compromised.
-        val revokedEdKeys: List<String> = emptyList(),
+        val revokedVerifyKeys: List<String> = emptyList(),
         val keyChangedAt: String? = null,
         // Custody-monitoring state. Losing these makes a privacy-opted-out holder read as
         // silent-overdue after a restore.
@@ -116,7 +116,7 @@ object CatalogCodec {
         relayBaseUrl = relayBaseUrl,
         cipherSuite = cipherSuite.wireValue,
         nickname = nickname,
-        revokedEdKeys = revokedEdKeys.map { Base64.getUrlEncoder().withoutPadding().encodeToString(it) },
+        revokedVerifyKeys = revokedVerifyKeys.map { Base64.getUrlEncoder().withoutPadding().encodeToString(it) },
         keyChangedAt = keyChangedAt?.toString(),
         heartbeatOptedOutAt = heartbeatOptedOutAt?.toString(),
         lastHeartbeatSentAt = lastHeartbeatSentAt?.toString(),
@@ -134,7 +134,7 @@ object CatalogCodec {
         relayBaseUrl = relayBaseUrl,
         cipherSuite = CipherSuite.fromWire(cipherSuite) ?: error("Unknown cipher suite in catalog: $cipherSuite"),
         nickname = nickname,
-        revokedEdKeys = revokedEdKeys.map { Base64.getUrlDecoder().decode(it) },
+        revokedVerifyKeys = revokedVerifyKeys.map { Base64.getUrlDecoder().decode(it) },
         keyChangedAt = keyChangedAt?.let(Instant::parse),
         heartbeatOptedOutAt = heartbeatOptedOutAt?.let(Instant::parse),
         lastHeartbeatSentAt = lastHeartbeatSentAt?.let(Instant::parse),

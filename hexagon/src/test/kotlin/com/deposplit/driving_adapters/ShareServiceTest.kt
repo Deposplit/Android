@@ -850,7 +850,7 @@ class ShareServiceTest {
     @Test
     fun `syncInbox refuses auto-accept and captures a key conflict when the old key is revoked`() {
         val relay = FakeShareRelay()
-        val revokedAliceContact = aliceContact.copy(revokedEdKeys = listOf(aliceKeys.publicKey))
+        val revokedAliceContact = aliceContact.copy(revokedVerifyKeys = listOf(aliceKeys.publicKey))
         val (svc, bob, _, contactRepo, _, conflictRepo, _) = newService(relay, contacts = listOf(revokedAliceContact))
         val newEd = ByteArray(32) { 0x0e }
         val newX = ByteArray(32) { 0x0f }
@@ -878,7 +878,7 @@ class ShareServiceTest {
     fun `syncInbox still auto-accepts a non-revoked rotation`() {
         val relay = FakeShareRelay()
         // Some unrelated historical key, not the one this notice claims continuity from.
-        val contactWithUnrelatedRevocation = aliceContact.copy(revokedEdKeys = listOf(ByteArray(32) { 0x99.toByte() }))
+        val contactWithUnrelatedRevocation = aliceContact.copy(revokedVerifyKeys = listOf(ByteArray(32) { 0x99.toByte() }))
         val (svc, bob, _, contactRepo, _, conflictRepo, _) = newService(relay, contacts = listOf(contactWithUnrelatedRevocation))
         val newEd = ByteArray(32) { 0x10 }
         val notice = signedRotation(aliceKeys.publicKey, bob.verifyKey(), aliceKeys, newEd)

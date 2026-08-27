@@ -80,7 +80,7 @@ class ContactService(
                 cipherSuite = effectiveSuite,
                 verificationLevel = verificationLevel ?: existing.verificationLevel,
                 verifiedAt = if (verificationLevel != null) Instant.now() else existing.verifiedAt,
-                revokedEdKeys = existing.revokedEdKeys,
+                revokedVerifyKeys = existing.revokedVerifyKeys,
                 keyChangedAt = if (changingIdentity) Instant.now() else existing.keyChangedAt,
             )
         )
@@ -95,12 +95,12 @@ class ContactService(
 
     override fun deleteContact(contactId: UUID) = contactRepository.delete(contactId)
 
-    // Item 10 — idempotent: a no-op if the key is already in revokedEdKeys.
+    // Item 10 — idempotent: a no-op if the key is already in revokedVerifyKeys.
     override fun markKeyCompromised(contactId: UUID, verifyKey: ByteArray?) {
         val existing = contactRepository.getById(contactId) ?: error("Contact not found for id $contactId")
         val keyToFlag = verifyKey ?: existing.verifyKey
-        if (existing.revokedEdKeys.any { it.contentEquals(keyToFlag) }) return
-        contactRepository.save(existing.copy(revokedEdKeys = existing.revokedEdKeys + keyToFlag))
+        if (existing.revokedVerifyKeys.any { it.contentEquals(keyToFlag) }) return
+        contactRepository.save(existing.copy(revokedVerifyKeys = existing.revokedVerifyKeys + keyToFlag))
     }
 
     // Item 15 — trim, then collapse blank to absent. Lives here (not the UI layer) so every

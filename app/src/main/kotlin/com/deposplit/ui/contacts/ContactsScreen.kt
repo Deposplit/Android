@@ -180,7 +180,7 @@ private fun ContactItem(
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(contact.displayName, style = MaterialTheme.typography.titleMedium)
-                    if (contact.revokedEdKeys.isNotEmpty()) {
+                    if (contact.revokedVerifyKeys.isNotEmpty()) {
                         Spacer(Modifier.width(6.dp))
                         Icon(
                             Icons.Default.Warning,
