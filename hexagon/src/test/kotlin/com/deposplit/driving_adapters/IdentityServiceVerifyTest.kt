@@ -83,14 +83,14 @@ class IdentityServiceVerifyTest {
     @Test
     fun `generateNewKeyPair does not touch storage`() {
         val alice = newIdentity()
-        val originalEdKey = alice.verifyKey()
-        val originalXKey = alice.encKey()
+        val originalVerifyKey = alice.verifyKey()
+        val originalEncKey = alice.encKey()
         val candidate = alice.generateNewKeyPair()
-        assertTrue(!candidate.verifyKey.contentEquals(originalEdKey))
-        assertTrue(!candidate.encKey.contentEquals(originalXKey))
+        assertTrue(!candidate.verifyKey.contentEquals(originalVerifyKey))
+        assertTrue(!candidate.encKey.contentEquals(originalEncKey))
         // Unpersisted — the live identity hasn't moved.
-        assertTrue(alice.verifyKey().contentEquals(originalEdKey))
-        assertTrue(alice.encKey().contentEquals(originalXKey))
+        assertTrue(alice.verifyKey().contentEquals(originalVerifyKey))
+        assertTrue(alice.encKey().contentEquals(originalEncKey))
     }
 
     @Test
@@ -106,13 +106,13 @@ class IdentityServiceVerifyTest {
     @Test
     fun `sign after activateKeyPair verifies against the new key not the old`() {
         val alice = newIdentity()
-        val oldEdKey = alice.verifyKey()
+        val oldVerifyKey = alice.verifyKey()
         val candidate = alice.generateNewKeyPair()
         alice.activateKeyPair(candidate)
         val message = "post-rotation message".encodeToByteArray()
         val sig = alice.sign(message)
         assertTrue(alice.verify(message, sig, candidate.verifyKey))
-        assertFalse(alice.verify(message, sig, oldEdKey))
+        assertFalse(alice.verify(message, sig, oldVerifyKey))
     }
 
     // -------------------------------------------------------------------------

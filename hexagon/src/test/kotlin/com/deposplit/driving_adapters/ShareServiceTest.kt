@@ -97,7 +97,7 @@ private class InMemoryIdentityStoreForShareServiceTest : IdentityStore {
 private class FakeContactRepository(initial: List<Contact>) : ContactRepository {
     private val contacts = initial.toMutableList()
     override fun getAll() = contacts.toList()
-    override fun getByEdKey(verifyKey: ByteArray) = contacts.find { it.verifyKey.contentEquals(verifyKey) }
+    override fun getByVerifyKey(verifyKey: ByteArray) = contacts.find { it.verifyKey.contentEquals(verifyKey) }
     override fun getById(id: UUID) = contacts.find { it.id == id }
     override fun save(contact: Contact) {
         contacts.removeAll { it.id == contact.id }
@@ -152,8 +152,8 @@ private class FakeRetainedDepositRepository : RetainedDepositRepository {
 }
 
 private object NoOpShareEncryption : ShareEncryption {
-    override fun encrypt(plaintext: ByteArray, recipientXPublicKey: ByteArray) = plaintext
-    override fun decrypt(noncePlusCiphertext: ByteArray, recipientXPublicKey: ByteArray) = noncePlusCiphertext
+    override fun encrypt(plaintext: ByteArray, recipientEncKey: ByteArray) = plaintext
+    override fun decrypt(noncePlusCiphertext: ByteArray, recipientEncKey: ByteArray) = noncePlusCiphertext
 }
 
 /** In-memory ShareRelay test double. listShareRequests filters by transactionType/state (role is
@@ -1297,8 +1297,8 @@ class ShareServiceTest {
             verifiedAt = null, addedAt = Instant.now(),
         )
         val (svc, bob, _, _, _, _, _) = newService(relay, listOf(aliceContact, charlieContact))
-        val oldEdKey = bob.verifyKey()
-        val oldXKey = bob.encKey()
+        val oldVerifyKey = bob.verifyKey()
+        val oldEncKey = bob.encKey()
 
         val result = svc.regenerateIdentity()
 
@@ -1310,19 +1310,19 @@ class ShareServiceTest {
             assertEquals(CipherSuite.current, pushed.newCipherSuite)
             val canon = PayloadCanonical.forRotation(pushed.recipientKey, pushed.newVerifyKey, pushed.newEncKey, pushed.newCipherSuite)
             // Signed by the OLD identity, proving continuity — not by the key it's rotating to.
-            assertTrue(bob.verify(canon, pushed.signature, oldEdKey))
+            assertTrue(bob.verify(canon, pushed.signature, oldVerifyKey))
             assertFalse(bob.verify(canon, pushed.signature, pushed.newVerifyKey))
         }
         // The new identity is now live.
-        assertTrue(!bob.verifyKey().contentEquals(oldEdKey))
-        assertTrue(!bob.encKey().contentEquals(oldXKey))
+        assertTrue(!bob.verifyKey().contentEquals(oldVerifyKey))
+        assertTrue(!bob.encKey().contentEquals(oldEncKey))
     }
 
     @Test
     fun `regenerateIdentity drains the pending inbox under the old identity before rotating`() {
         val relay = FakeShareRelay()
         val (svc, bob, shareRepo, _, _, _, _) = newService(relay)
-        val oldEdKey = bob.verifyKey()
+        val oldVerifyKey = bob.verifyKey()
         val depositId = UUID.randomUUID()
         val unsigned = depositRow(depositId, aliceKeys.publicKey, bob.verifyKey(), ByteArray(0))
         val row = unsigned.copy(senderSignature = signOpenAs(aliceKeys, unsigned))
@@ -1338,7 +1338,7 @@ class ShareServiceTest {
         assertEquals(ShareRequestState.APPROVED, approved.state)
         val sig = approved.recipientSignature!!
         val canon = PayloadCanonical.forRespond(depositId, true, null)
-        assertTrue(bob.verify(canon, sig, oldEdKey))
+        assertTrue(bob.verify(canon, sig, oldVerifyKey))
     }
 
     @Test
@@ -1368,7 +1368,7 @@ class ShareServiceTest {
             retainedDepositRepository = FakeRetainedDepositRepository(),
             identity = bobIdentity,
         )
-        val oldEdKey = bobIdentity.verifyKey()
+        val oldVerifyKey = bobIdentity.verifyKey()
 
         val result = svc.regenerateIdentity()
 
@@ -1377,6 +1377,6 @@ class ShareServiceTest {
         assertEquals(1, defaultRelay.pushedRotations.size)
         assertTrue(byorRelay.pushedRotations.isEmpty())
         // The swap still completes even though one contact couldn't be notified.
-        assertTrue(!bobIdentity.verifyKey().contentEquals(oldEdKey))
+        assertTrue(!bobIdentity.verifyKey().contentEquals(oldVerifyKey))
     }
 }

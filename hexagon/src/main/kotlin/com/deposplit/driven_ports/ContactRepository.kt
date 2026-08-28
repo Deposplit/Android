@@ -5,7 +5,7 @@ import java.util.UUID
 
 interface ContactRepository {
     fun getAll(): List<Contact>
-    fun getByEdKey(edPublicKey: ByteArray): Contact?
+    fun getByVerifyKey(verifyKey: ByteArray): Contact?
     fun getById(id: UUID): Contact?
     fun save(contact: Contact)
     fun delete(contactId: UUID)

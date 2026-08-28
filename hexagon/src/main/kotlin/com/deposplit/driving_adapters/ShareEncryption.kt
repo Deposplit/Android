@@ -25,8 +25,8 @@
 package com.deposplit.driving_adapters
 
 interface ShareEncryption {
-    /** Encrypts [plaintext] to [recipientXPublicKey] via X25519+HKDF-SHA-256+ChaCha20-Poly1305. Returns nonce(12) || ciphertext+tag. */
-    fun encrypt(plaintext: ByteArray, recipientXPublicKey: ByteArray): ByteArray
-    /** Decrypts [noncePlusCiphertext] (nonce(12) || ciphertext+tag) using [recipientXPublicKey] via X25519+HKDF-SHA-256+ChaCha20-Poly1305. */
-    fun decrypt(noncePlusCiphertext: ByteArray, recipientXPublicKey: ByteArray): ByteArray
+    /** Encrypts [plaintext] to [recipientEncKey] via X25519+HKDF-SHA-256+ChaCha20-Poly1305. Returns nonce(12) || ciphertext+tag. */
+    fun encrypt(plaintext: ByteArray, recipientEncKey: ByteArray): ByteArray
+    /** Decrypts [noncePlusCiphertext] (nonce(12) || ciphertext+tag) using [recipientEncKey] via X25519+HKDF-SHA-256+ChaCha20-Poly1305. */
+    fun decrypt(noncePlusCiphertext: ByteArray, recipientEncKey: ByteArray): ByteArray
 }

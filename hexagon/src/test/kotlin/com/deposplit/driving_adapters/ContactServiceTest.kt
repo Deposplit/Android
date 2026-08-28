@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
 private class InMemoryContactRepositoryForContactServiceTest : ContactRepository {
     private val contacts = mutableListOf<Contact>()
     override fun getAll() = contacts.toList()
-    override fun getByEdKey(verifyKey: ByteArray) = contacts.find { it.verifyKey.contentEquals(verifyKey) }
+    override fun getByVerifyKey(verifyKey: ByteArray) = contacts.find { it.verifyKey.contentEquals(verifyKey) }
     override fun getById(id: UUID) = contacts.find { it.id == id }
     override fun save(contact: Contact) {
         contacts.removeAll { it.id == contact.id }

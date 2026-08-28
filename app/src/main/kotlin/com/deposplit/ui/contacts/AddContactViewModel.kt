@@ -21,8 +21,8 @@ class AddContactViewModel(private val contactManagement: ContactManagement) : Vi
 
     data class UiState(
         val pseudonym: String = "",
-        val edPublicKey: String = "",
-        val xPublicKey: String = "",
+        val verifyKey: String = "",
+        val encKey: String = "",
         val relayBaseUrl: String = "",
         // Item 15 — purely local, optional; set at add-time or later via the Contacts screen's
         // Rename action.
@@ -31,8 +31,8 @@ class AddContactViewModel(private val contactManagement: ContactManagement) : Vi
         // a key in by hand — that's what the in-person QR scan flow is for. See CLAUDE.md item 6.
         val verificationLevel: VerificationLevel = VerificationLevel.VERY_LOW,
         @StringRes val pseudonymError: Int? = null,
-        @StringRes val edKeyError: Int? = null,
-        @StringRes val xKeyError: Int? = null,
+        @StringRes val verifyKeyError: Int? = null,
+        @StringRes val encKeyError: Int? = null,
         val isSaving: Boolean = false,
     ) {
         val selectableLevels: List<VerificationLevel> =
@@ -50,8 +50,8 @@ class AddContactViewModel(private val contactManagement: ContactManagement) : Vi
     val effects = _effects.receiveAsFlow()
 
     fun onPseudonymChange(value: String) = _uiState.update { it.copy(pseudonym = value, pseudonymError = null) }
-    fun onEdKeyChange(value: String) = _uiState.update { it.copy(edPublicKey = value, edKeyError = null) }
-    fun onXKeyChange(value: String) = _uiState.update { it.copy(xPublicKey = value, xKeyError = null) }
+    fun onVerifyKeyChange(value: String) = _uiState.update { it.copy(verifyKey = value, verifyKeyError = null) }
+    fun onEncKeyChange(value: String) = _uiState.update { it.copy(encKey = value, encKeyError = null) }
     fun onRelayBaseUrlChange(value: String) = _uiState.update { it.copy(relayBaseUrl = value) }
     fun onNicknameChange(value: String) = _uiState.update { it.copy(nickname = value) }
     fun onVerificationLevelChange(value: VerificationLevel) = _uiState.update { it.copy(verificationLevel = value) }
@@ -59,22 +59,24 @@ class AddContactViewModel(private val contactManagement: ContactManagement) : Vi
     fun save() {
         val state = _uiState.value
         val pseudonymError = if (state.pseudonym.isBlank()) R.string.add_contact_error_required else null
-        val edKeyBytes = decodeBase64Url(state.edPublicKey.trim())
-        val xKeyBytes = decodeBase64Url(state.xPublicKey.trim())
-        val edKeyError = when {
-            state.edPublicKey.isBlank() -> R.string.add_contact_error_required
-            edKeyBytes == null -> R.string.add_contact_error_invalid_base64url
-            edKeyBytes.size != 32 -> R.string.add_contact_error_verify_key_length
+        val verifyKeyBytes = decodeBase64Url(state.verifyKey.trim())
+        val encKeyBytes = decodeBase64Url(state.encKey.trim())
+        val verifyKeyError = when {
+            state.verifyKey.isBlank() -> R.string.add_contact_error_required
+            verifyKeyBytes == null -> R.string.add_contact_error_invalid_base64url
+            verifyKeyBytes.size != 32 -> R.string.add_contact_error_verify_key_length
             else -> null
         }
-        val xKeyError = when {
-            state.xPublicKey.isBlank() -> R.string.add_contact_error_required
-            xKeyBytes == null -> R.string.add_contact_error_invalid_base64url
-            xKeyBytes.size != 32 -> R.string.add_contact_error_enc_key_length
+        val encKeyError = when {
+            state.encKey.isBlank() -> R.string.add_contact_error_required
+            encKeyBytes == null -> R.string.add_contact_error_invalid_base64url
+            encKeyBytes.size != 32 -> R.string.add_contact_error_enc_key_length
             else -> null
         }
-        if (pseudonymError != null || edKeyError != null || xKeyError != null) {
-            _uiState.update { it.copy(pseudonymError = pseudonymError, edKeyError = edKeyError, xKeyError = xKeyError) }
+        if (pseudonymError != null || verifyKeyError != null || encKeyError != null) {
+            _uiState.update {
+                it.copy(pseudonymError = pseudonymError, verifyKeyError = verifyKeyError, encKeyError = encKeyError)
+            }
             return
         }
 
@@ -84,8 +86,8 @@ class AddContactViewModel(private val contactManagement: ContactManagement) : Vi
                 withContext(Dispatchers.IO) {
                     contactManagement.addManually(
                         state.pseudonym.trim(),
-                        edKeyBytes!!,
-                        xKeyBytes!!,
+                        verifyKeyBytes!!,
+                        encKeyBytes!!,
                         state.verificationLevel,
                         state.relayBaseUrl.trim().ifBlank { null },
                         state.nickname.trim().ifBlank { null },

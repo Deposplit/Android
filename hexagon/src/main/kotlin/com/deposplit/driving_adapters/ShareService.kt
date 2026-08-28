@@ -74,7 +74,7 @@ class ShareService(
     // ── Signature helpers ────────────────────────────────────────────────────
 
     private fun verifyOpen(req: ShareRequest): Boolean {
-        val contact = contactRepository.getByEdKey(req.senderKey) ?: return false
+        val contact = contactRepository.getByVerifyKey(req.senderKey) ?: return false
         val canon = PayloadCanonical.forOpen(
             req.secretId, req.transactionType, req.recipientKey, req.label, req.secretCreatedAt, req.shareId, req.ciphertext,
             req.k, req.n,
@@ -84,7 +84,7 @@ class ShareService(
 
     private fun verifyRespond(req: ShareRequest): Boolean {
         val sig = req.recipientSignature ?: return false
-        val contact = contactRepository.getByEdKey(req.recipientKey) ?: return false
+        val contact = contactRepository.getByVerifyKey(req.recipientKey) ?: return false
         val approved = req.state == ShareRequestState.APPROVED
         val signedCiphertext = if (approved && req.transactionType == ShareTransactionType.RETRIEVAL) req.ciphertext else null
         val canon = PayloadCanonical.forRespond(req.id, approved, signedCiphertext)
@@ -133,7 +133,7 @@ class ShareService(
                     }
                     // A row for a holder we no longer have a contact record for can't be
                     // re-anchored to a contactId — skip rather than drop the holder's identity.
-                    val contact = contactRepository.getByEdKey(req.recipientKey) ?: return@forEach
+                    val contact = contactRepository.getByVerifyKey(req.recipientKey) ?: return@forEach
                     val priorConfirmedAt = existingMetadata.find { it.id == req.id }?.lastConfirmedAt
                     if (req.state == ShareRequestState.APPROVED && isRetentionStillPending(req.id)) {
                         // Item 12 — first-observed pickup confirmation (relay-observed channel):
@@ -330,7 +330,7 @@ class ShareService(
             }.getOrDefault(emptyList())
             // Unknown sender or unverified senderSignature: skip silently, do not auto-approve.
             for (req in pending.filter(::verifyOpen)) {
-                val senderContact = contactRepository.getByEdKey(req.senderKey) ?: continue
+                val senderContact = contactRepository.getByVerifyKey(req.senderKey) ?: continue
                 // A deposit without valid k/n can't happen against a conforming relay (required by
                 // ShareRequestsService) — skip defensively rather than store a share we can't
                 // later report thresholds for during recovery.
@@ -404,7 +404,7 @@ class ShareService(
         allRelays().forEach { relay ->
             val notices = runCatching { relay.listHeartbeats() }.getOrDefault(emptyList())
             for (notice in notices) {
-                val contact = contactRepository.getByEdKey(notice.holderKey) ?: continue
+                val contact = contactRepository.getByVerifyKey(notice.holderKey) ?: continue
                 val canon = PayloadCanonical.forHeartbeat(myKey, notice.secretIds, notice.optedOut)
                 if (!identity.verify(canon, notice.signature, notice.holderKey)) continue
                 if (notice.optedOut) {
@@ -442,7 +442,7 @@ class ShareService(
         allRelays().forEach { relay ->
             val notices = runCatching { relay.listRotations() }.getOrDefault(emptyList())
             for (notice in notices) {
-                val contact = contactRepository.getByEdKey(notice.oldVerifyKey) ?: continue
+                val contact = contactRepository.getByVerifyKey(notice.oldVerifyKey) ?: continue
                 val canon = PayloadCanonical.forRotation(notice.recipientKey, notice.newVerifyKey, notice.newEncKey, notice.newCipherSuite)
                 if (!identity.verify(canon, notice.signature, notice.oldVerifyKey)) continue
                 // Item 10 — a rotation claiming continuity from a key the user has flagged
@@ -521,7 +521,7 @@ class ShareService(
                 relay.listShareRequests(Role.RECIPIENT, ShareTransactionType.INVENTORY, ShareRequestState.APPROVED)
             }.getOrDefault(emptyList())
             for (req in pushes.filter(::verifyOpen)) {
-                val holderContact = contactRepository.getByEdKey(req.senderKey) ?: continue
+                val holderContact = contactRepository.getByVerifyKey(req.senderKey) ?: continue
                 val k = req.k ?: continue
                 val n = req.n ?: continue
                 if (secretRepository.getAll().none { it.id == req.secretId }) {
@@ -575,7 +575,7 @@ class ShareService(
             // Re-encrypt to the requester's *current* X25519 key — looked up live, not pinned at
             // deposit time. This is what lets reconstruction survive a sender key rotation/
             // recovery (item 7's core reason for existing).
-            val requesterContact = contactRepository.getByEdKey(request.senderKey) ?: error("Contact not found for requester")
+            val requesterContact = contactRepository.getByVerifyKey(request.senderKey) ?: error("Contact not found for requester")
             encryption.encrypt(plaintext, requesterContact.encKey)
         } else null
         val canon = PayloadCanonical.forRespond(requestId, approved, ciphertext)

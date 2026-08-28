@@ -49,8 +49,8 @@ class LocalContactRepository(context: Context) : ContactRepository {
     override fun getAll(): List<Contact> = load().map { it.toDomain() }
 
     @Synchronized
-    override fun getByEdKey(edPublicKey: ByteArray): Contact? =
-        load().find { Base64.getUrlDecoder().decode(it.verifyKey).contentEquals(edPublicKey) }?.toDomain()
+    override fun getByVerifyKey(verifyKey: ByteArray): Contact? =
+        load().find { Base64.getUrlDecoder().decode(it.verifyKey).contentEquals(verifyKey) }?.toDomain()
 
     @Synchronized
     override fun getById(id: UUID): Contact? =
