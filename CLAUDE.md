@@ -43,20 +43,45 @@ host JDK here is 25 while the target is JVM 21 bytecode, so `jvmToolchain(21)` f
 modules share one resolved version. Never declare a plugin version inside
 `app/build.gradle.kts` or `hexagon/build.gradle.kts`.
 
-**`gradle.properties` sets `org.gradle.java.installations.auto-detect=false`. Do not remove
-it.** Gradle otherwise scans well-known locations for JDKs, including VS Code extension
-directories, and VS Code's `redhat.java` extension ships a trimmed Java 21 image with no
-`jlink`. Since the project targets JVM 21 bytecode, Gradle would pick that image for AGP's
-`JdkImageTransform`, which shells out to `jlink`, and `:app:compileDebugJavaWithJavac` fails
-locally while CI stays green. With auto-detection off, Gradle uses only the JVM `gradlew`
-launched — the one on `JAVA_HOME`. Safe because the build uses `compileOptions` rather than
-`jvmToolchain(N)`, so no toolchain resolution is needed.
+**Do not add `gradle/gradle-daemon-jvm.properties`.** The Android Studio scaffold generated
+one pinning `toolchainVersion=21`, and it was deleted. It constrains the JVM the *daemon
+process* runs on, which has nothing to do with the JVM target — `compileOptions` sets that.
+`JAVA_HOME` is JDK 25 on both development machines, so the pin could never be satisfied
+directly and Gradle went hunting for some other Java 21 instead. Two things followed:
 
-A running daemon caches the old setting, so after changing anything in this area run
-`./gradlew --stop` once before believing the result.
+- **`jlink` disappeared.** VS Code's `redhat.java` extension bundles a jlink'd Java 21 image
+  that ships `javac` but no `jlink`, and its Build Server for Gradle launches daemons on it
+  because `java.import.gradle.java.home` is unset by default. With a version-only pin, daemon
+  reuse is judged on "is this a Java 21 daemon", not on `JAVA_HOME` — so `./gradlew` happily
+  adopted VS Code's daemon, and AGP's `JdkImageTransform` shelled out to a `jlink` that was
+  not there. `:app:compileDebugJavaWithJavac` failed locally while CI stayed green.
+- **CI downloaded a JDK every run.** `setup-java` installs Temurin 25, which cannot satisfy a
+  21 pin either, so Gradle auto-provisioned one from `api.foojay.io` on every build.
 
-Versions are pinned in `gradle/libs.versions.toml`: AGP 9.3.2, Kotlin 2.4.0, BouncyCastle
-1.85.2, Compose BOM 2026.06.01, biometric 1.1.0. Gradle wrapper 9.6.1. compileSdk 37,
+If a `jlink`, `JdkImageTransform` or "daemon JVM" failure ever appears again, find out which
+JVM actually served the build before theorising — the daemon records it:
+
+```bash
+grep -m1 "start() called on daemon" ~/.gradle/daemon/*/daemon-*.out.log \
+  | sed 's/.*javaHome=/javaHome=/'          # PowerShell: Select-String, same log path
+```
+
+It must name `JAVA_HOME`. If it names a `.vscode/extensions` path, VS Code launched that
+daemon: set `java.import.gradle.java.home` to a full JDK in VS Code's user settings
+(`~/Library/Application Support/Code/User/settings.json`, or `%APPDATA%\Code\User\settings.json`
+on Windows, where the path needs doubled backslashes: `"C:\\Users\\..."`). Leave
+`java.jdt.ls.java.home` alone — the bundled JRE is meant to run the language server, and that
+was never the problem.
+
+`gradle.properties` keeps `org.gradle.java.installations.auto-detect=false`. With no pin and
+no `jvmToolchain(N)` nothing requests toolchain resolution, so it is inert today — but it is a
+cheap guard if anyone adds one later.
+
+A running daemon caches all of this, so after changing anything in this area run
+`./gradlew --stop` (`.\gradlew.bat --stop`) once before believing the result.
+
+Versions are pinned in `gradle/libs.versions.toml`: AGP 9.3.2, Kotlin 2.4.10, BouncyCastle
+1.85.2, Compose BOM 2026.08.00, biometric 1.1.0. Gradle wrapper 9.7.1. compileSdk 37,
 targetSdk 36, minSdk 29.
 
 ## Module boundary
