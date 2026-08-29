@@ -25,7 +25,8 @@ Android-specific guidance for Claude Code is in [CLAUDE.md](CLAUDE.md).
 - An AVD on **API 29 or later**, or a physical device.
 
 Versions are pinned in `gradle/libs.versions.toml` and `gradle/wrapper/gradle-wrapper.properties`:
-AGP 9.3.2, Kotlin 2.4.0, Gradle 9.6.1, compileSdk 37, targetSdk 36, minSdk 29.
+AGP 9.3.2, Kotlin 2.4.10, Compose BOM 2026.08.00, BouncyCastle 1.85.2, Gradle 9.7.1,
+compileSdk 37, targetSdk 36, minSdk 29.
 
 ## Build and test
 
@@ -43,8 +44,10 @@ files that are pure Kotlin and hand-write a wire format — `CatalogCodec` (cata
 covered by the [manual end-to-end
 flows](https://github.com/Deposplit/deposplit.com/blob/main/docs/testing.md) instead.
 
-`gradle.properties` pins Gradle to the JDK on `JAVA_HOME`; see [CLAUDE.md](CLAUDE.md) for why
-that matters on Windows.
+The Gradle daemon runs on whichever JDK `JAVA_HOME` names, because nothing pins it to a
+version. Do not reintroduce `gradle/gradle-daemon-jvm.properties`: [CLAUDE.md](CLAUDE.md)
+explains what pinning the daemon broke, and how to find out which JVM actually served a build
+before theorising about one.
 
 ## Modules
 
