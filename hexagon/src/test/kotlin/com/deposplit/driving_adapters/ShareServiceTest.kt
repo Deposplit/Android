@@ -258,10 +258,11 @@ private class FixedShareRelayResolver(private val relay: ShareRelay) : ShareRela
     override fun resolve(relayBaseUrl: String?): ShareRelay = relay
 }
 
-/** Covers the recipient-side signature-verification gating described in deposplit.com/CLAUDE.md's
- * BYOR section: syncInbox/listPendingRequests must drop rows with an unverifiable senderSignature
- * (unknown sender, or a genuine contact's key but a forged/mismatched signature) instead of
- * trusting whatever the relay returns, and respond must reject explicitly.
+/** Covers the recipient-side signature-verification gating BYOR requires — a third-party relay
+ * performs no verification of its own, so syncInbox/listPendingRequests must drop rows with an
+ * unverifiable senderSignature (unknown sender, or a genuine contact's key but a forged or
+ * mismatched signature) instead of trusting whatever the relay returns, and respond must reject
+ * explicitly.
  */
 class ShareServiceTest {
 
@@ -409,7 +410,7 @@ class ShareServiceTest {
         }
     }
 
-    // ── Fan-out across a contact's BYOR relay (deposplit.com/CLAUDE.md's BYOR section) ──────────
+    // ── Fan-out across a contact's BYOR relay ───────────────────────────────────────────────────
 
     private class TwoRelayResolver(
         private val default: ShareRelay,

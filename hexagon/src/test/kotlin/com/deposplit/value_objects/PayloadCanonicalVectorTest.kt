@@ -13,9 +13,9 @@ import kotlin.test.fail
 
 /**
  * Cross-platform interop vector for [PayloadCanonical.forOpen]'s byte construction — mirrors the
- * existing hand-derived SSS test vectors (`ShamirTest.kt` / `ShamirSecretSharingTests.swift`, see
- * deposplit.com/CLAUDE.md "Cross-Platform Compatibility"). Ed25519 sign/verify interop across
- * BouncyCastle/CryptoKit is already proven via the transport-auth signature; what this vector
+ * existing hand-derived SSS test vectors (`ShamirTest.kt` / `ShamirSecretSharingTests.swift`).
+ * Ed25519 sign/verify interop across BouncyCastle/CryptoKit is already proven via the
+ * transport-auth signature; what this vector
  * actually exercises is the *canonical byte construction* itself — a field-order or encoding slip
  * on any one platform would silently produce a different signature than the other two even though
  * each platform's own sign/verify round-trips fine internally.

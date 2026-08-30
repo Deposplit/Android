@@ -6,10 +6,9 @@ import java.util.UUID
 enum class Role { SENDER, RECIPIENT }
 
 // The kind of thing that happened (or is being asked to happen) to a share, phrased as a neutral
-// transaction noun rather than either party's verb — see deposplit.com/CLAUDE.md "Cross-cutting
-// implementation chores" for why: naming from a single named actor's point of view (Alice's, or
-// Bob's) breaks down because the actor genuinely alternates — Alice always opens
-// DEPOSIT/RETRIEVAL/REMOVAL, but the *holder* opens INVENTORY (holder → owner).
+// transaction noun rather than either party's verb. Naming from a single named actor's point of
+// view (Alice's, or Bob's) breaks down because the actor genuinely alternates — Alice always
+// opens DEPOSIT/RETRIEVAL/REMOVAL, but the *holder* opens INVENTORY (holder → owner).
 //
 // INVENTORY is a holder-initiated metadata-only push during identity recovery — not
 // consent-gated, unlike the other three.
