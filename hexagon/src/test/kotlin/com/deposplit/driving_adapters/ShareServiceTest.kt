@@ -1151,6 +1151,17 @@ class ShareServiceTest {
         )
     }
 
+    // A still-PENDING retrieval row, as a previous requestAll would have left it — no
+    // recipientSignature, because a pending row has had no response phase yet.
+    private fun makePendingRetrievalRow(secretId: UUID, recipientKey: ByteArray): ShareRequest =
+        ShareRequest(
+            id = UUID.randomUUID(), secretId = secretId, senderKey = ByteArray(0), recipientKey = recipientKey,
+            label = "s", secretCreatedAt = Instant.now(), transactionType = ShareTransactionType.RETRIEVAL,
+            state = ShareRequestState.PENDING, shareId = UUID.randomUUID(), requestedAt = Instant.now(),
+            respondedAt = null, ciphertext = null, k = null, n = null,
+            senderSignature = ByteArray(0), recipientSignature = null,
+        )
+
     @Test
     fun `reconstruct with exactly k approved shares has no integrity margin`() {
         val relay = FakeShareRelay()
@@ -1262,6 +1273,27 @@ class ShareServiceTest {
         val targeted = relay.openedRequests.map { it.recipientKey.toList() }.toSet()
         val expected = setOf(fresh.contact.verifyKey.toList(), stale1.contact.verifyKey.toList(), stale2.contact.verifyKey.toList())
         assertEquals(expected, targeted)
+    }
+
+    @Test
+    fun `requestAll still asks a holder whose sibling already has an outstanding request`() {
+        val relay = FakeShareRelay()
+        val standing = makeHolderFixture("standing")
+        val untouched = makeHolderFixture("untouched")
+        val (svc, _, _, secretRepo, metaRepo) =
+            newServiceForRecoveryTest(relay, listOf(standing.contact, untouched.contact))
+        val secretId = UUID.randomUUID()
+        secretRepo.save(Secret(secretId, "s", 2, 2, Instant.now(), SecretState.ACTIVE))
+        metaRepo.save(ShareMetadata(UUID.randomUUID(), secretId, standing.contact.id, lastConfirmedAt = null))
+        metaRepo.save(ShareMetadata(UUID.randomUUID(), secretId, untouched.contact.id, lastConfirmedAt = null))
+        // Neither holder is confirmed, so targeting widens to both — the case the per-secret skip
+        // used to blank out entirely.
+        relay.pending = listOf(makePendingRetrievalRow(secretId, standing.contact.verifyKey))
+
+        svc.requestAll(secretId)
+
+        val targeted = relay.openedRequests.map { it.recipientKey.toList() }
+        assertEquals(listOf(untouched.contact.verifyKey.toList()), targeted)
     }
 
     @Test
