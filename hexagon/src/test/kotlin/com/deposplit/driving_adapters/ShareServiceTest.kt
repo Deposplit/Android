@@ -1287,8 +1287,9 @@ class ShareServiceTest {
         metaRepo.save(ShareMetadata(UUID.randomUUID(), secretId, standing.contact.id, lastConfirmedAt = null))
         metaRepo.save(ShareMetadata(UUID.randomUUID(), secretId, untouched.contact.id, lastConfirmedAt = null))
         // Neither holder is confirmed, so targeting widens to both — the case the per-secret skip
-        // used to blank out entirely.
-        relay.pending = listOf(makePendingRetrievalRow(secretId, standing.contact.verifyKey))
+        // used to blank out entirely. The row carries a *copy* of the key, as a relay round-trip
+        // would, so the skip has to compare bytes: reference identity would pass this by accident.
+        relay.pending = listOf(makePendingRetrievalRow(secretId, standing.contact.verifyKey.copyOf()))
 
         svc.requestAll(secretId)
 
