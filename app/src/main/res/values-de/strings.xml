@@ -25,6 +25,15 @@
     <string name="home_tab_requests">Anfragen</string>
     <string name="home_empty_distributed">Noch keine Geheimnisse aufgeteilt &amp; verteilt</string>
     <string name="home_empty_held">Noch keine Geheimnisse verwahrt</string>
+    <string name="home_request_all">Abruf anfragen</string>
+    <string name="home_held_from">Von: %1$s</string>
+    <string name="home_sort_date">Datum</string>
+    <string name="home_sort_label">Bezeichnung</string>
+    <string name="home_sort_sender">Von</string>
+    <string name="home_held_delete_title">Anteil löschen?</string>
+    <string name="home_held_delete_body">Damit wird dieser Anteil dauerhaft von deinem Gerät entfernt.</string>
+    <string name="home_held_delete_all_from">Alle Anteile von %1$s löschen</string>
+    <string name="home_held_delete_confirm">Löschen</string>
     <string name="home_error_fallback">Laden fehlgeschlagen</string>
     <string name="home_sync_warning">Relay nicht erreichbar</string>
 
@@ -102,9 +111,30 @@
     <string name="add_contact_error_verify_key_length">Muss 32 Bytes lang sein (Verifizierungsschlüssel)</string>
     <string name="add_contact_error_enc_key_length">Muss 32 Bytes lang sein (Verschlüsselungsschlüssel)</string>
     <string name="add_contact_error_save">Speichern fehlgeschlagen</string>
+    <string name="add_contact_relay_label">Abweichendes Relay (optional, BYOR)</string>
     <string name="add_contact_nickname_label">Spitzname (optional)</string>
     <string name="add_contact_verification_label">Verifizierungsstufe</string>
     <string name="add_contact_verification_footer">Wie sicher bist du, dass es wirklich diese Person ist? Zähle deine unabhängigen Bestätigungen: ein vertrauenswürdiger Kanal und/oder ein Live-Nachweis, dass du sie gesehen hast.</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Einstellungen</string>
+    <string name="settings_relay_description">Standard-Relay für Kontakte ohne eigenes BYOR-Relay; wird auch in deinem QR-Code mitgeteilt.</string>
+    <string name="settings_relay_label">Standard-Relay-URL</string>
+    <string name="settings_relay_reset">Auf Standard zurücksetzen</string>
+    <string name="settings_catalog_title">Katalog-Sicherung</string>
+    <string name="settings_catalog_description">Nur Kontakte, Verifizierungsstufen und Metadaten der Geheimnisse — niemals Anteile oder private Schlüssel.</string>
+    <string name="settings_catalog_export">Exportieren …</string>
+    <string name="settings_catalog_import">Importieren …</string>
+    <string name="settings_catalog_imported">%1$s neue(n) Kontakt(e) importiert.</string>
+    <string name="settings_catalog_import_error">Katalog konnte nicht importiert werden</string>
+    <string name="settings_identity_title">Identität</string>
+    <string name="settings_regenerate_description">Erzeugt ein brandneues Schlüsselpaar für dieses Gerät und benachrichtigt automatisch alle deine Kontakte. Anfragen, die gerade bei jemand anderem offen sind, können danach unerreichbar werden — lass diese besser zuerst abschließen. Das lässt sich nicht rückgängig machen.</string>
+    <string name="settings_regenerate_button">Meine Identität neu erzeugen</string>
+    <string name="settings_regenerate_confirm_title">Identität neu erzeugen?</string>
+    <string name="settings_regenerate_confirm_body">Damit wird ein neues Schlüsselpaar erzeugt und %1$d Kontakt(e) benachrichtigt. Jede gerade bei jemand anderem offene Anfrage kann verloren gehen.</string>
+    <string name="settings_regenerate_confirm_action">Neu erzeugen</string>
+    <string name="settings_regenerate_result">%1$d von %2$d Kontakt(en) benachrichtigt.</string>
+    <string name="settings_regenerate_error">Identität konnte nicht neu erzeugt werden</string>
 
     <!-- Deposit -->
     <string name="deposit_title">Geheimnis aufteilen &amp; verteilen</string>
@@ -148,6 +178,7 @@
     </plurals>
 
     <!-- Share request types and states -->
+    <string name="share_request_deposit">Hinterlegung</string>
     <string name="share_request_retrieval">Abrufen</string>
     <string name="share_request_removal">Entfernung</string>
     <string name="share_request_inventory">Inventar</string>
