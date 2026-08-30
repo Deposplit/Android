@@ -12,7 +12,7 @@ enum class Role { SENDER, RECIPIENT }
 // DEPOSIT/RETRIEVAL/REMOVAL, but the *holder* opens INVENTORY (holder → owner).
 //
 // INVENTORY is a holder-initiated metadata-only push during identity recovery — not
-// consent-gated, unlike the other three. See deposplit.com/CLAUDE.md "What is next" item 8.
+// consent-gated, unlike the other three.
 //
 // wireValue is the single source of truth for this type's wire representation — the JSON
 // transactionType value and the string PayloadCanonical signs are both the same wireValue,
@@ -28,20 +28,19 @@ enum class ShareTransactionType(val wireValue: String) {
         fun fromWire(value: String): ShareTransactionType? = entries.find { it.wireValue == value }
     }
 }
-// WITHDRAWN is deposit-only (item 9): the recipient unilaterally stopped holding the share. A
+// WITHDRAWN is deposit-only: the recipient unilaterally stopped holding the share. A
 // best-effort tombstone, not authoritative — see ShareRelay.withdrawShareRequests.
 enum class ShareRequestState { PENDING, APPROVED, DENIED, WITHDRAWN }
 
 // Per-share record on the sender's device — one per holder of a Secret. Normalized to reference
-// its parent Secret (by secretId) rather than duplicating label/secretCreatedAt — see
-// deposplit.com/CLAUDE.md "What is next" item 11.
+// its parent Secret (by secretId) rather than duplicating label/secretCreatedAt.
 data class ShareMetadata(
     val id: UUID,           // Deposit request ID
     val secretId: UUID,
     // The holder's stable local contact id — not their Ed25519 key — so this record survives a
-    // holder key rotation/recovery (see deposplit.com/CLAUDE.md "What is next" item 7).
+    // holder key rotation/recovery.
     val contactId: UUID,
-    // Item 12 — last proof-of-custody observed for this holder: a relay-observed pickup/retrieve
+    // Last proof-of-custody observed for this holder: a relay-observed pickup/retrieve
     // approval, or a processed heartbeat, whichever is most recent. Null until the first such
     // observation (e.g. right after deposit(), before the holder has picked up). Drives the
     // freshness-bucket health model — see CustodyHeartbeatTuning.
@@ -64,8 +63,7 @@ data class ShareRequest(
     val requestedAt: Instant,
     val respondedAt: Instant?,
     val ciphertext: ByteArray?,
-    // SSS threshold/share-count — populated for DEPOSIT/INVENTORY, null for
-    // RETRIEVAL/REMOVAL. See deposplit.com/CLAUDE.md "What is next" items 8 and 11.
+    // SSS threshold/share-count — populated for DEPOSIT/INVENTORY, null for RETRIEVAL/REMOVAL.
     val k: Int? = null,
     val n: Int? = null,
     // Ed25519 signature over PayloadCanonical.forOpen — see that object for what's signed.

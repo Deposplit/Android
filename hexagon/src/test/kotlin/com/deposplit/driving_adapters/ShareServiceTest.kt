@@ -91,7 +91,7 @@ private class InMemoryIdentityStoreForShareServiceTest : IdentityStore {
     override fun decKey() = xSk
 }
 
-/** A genuinely mutable in-memory store (not no-ops) — item 9's rotation-processing tests need to
+/** A genuinely mutable in-memory store (not no-ops) — the rotation-processing tests need to
  * observe the effect of ContactService.updateContact on the same contacts ShareService reads.
  */
 private class FakeContactRepository(initial: List<Contact>) : ContactRepository {
@@ -170,7 +170,7 @@ private class FakeShareRelay(var unreachable: Boolean = false) : ShareRelay {
     val deletedRequestIds = mutableListOf<UUID>()
     val openedRequests = mutableListOf<OpenedRequest>()
 
-    // Item 9
+    // Rotation push and withdraw tombstone
     data class WithdrawCall(val senderKey: ByteArray?, val secretId: UUID?)
     data class PushedRotation(val recipientKey: ByteArray, val newVerifyKey: ByteArray, val newEncKey: ByteArray, val newCipherSuite: CipherSuite, val signature: ByteArray)
     val withdrawCalls = mutableListOf<WithdrawCall>()
@@ -234,7 +234,7 @@ private class FakeShareRelay(var unreachable: Boolean = false) : ShareRelay {
 
     override fun deleteRotation(id: UUID) { deletedRotationIds.add(id) }
 
-    // Item 12
+    // Custodial heartbeat
     data class PushedHeartbeat(val ownerKey: ByteArray, val secretIds: List<UUID>, val optedOut: Boolean, val signature: ByteArray)
     val pushedHeartbeats = mutableListOf<PushedHeartbeat>()
     var heartbeatsToReturn: List<CustodyHeartbeat> = emptyList()
@@ -501,7 +501,7 @@ class ShareServiceTest {
         assertEquals(listOf(fromAliceId), shareRepo.getAll().map { it.id })
     }
 
-    // ── Identity recovery (item 8) ──────────────────────────────────────────────
+    // ── Identity recovery ───────────────────────────────────────────────────────
 
     private data class RecoveryFixture(
         val svc: ShareService,
@@ -534,7 +534,7 @@ class ShareServiceTest {
     }
 
     /** A self-approved recoveryMetadata row, as the relay would hand it back — APPROVED state and
-     * respondedAt set at creation, since this type has no consent phase (see item 8).
+     * respondedAt set at creation, since this type has no consent phase.
      */
     private fun approvedRecoveryMetadataRow(
         secretId: UUID, senderKey: ByteArray, recipientKey: ByteArray, signer: TestKeyPair,
@@ -624,7 +624,7 @@ class ShareServiceTest {
         assertTrue(relay.deletedRequestIds.isEmpty())
     }
 
-    // ── Item 9: rotation push (client primitive + receive-side) and withdraw tombstone ──────────
+    // ── Rotation push (client primitive + receive-side) and withdraw tombstone ──────────────────
 
     /** Builds a signed KeyRotation notice — the signing counterpart of relay.pushRotation.
      * [signer] is the party whose signature is attached; pass something other than the keypair
@@ -687,7 +687,7 @@ class ShareServiceTest {
         assertTrue(updated!!.verifyKey.contentEquals(newEd))
         assertTrue(updated.encKey.contentEquals(newX))
         assertEquals(VerificationLevel.LOW, updated.verificationLevel)
-        // Item 14 — the notice's cipherSuite is threaded through to the updated contact record.
+        // The notice's cipherSuite is threaded through to the updated contact record.
         assertEquals(notice.newCipherSuite, updated.cipherSuite)
         assertEquals(listOf(notice.id), relay.deletedRotationIds)
     }
@@ -706,7 +706,7 @@ class ShareServiceTest {
 
         svc.syncInbox()
 
-        // Continuity of key control is not a fresh personhood check (item 10) — it can never
+        // Continuity of key control is not a fresh personhood check — it can never
         // raise the level, only cap it at LOW.
         assertEquals(VerificationLevel.VERY_LOW, contactRepo.getById(daveContact.id)?.verificationLevel)
     }
@@ -845,7 +845,7 @@ class ShareServiceTest {
         assertTrue(relay.deletedRequestIds.isEmpty())
     }
 
-    // ── Item 10: stolen-key revocation (compromised-key flag + key conflicts) ───────────────────
+    // ── Stolen-key revocation (compromised-key flag + key conflicts) ────────────────────────────
 
     @Test
     fun `syncInbox refuses auto-accept and captures a key conflict when the old key is revoked`() {
@@ -907,7 +907,7 @@ class ShareServiceTest {
         assertTrue(svc.listKeyConflicts().isEmpty())
     }
 
-    // ── Item 12: custodial-heartbeat push, deposit retention, freshness ──────────────────────────
+    // ── Custodial-heartbeat push, deposit retention, freshness ───────────────────────────────────
 
     @Test
     fun `deposit retains an encrypted blob per holder`() {
@@ -1116,7 +1116,7 @@ class ShareServiceTest {
         }
     }
 
-    // ── Reconstruction integrity + fan-out targeting (item 13) ──────────────────
+    // ── Reconstruction integrity + fan-out targeting ────────────────────────────
 
     /** A holder contact with its own real keypair — reconstruct() tests need several distinct
      * holders (unlike most of this file's single-contact fixtures), each independently able to
@@ -1318,7 +1318,7 @@ class ShareServiceTest {
         assertEquals(expected, targeted)
     }
 
-    // ── Identity regeneration (item 9's parked "regenerate my own identity" trigger) ───────────
+    // ── Identity regeneration (the "regenerate my own identity" trigger) ───────────────────────
 
     @Test
     fun `regenerateIdentity pushes a signed rotation to every contact and activates the new keys`() {
@@ -1339,7 +1339,7 @@ class ShareServiceTest {
         assertEquals(2, result.totalContacts)
         assertEquals(2, relay.pushedRotations.size)
         for (pushed in relay.pushedRotations) {
-            // Item 14 — asserts the device's current suite, unconditionally.
+            // Asserts the device's current suite, unconditionally.
             assertEquals(CipherSuite.current, pushed.newCipherSuite)
             val canon = PayloadCanonical.forRotation(pushed.recipientKey, pushed.newVerifyKey, pushed.newEncKey, pushed.newCipherSuite)
             // Signed by the OLD identity, proving continuity — not by the key it's rotating to.

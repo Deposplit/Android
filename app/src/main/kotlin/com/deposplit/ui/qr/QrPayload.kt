@@ -9,7 +9,7 @@ import java.util.Base64
 
 // `relay` carries the *displaying* device's currently-configured relay — the out-of-band exchange
 // mechanism BYOR uses (deposplit.com/CLAUDE.md "BYOR"). Absent means "use the scanning device's
-// own default relay". `cipherSuite` (item 14 — "crypto agility") is required, not optional like
+// own default relay". `cipherSuite` is required, not optional like
 // `relay`: every contact-exchange has exactly one cipher suite in effect.
 //
 // `v` stays at 1 permanently — Deposplit is pre-launch and never supports decoding an old shape,

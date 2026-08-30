@@ -2,7 +2,7 @@ package com.deposplit.value_objects
 
 /**
  * The matched pairing of signing algorithm + key-agreement algorithm an identity currently uses —
- * see deposplit.com/CLAUDE.md "What is next" item 14 ("crypto agility"). One case exists today;
+ * the crypto-agility mechanism. One case exists today;
  * the point of naming it explicitly is making a future fleet-wide algorithm swap an additive new
  * case rather than a breaking wire-format migration. Bundled as one value (not two independent
  * per-algorithm tags) because both of a device's keypairs are generated together and rotate

@@ -8,7 +8,7 @@ import com.deposplit.R
 import com.deposplit.value_objects.VerificationLevel
 
 // Shared label/guidance/color mapping for VerificationLevel, used by ContactsScreen, DepositScreen,
-// and AddContactScreen — see deposplit.com/CLAUDE.md "What is next" item 6.
+// and AddContactScreen.
 
 @Composable
 fun VerificationLevel.displayName(): String = stringResource(

@@ -2,8 +2,7 @@ package com.deposplit.value_objects
 
 // A self-managed export of the *non-secret* catalog — contact public keys, pseudonyms,
 // verification levels, and sender-side ShareMetadata/Secret records. Eases "who are my holders"
-// during identity recovery (item 8) without weakening anything: none of this is a share or a
-// private key. See deposplit.com/CLAUDE.md "What is next" item 8, "Optional catalog backup".
+// during identity recovery without weakening anything: none of this is a share or a private key.
 //
 // Deliberately plain data, not a serialized format — the hexagon has no JSON dependency
 // (Ports & Adapters: serialization is an adapter concern). The app layer's Settings screen

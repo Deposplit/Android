@@ -24,11 +24,11 @@ class AddContactViewModel(private val contactManagement: ContactManagement) : Vi
         val verifyKey: String = "",
         val encKey: String = "",
         val relayBaseUrl: String = "",
-        // Item 15 — purely local, optional; set at add-time or later via the Contacts screen's
+        // Purely local, optional; set at add-time or later via the Contacts screen's
         // Rename action.
         val nickname: String = "",
         // .VERY_HIGH is deliberately excluded: physical co-presence can't be asserted by typing
-        // a key in by hand — that's what the in-person QR scan flow is for. See CLAUDE.md item 6.
+        // a key in by hand — that's what the in-person QR scan flow is for.
         val verificationLevel: VerificationLevel = VerificationLevel.VERY_LOW,
         @StringRes val pseudonymError: Int? = null,
         @StringRes val verifyKeyError: Int? = null,

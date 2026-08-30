@@ -28,13 +28,13 @@
     <string name="home_error_fallback">Laden fehlgeschlagen</string>
     <string name="home_sync_warning">Relay nicht erreichbar</string>
 
-    <!-- Lebenszyklus des Geheimnisses (deposplit.com/CLAUDE.md "What is next" Punkt 11) -->
+    <!-- Lebenszyklus des Geheimnisses -->
     <string name="home_health_caution">Nur ein Puffer von eins — bald neu aufteilen</string>
     <string name="home_health_critical">Jetzt rekonstruieren + neu aufteilen</string>
     <string name="home_health_lost">Nicht wiederherstellbar</string>
     <string name="home_health_discarding">Wird verworfen</string>
 
-    <!-- Item 12 — Frische-Status pro Halter -->
+    <!-- Frische-Status pro Halter -->
     <string name="home_freshness_stale">Wird veraltet</string>
     <string name="home_freshness_unmonitored">Bewusst nicht überwacht</string>
     <string name="home_freshness_silent">Still — möglicher Verlust</string>
@@ -56,13 +56,13 @@
     <string name="contacts_error_load">Laden fehlgeschlagen</string>
     <string name="contacts_error_delete">Löschen fehlgeschlagen</string>
 
-    <!-- Item 15 — lokale Kontakt-Spitznamen -->
+    <!-- Lokale Kontakt-Spitznamen -->
     <string name="contacts_rename_description">%1$s umbenennen</string>
     <string name="contacts_rename_title">Kontakt umbenennen</string>
     <string name="contacts_rename_label">Spitzname</string>
     <string name="contacts_error_rename">Umbenennen fehlgeschlagen</string>
 
-    <!-- Item 10 — Kompromittierung des Schlüssels -->
+    <!-- Kompromittierung des Schlüssels -->
     <string name="contacts_mark_compromised_description">Schlüssel von %1$s als kompromittiert markieren</string>
     <string name="contacts_revoked_badge_description">Ein früherer Schlüssel dieses Kontakts ist als kompromittiert markiert</string>
     <string name="contacts_mark_compromised_title">Den aktuellen Schlüssel dieses Kontakts als kompromittiert markieren?</string>
@@ -70,19 +70,19 @@
     <string name="contacts_mark_compromised_confirm">Als kompromittiert markieren</string>
     <string name="contacts_error_mark_compromised">Markieren als kompromittiert fehlgeschlagen</string>
 
-    <!-- Item 12 — Custodial Heartbeats -->
+    <!-- Custodial Heartbeats -->
     <string name="contacts_pause_heartbeats_description">Custody-Heartbeats an %1$s pausieren</string>
     <string name="contacts_resume_heartbeats_description">Custody-Heartbeats an %1$s fortsetzen</string>
     <string name="contacts_heartbeat_paused_badge_description">Custody-Heartbeats an diesen Kontakt sind pausiert</string>
 
-    <!-- Relink contact (item 8 — identity recovery) -->
+    <!-- Kontakt neu verknüpfen (Identitätswiederherstellung) -->
     <string name="relink_title">%1$s neu verknüpfen</string>
     <string name="relink_scanned_message">Neue Schlüssel für %1$s gescannt.</string>
     <string name="relink_level_footer">Bei einem Schlüsselwechsel muss die Vertrauensstufe immer neu gewählt werden — sie kann nie von der alten übernommen werden.</string>
     <string name="relink_confirm">Neuverknüpfung bestätigen</string>
     <string name="relink_error_fallback">Neuverknüpfung fehlgeschlagen</string>
 
-    <!-- Verifizierungsstufe (deposplit.com/CLAUDE.md "What is next" Punkt 6) -->
+    <!-- Verifizierungsstufe -->
     <string name="verification_level_very_low">Sehr niedrig</string>
     <string name="verification_level_low">Niedrig</string>
     <string name="verification_level_high">Hoch</string>
@@ -137,7 +137,7 @@
     <string name="requests_error_load">Laden fehlgeschlagen</string>
     <string name="requests_error_respond">Antwort fehlgeschlagen</string>
 
-    <!-- Item 10 — Schlüsselkonflikte (nie automatisch aufgelöst) und Verstärkung bei Abruf-Freigabe -->
+    <!-- Schlüsselkonflikte (nie automatisch aufgelöst) und Verstärkung bei Abruf-Freigabe -->
     <string name="requests_key_conflict_title">Möglicher Identitätsdiebstahl</string>
     <string name="requests_key_conflict_message">Der Schlüssel von %1$s hat sich geändert, aber der vorherige Schlüssel ist als kompromittiert markiert. Dies könnte ein Angreifer mit dem gestohlenen Schlüssel sein, oder ein Fehlalarm. Um die Verbindung wiederherzustellen, verifizieren Sie %1$s erneut — persönlich oder über einen vertrauenswürdigen Kanal — und nutzen Sie dann „Neu verknüpfen“ auf dem Kontakte-Bildschirm. Akzeptieren Sie dies nicht automatisch.</string>
     <string name="requests_key_conflict_detected_at">Erkannt %1$s</string>
@@ -176,12 +176,12 @@
     <string name="share_detail_error_reconstruct">Rekonstruktion fehlgeschlagen</string>
     <string name="share_detail_error_integrity">Integritätsprüfung der Rekonstruktion fehlgeschlagen — zu viele inkonsistente Anteile, um das Geheimnis sicher zu bestimmen</string>
 
-    <!-- Item 13 — Integritätshinweis bei der Rekonstruktion -->
+    <!-- Integritätshinweis bei der Rekonstruktion -->
     <string name="reconstruction_advisory_no_margin">Aus genau den erforderlichen Anteilen rekonstruiert — eine Integritätsprüfung war nicht möglich.</string>
     <string name="reconstruction_advisory_confirmed">Integrität bestätigt — alle gesammelten Anteile stimmten überein.</string>
     <string name="reconstruction_advisory_excluded">%1$d inkonsistente(n) Anteil(e) ausgeschlossen (von: %2$s). Aus den übrigen konsistenten Anteilen rekonstruiert.</string>
 
-    <!-- Item 9 — Reparatur-Fluss (Rekonstruieren + neu aufteilen) -->
+    <!-- Reparatur-Fluss (Rekonstruieren + neu aufteilen) -->
     <string name="repair_title_format">%1$s reparieren</string>
     <string name="repair_title_fallback">Reparieren</string>
     <string name="repair_need_retrievals">Benötige %1$d genehmigte Abholung(en) zur Rekonstruktion — bisher %2$d.</string>

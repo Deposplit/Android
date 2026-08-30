@@ -30,7 +30,7 @@ class SettingsViewModel(
         val relayBaseUrl: String = "",
         @StringRes val catalogMessage: Int? = null,
         val catalogMessageArg: String? = null,
-        // Item 9's identity-regen trigger. contactCount is pre-fetched so the confirmation
+        // The identity-regeneration trigger. contactCount is pre-fetched so the confirmation
         // dialog can tell the user how many contacts will be notified before they commit.
         val contactCount: Int = 0,
         val isRegeneratingIdentity: Boolean = false,
@@ -60,7 +60,7 @@ class SettingsViewModel(
     /** Encodes the current catalog to JSON bytes for the caller to write to a SAF-picked file. */
     fun exportCatalogBytes(): ByteArray = CatalogCodec.encode(catalogManagement.exportCatalog())
 
-    /** Item 9's identity-regen trigger. Best-effort drains pending relay state under the *old*
+    /** The identity-regeneration trigger. Best-effort drains pending relay state under the *old*
      * identity, notifies every contact of the new key, then activates it — see
      * ShareService.regenerateIdentity's doc comment for why the ordering matters. Any request
      * still pending with a counterparty at this exact moment may become unreachable afterward

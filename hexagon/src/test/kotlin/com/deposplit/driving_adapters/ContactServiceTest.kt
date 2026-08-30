@@ -33,8 +33,8 @@ private fun makeContact() = Contact(
     addedAt = Instant.EPOCH,
 )
 
-// updateContact (item 8) — contact-update-in-place, preserving contactId, used both for benign
-// key rotation and holder-driven recovery relinking. See deposplit.com/CLAUDE.md item 8.
+// updateContact — contact-update-in-place, preserving contactId, used both for benign key
+// rotation and holder-driven recovery relinking.
 class ContactServiceTest {
 
     @Test
@@ -92,7 +92,7 @@ class ContactServiceTest {
         }
     }
 
-    // ── Item 10: stolen-key revocation ────────────────────────────────────────
+    // ── Stolen-key revocation ─────────────────────────────────────────────────
 
     @Test
     fun `updateContact sets keyChangedAt only when keys actually change`() {
@@ -151,7 +151,7 @@ class ContactServiceTest {
         assertTrue(!updated.revokedVerifyKeys.first().contentEquals(original.verifyKey))
     }
 
-    // ── Item 14: crypto agility — cipher suite threading + suite-aware length validation ────────
+    // ── Crypto agility: cipher suite threading + suite-aware length validation ──────────────────
 
     @Test
     fun `addFromQr stores the asserted cipherSuite`() {
@@ -213,7 +213,7 @@ class ContactServiceTest {
         assertTrue(updated.keyChangedAt != null)
     }
 
-    // ── Item 15: local contact nicknames ──────────────────────────────────────
+    // ── Local contact nicknames ───────────────────────────────────────────────
 
     @Test
     fun `renameContact sets a nickname without touching keys, level, or keyChangedAt`() {

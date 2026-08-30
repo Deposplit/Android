@@ -106,7 +106,7 @@ class ShareService(
                 k = threshold, n = contacts.size, senderSignature = senderSignature,
             )
             shareMetadataRepository.save(ShareMetadata(req.id, secretId, contact.id))
-            // Item 12 — retained until this holder's pickup is confirmed (relay-observed or
+            // Retained until this holder's pickup is confirmed (relay-observed or
             // heartbeat-attested), then discarded. Safe to retain: this blob is encrypted to the
             // holder's X25519 key, so this device cannot decrypt it itself.
             runCatching { retainedDepositRepository.save(RetainedDepositBlob(req.id, secretId, contact.id, label, createdAt, ciphertext, threshold, contacts.size)) }
@@ -122,7 +122,7 @@ class ShareService(
             runCatching { relay.listShareRequests(Role.SENDER, ShareTransactionType.DEPOSIT) }.getOrDefault(emptyList())
                 .forEach { req ->
                     if (req.state == ShareRequestState.WITHDRAWN) {
-                        // Best-effort tombstone (item 9): the holder unilaterally stopped holding
+                        // Best-effort tombstone: the holder unilaterally stopped holding
                         // this share. Drop the local pointer so the health count reflects it,
                         // then clean up the relay row — it has served its purpose and needn't
                         // linger. Row *absence* is never itself a signal; only an *observed*
@@ -136,7 +136,7 @@ class ShareService(
                     val contact = contactRepository.getByVerifyKey(req.recipientKey) ?: return@forEach
                     val priorConfirmedAt = existingMetadata.find { it.id == req.id }?.lastConfirmedAt
                     if (req.state == ShareRequestState.APPROVED && isRetentionStillPending(req.id)) {
-                        // Item 12 — first-observed pickup confirmation (relay-observed channel):
+                        // First-observed pickup confirmation (relay-observed channel):
                         // a one-time transition, not "still approved therefore still fresh" — an
                         // unchanging Approved row on a later poll must not keep bumping
                         // freshness, or a long-dead holder would look perpetually confirmed. The
@@ -148,7 +148,7 @@ class ShareService(
                         shareMetadataRepository.save(ShareMetadata(req.id, req.secretId, contact.id, priorConfirmedAt))
                     }
                 }
-            // Item 12 — a retrieve approval is also proof-of-custody. Polled here purely for that
+            // A retrieve approval is also proof-of-custody. Polled here purely for that
             // freshness side effect; the functional read path for these rows is reconstruct()/
             // listSentRequests(), unchanged.
             runCatching { relay.listShareRequests(Role.SENDER, ShareTransactionType.RETRIEVAL, ShareRequestState.APPROVED) }
@@ -169,7 +169,7 @@ class ShareService(
     // For every DISCARDING Secret, checks whether each remaining holder's fanned-out removal
     // request has been approved; approved ones are cleaned up (relay row deleted, local
     // ShareMetadata removed). Once a DISCARDING secret has no ShareMetadata rows left, its
-    // Secret record itself is removed. See item 11's two-state lifecycle.
+    // Secret record itself is removed — the ACTIVE/DISCARDING two-state lifecycle.
     private fun reconcileDiscarding() {
         val discarding = secretRepository.getAll().filter { it.state == SecretState.DISCARDING }
         if (discarding.isEmpty()) return
@@ -203,8 +203,8 @@ class ShareService(
             .flatMap { relay -> runCatching { relay.listShareRequests(Role.SENDER) }.getOrDefault(emptyList()) }
             .filterNot { it.transactionType == ShareTransactionType.DEPOSIT }
 
-    // Item 13 — a holder is worth prioritizing for a fresh retrieval ask when item 12's own
-    // "still counts toward n_live" freshness rule already trusts them: an unexpired
+    // A holder is worth prioritizing for a fresh retrieval ask when the custody-freshness rule
+    // that decides "still counts toward n_live" already trusts them: an unexpired
     // proof-of-custody and no standing opt-out. Recomputed here (not shared with the UI layer's
     // own FreshnessBucket, which serves display, not targeting) — a small, deliberate duplication
     // of a threshold check rather than restructuring already-shipped item-12 UI code.
@@ -221,7 +221,7 @@ class ShareService(
         val existing = allRelays().flatMap { relay ->
             runCatching { relay.listShareRequests(Role.SENDER, ShareTransactionType.RETRIEVAL) }.getOrDefault(emptyList())
         }
-        // Item 13 — fan out to the health-informed fresh set first; widen to everyone only when
+        // Fan out to the health-informed fresh set first; widen to everyone only when
         // there aren't enough confirmed holders to reach k. A retrieval request exists solely to
         // feed an eventual reconstruct(), so this targeting applies here rather than as a
         // separate method.
@@ -230,11 +230,10 @@ class ShareService(
         for (meta in targets) {
             val contact = contactRepository.getById(meta.contactId) ?: continue
             // Matched on secretId plus the holder's key. Not the local shareId — a recovered
-            // ShareMetadata's id is a freshly generated local UUID with no relay-row counterpart
-            // (see item 8). And not secretId alone — every holder of a secret shares it, so one
-            // standing row would silence the whole fan-out. A holder who rotated keys since the
-            // row was opened no longer matches, which is right: that row is unreachable under
-            // the new key anyway.
+            // ShareMetadata's id is a freshly generated local UUID with no relay-row counterpart.
+            // And not secretId alone — every holder of a secret shares it, so one standing row
+            // would silence the whole fan-out. A holder who rotated keys since the row was opened
+            // no longer matches, which is right: that row is unreachable under the new key anyway.
             val hasActive = existing.any {
                 it.secretId == meta.secretId &&
                     it.recipientKey.contentEquals(contact.verifyKey) &&
@@ -266,7 +265,7 @@ class ShareService(
         )
     }
 
-    // Pure read (item 11): collects and decrypts k approved retrieval shares, but never tears down
+    // Pure read: collects and decrypts k approved retrieval shares, but never tears down
     // local ShareMetadata or relay rows. Use discardSecret for teardown — reconstruct is now a
     // *step* toward a possible re-split, not an implicit "I'm done with this" signal.
     override fun reconstruct(secretId: UUID): ReconstructionResult {
@@ -286,7 +285,7 @@ class ShareService(
         }
         check(approved.size >= secret.k) { "Need at least ${secret.k} approved shares (have ${approved.size})" }
         val contacts = contactRepository.getAll()
-        // Item 13 — each decrypted share is kept paired with its originating contact so an
+        // Each decrypted share is kept paired with its originating contact so an
         // excluded index (from combineWithIntegrity) reports back as a suspect contact, not a
         // meaningless array position.
         val contactIds = mutableListOf<UUID>()
@@ -306,7 +305,7 @@ class ShareService(
     }
 
     // Fans out a sender-initiated removal to every known holder of secretId and flips the Secret
-    // to DISCARDING immediately, before any holder has responded — see item 11.
+    // to DISCARDING immediately, before any holder has responded.
     override fun discardSecret(secretId: UUID) {
         val secret = secretRepository.getAll().find { it.id == secretId }
             ?: error("No local record for secret $secretId")
@@ -318,7 +317,7 @@ class ShareService(
 
     // Local-only teardown for a DISCARDING secret whose holders won't all respond (e.g. a
     // permanently dark holder) — removes the Secret and its remaining ShareMetadata rows without
-    // waiting for relay confirmation. See item 11.
+    // waiting for relay confirmation.
     override fun forceForgetSecret(secretId: UUID) {
         shareMetadataRepository.getAll().filter { it.secretId == secretId }.forEach { share ->
             runCatching { shareMetadataRepository.delete(share.id) }
@@ -372,7 +371,7 @@ class ShareService(
         emitHeartbeats()
     }
 
-    // Item 12, holder side — opportunistically piggybacks this same inbox poll: for each distinct
+    // Holder side — opportunistically piggybacks this same inbox poll: for each distinct
     // sender this device currently holds at least one share from, pushes one coalesced heartbeat
     // (or opt-out notice) once the per-sender emission interval has elapsed. Each push is
     // independently best-effort so one unreachable BYOR relay doesn't block heartbeating other
@@ -398,7 +397,7 @@ class ShareService(
         }
     }
 
-    // Item 12, owner side — auto-verifies each holder's latest heartbeat (or opt-out notice)
+    // Owner side — auto-verifies each holder's latest heartbeat (or opt-out notice)
     // against a known contact's trusted key, then updates local freshness/opt-out state. Never
     // deletes a heartbeat row — see CustodyHeartbeat for why it's a standing status, not a
     // one-shot delivery. Unknown senders and forged signatures are silently skipped, same
@@ -437,10 +436,10 @@ class ShareService(
         contactRepository.save(contact.copy(heartbeatEmissionOptedOut = optedOut, lastHeartbeatSentAt = null))
     }
 
-    // Item 9, receiving side — auto-verifies a signed rotation notice against the trusted old key
-    // already on file for a known contact, downgrades the verification level to at most LOW per
-    // item 10's unifying rule (a signed rotation proves continuity of key control, not a fresh
-    // personhood check, so it can never carry a higher level forward), and updates the contact
+    // Receiving side — auto-verifies a signed rotation notice against the trusted old key
+    // already on file for a known contact, downgrades the verification level to at most LOW
+    // (a signed rotation proves continuity of key control, not a fresh personhood check, so it
+    // can never carry a higher level forward), and updates the contact
     // record in place, preserving contactId. Unknown senders and forged/mismatched signatures are
     // silently skipped — a stranger's notice must never mutate a real contact.
     private fun processRotations() {
@@ -450,7 +449,7 @@ class ShareService(
                 val contact = contactRepository.getByVerifyKey(notice.oldVerifyKey) ?: continue
                 val canon = PayloadCanonical.forRotation(notice.recipientKey, notice.newVerifyKey, notice.newEncKey, notice.newCipherSuite)
                 if (!identity.verify(canon, notice.signature, notice.oldVerifyKey)) continue
-                // Item 10 — a rotation claiming continuity from a key the user has flagged
+                // A rotation claiming continuity from a key the user has flagged
                 // compromised is never auto-accepted. Capture a durable local KeyConflict record
                 // *before* touching the relay notice: the relay may lose its state at any time and
                 // must never be relied on to keep the alert alive. Skip updateContact entirely —
@@ -472,7 +471,7 @@ class ShareService(
                     runCatching { relay.deleteRotation(notice.id) }
                     continue
                 }
-                // Item 14 — a cipher-suite-only change goes through the same downgrade as a plain
+                // A cipher-suite-only change goes through the same downgrade as a plain
                 // key rotation: an algorithm change is still continuity of key control, not a
                 // fresh personhood check.
                 val downgraded = minOf(contact.verificationLevel, VerificationLevel.LOW)
@@ -484,7 +483,7 @@ class ShareService(
         }
     }
 
-    // Item 9, sending side (client primitive only — see ShareManagement.pushRotation). Signs the
+    // Sending side (client primitive only — see ShareManagement.pushRotation). Signs the
     // new keys with the device's *current* identity, which becomes oldVerifyKey on the wire,
     // proving continuity of key control to the recipient.
     override fun pushRotation(contactId: UUID, newVerifyKey: ByteArray, newEncKey: ByteArray, newCipherSuite: CipherSuite) {
@@ -494,13 +493,13 @@ class ShareService(
         relayForContact(contact).pushRotation(contact.verifyKey, newVerifyKey, newEncKey, newCipherSuite, signature)
     }
 
-    // Item 9's identity-regen trigger. Order matters: the drain and the rotation pushes must both
+    // The identity-regeneration trigger. Order matters: the drain and rotation pushes must both
     // happen before activateKeyPair, since pushRotation (and the drain's own relay calls) sign
     // with whatever identity is currently persisted — that's what proves continuity from the old
     // key to each contact. If the app dies partway through, the old identity is still active
     // (nothing was persisted yet), so a retry simply regenerates and re-pushes from scratch; any
     // contact who received an orphaned first attempt auto-corrects on the next successful push,
-    // per item 9's existing K_old-signed auto-accept rule.
+    // per the existing K_old-signed auto-accept rule.
     override fun regenerateIdentity(): RegenerateIdentityResult {
         runCatching { syncInbox() }
         runCatching { syncDistributed() }
@@ -515,11 +514,11 @@ class ShareService(
         return RegenerateIdentityResult(notified, contacts.size)
     }
 
-    // Identity recovery (item 8) — sender/owner side. Consumes pending recoveryMetadata pushes
-    // addressed to this device, rebuilding Secret/ShareMetadata records from what each holder
-    // reports. A push is trusted only once its senderSignature verifies against a *known* contact
-    // — the holder must already have been re-added out-of-band (item 8 step 1) before their push
-    // is honored. Consumed rows are deleted from the relay once processed.
+    // Identity recovery — sender/owner side. Consumes pending recoveryMetadata pushes addressed
+    // to this device, rebuilding Secret/ShareMetadata records from what each holder reports. A
+    // push is trusted only once its senderSignature verifies against a *known* contact — the
+    // holder must already have been re-added out-of-band before their push is honored. Consumed
+    // rows are deleted from the relay once processed.
     private fun processRecoveryMetadata() {
         allRelays().forEach { relay ->
             val pushes = runCatching {
@@ -575,11 +574,11 @@ class ShareService(
         }
         val ciphertext = if (approved && request.transactionType == ShareTransactionType.RETRIEVAL) {
             // Matched on secretId, not the sender's local shareId — that id is meaningless to this
-            // device once identities can be rebuilt independently after recovery (item 8).
+            // device once identities can be rebuilt independently after recovery.
             val plaintext = shareRepository.getPlaintextShare(request.secretId) ?: error("Share for secret ${request.secretId} not in local storage")
             // Re-encrypt to the requester's *current* X25519 key — looked up live, not pinned at
             // deposit time. This is what lets reconstruction survive a sender key rotation/
-            // recovery (item 7's core reason for existing).
+            // recovery — the core reason the holder decrypts at pickup.
             val requesterContact = contactRepository.getByVerifyKey(request.senderKey) ?: error("Contact not found for requester")
             encryption.encrypt(plaintext, requesterContact.encKey)
         } else null
@@ -591,7 +590,7 @@ class ShareService(
         }
     }
 
-    // Unilateral, no approval needed — but as of item 9 not purely silent: best-effort notifies
+    // Unilateral, no approval needed — but not purely silent: best-effort notifies
     // the sender via a withdraw tombstone before the local record is dropped. The relay call is
     // fire-and-forget; local deletion always proceeds regardless of its outcome.
     override fun deleteHeldShare(shareId: UUID) {
@@ -614,7 +613,7 @@ class ShareService(
             .forEach { shareRepository.delete(it.id) }
     }
 
-    // ── Item 10: key conflicts (never auto-resolved) ────────────────────────────
+    // ── Key conflicts (never auto-resolved) ─────────────────────────────────────
 
     override fun listKeyConflicts(): List<KeyConflict> = keyConflictRepository.getAll()
 

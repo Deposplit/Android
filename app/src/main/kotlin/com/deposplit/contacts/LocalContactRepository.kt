@@ -28,19 +28,19 @@ class LocalContactRepository(context: Context) : ContactRepository {
         val verifiedAt: String?,
         val addedAt: String,
         val relayBaseUrl: String? = null,
-        // Item 10 — no default/fallback decode shim: Deposplit is pre-launch, local stores are
+        // No default/fallback decode shim: Deposplit is pre-launch, local stores are
         // wiped, not migrated.
         val revokedVerifyKeys: List<String>,
         val keyChangedAt: String?,
-        // Item 12 — no default/fallback decode shim: Deposplit is pre-launch, local stores are
+        // No default/fallback decode shim: Deposplit is pre-launch, local stores are
         // wiped, not migrated.
         val heartbeatOptedOutAt: String?,
         val lastHeartbeatSentAt: String?,
         val heartbeatEmissionOptedOut: Boolean,
-        // Item 14 — no default/fallback decode shim: Deposplit is pre-launch, local stores are
+        // No default/fallback decode shim: Deposplit is pre-launch, local stores are
         // wiped, not migrated.
         val cipherSuite: String,
-        // Item 15 — defaulted (like relayBaseUrl) so decoding a contacts.json written before this
+        // Defaulted (like relayBaseUrl) so decoding a contacts.json written before this
         // field existed doesn't need a migration shim.
         val nickname: String? = null,
     )

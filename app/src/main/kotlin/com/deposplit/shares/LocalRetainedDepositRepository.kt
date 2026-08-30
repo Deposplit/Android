@@ -12,7 +12,7 @@ import java.util.Base64
 import java.util.UUID
 
 /**
- * Item 12 — the local store of [RetainedDepositBlob]s: each per-holder encrypted deposit blob,
+ * The local store of [RetainedDepositBlob]s: each per-holder encrypted deposit blob,
  * held until that holder's pickup is confirmed (relay-observed or heartbeat-attested), then
  * discarded by ShareService. Structurally identical to [LocalShareMetadataRepository].
  */

@@ -37,13 +37,13 @@
     <string name="home_error_fallback">Failed to load</string>
     <string name="home_sync_warning">Relay not reachable</string>
 
-    <!-- Secret lifecycle (deposplit.com/CLAUDE.md "What is next" item 11) -->
+    <!-- Secret lifecycle -->
     <string name="home_health_caution">Margin of one — re-split soon</string>
     <string name="home_health_critical">Reconstruct + re-split now</string>
     <string name="home_health_lost">Unrecoverable</string>
     <string name="home_health_discarding">Discarding</string>
 
-    <!-- Item 12 — per-holder freshness bucket -->
+    <!-- Per-holder freshness bucket -->
     <string name="home_freshness_stale">Getting stale</string>
     <string name="home_freshness_unmonitored">Unmonitored by choice</string>
     <string name="home_freshness_silent">Silent — possible loss</string>
@@ -65,13 +65,13 @@
     <string name="contacts_error_load">Failed to load</string>
     <string name="contacts_error_delete">Failed to delete</string>
 
-    <!-- Item 15 — local contact nicknames -->
+    <!-- Local contact nicknames -->
     <string name="contacts_rename_description">Rename %1$s</string>
     <string name="contacts_rename_title">Rename contact</string>
     <string name="contacts_rename_label">Nickname</string>
     <string name="contacts_error_rename">Failed to rename</string>
 
-    <!-- Item 10 — stolen-key revocation -->
+    <!-- Stolen-key revocation -->
     <string name="contacts_mark_compromised_description">Mark %1$s\'s key compromised</string>
     <string name="contacts_revoked_badge_description">A previous key for this contact is flagged compromised</string>
     <string name="contacts_mark_compromised_title">Mark this contact\'s current key as compromised?</string>
@@ -79,19 +79,19 @@
     <string name="contacts_mark_compromised_confirm">Mark Compromised</string>
     <string name="contacts_error_mark_compromised">Failed to flag key as compromised</string>
 
-    <!-- Item 12 — custodial heartbeats -->
+    <!-- Custodial heartbeats -->
     <string name="contacts_pause_heartbeats_description">Pause custody heartbeats to %1$s</string>
     <string name="contacts_resume_heartbeats_description">Resume custody heartbeats to %1$s</string>
     <string name="contacts_heartbeat_paused_badge_description">Custody heartbeats to this contact are paused</string>
 
-    <!-- Relink contact (item 8 — identity recovery) -->
+    <!-- Relink contact (identity recovery) -->
     <string name="relink_title">Relink %1$s</string>
     <string name="relink_scanned_message">Scanned new keys for %1$s.</string>
     <string name="relink_level_footer">A key change always requires re-choosing a verification level fresh — it can never inherit the old one.</string>
     <string name="relink_confirm">Confirm Relink</string>
     <string name="relink_error_fallback">Failed to relink contact</string>
 
-    <!-- Verification level (deposplit.com/CLAUDE.md "What is next" item 6) -->
+    <!-- Verification level -->
     <string name="verification_level_very_low">Very Low</string>
     <string name="verification_level_low">Low</string>
     <string name="verification_level_high">High</string>
@@ -167,7 +167,7 @@
     <string name="requests_error_load">Failed to load</string>
     <string name="requests_error_respond">Failed to respond</string>
 
-    <!-- Item 10 — key conflicts (never auto-resolved) and retrieve-approval hardening -->
+    <!-- Key conflicts (never auto-resolved) and retrieve-approval hardening -->
     <string name="requests_key_conflict_title">Possible impersonation attempt</string>
     <string name="requests_key_conflict_message">%1$s\'s key changed, but their previous key is flagged compromised. This could be an attacker with the stolen key, or a false alarm. To reconnect, verify %1$s fresh — in person or over a trusted channel — then use Relink from the Contacts screen. Do not accept this automatically.</string>
     <string name="requests_key_conflict_detected_at">Detected %1$s</string>
@@ -207,12 +207,12 @@
     <string name="share_detail_error_reconstruct">Reconstruction failed</string>
     <string name="share_detail_error_integrity">Reconstruction integrity check failed — too many inconsistent shares to safely determine the secret</string>
 
-    <!-- Item 13 — reconstruction integrity advisory -->
+    <!-- Reconstruction integrity advisory -->
     <string name="reconstruction_advisory_no_margin">Reconstructed from exactly the required shares — no integrity cross-check was possible.</string>
     <string name="reconstruction_advisory_confirmed">Integrity confirmed — every collected share agreed.</string>
     <string name="reconstruction_advisory_excluded">Excluded %1$d inconsistent share(s) (from: %2$s). Reconstructed from the remaining consistent shares.</string>
 
-    <!-- Item 9 — reconstruct-and-re-split repair flow -->
+    <!-- Reconstruct-and-re-split repair flow -->
     <string name="repair_title_format">Repair %1$s</string>
     <string name="repair_title_fallback">Repair</string>
     <string name="repair_need_retrievals">Need %1$d approved retrieval(s) to reconstruct — %2$d so far.</string>

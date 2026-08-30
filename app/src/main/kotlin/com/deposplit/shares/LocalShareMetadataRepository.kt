@@ -20,7 +20,7 @@ class LocalShareMetadataRepository(context: Context) : ShareMetadataRepository {
         val id: String,
         val secretId: String,
         val contactId: String,
-        // Item 12 — no default/fallback decode shim: Deposplit is pre-launch, local stores are
+        // No default/fallback decode shim: Deposplit is pre-launch, local stores are
         // wiped, not migrated.
         val lastConfirmedAt: String?,
     )

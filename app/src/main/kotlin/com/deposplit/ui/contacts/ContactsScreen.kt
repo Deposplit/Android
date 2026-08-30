@@ -201,7 +201,7 @@ private fun ContactItem(
                 }
                 if (contact.nickname != null) {
                     // The only name value that ever left the counterparty's device — kept visible
-                    // as a secondary line so it can actually be cross-checked. See CLAUDE.md item 15.
+                    // as a secondary line so it can actually be cross-checked.
                     Text(
                         text = contact.pseudonym,
                         style = MaterialTheme.typography.bodySmall,

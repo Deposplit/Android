@@ -501,7 +501,7 @@ private fun HolderRow(holder: HolderStatus, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            // Item 12 — early nudge, surfaced before the holder actually drops out of n_live.
+            // Early nudge, surfaced before the holder actually drops out of n_live.
             when {
                 holder.isGettingStale -> FreshnessLabel(R.string.home_freshness_stale, Icons.Filled.Schedule, MaterialTheme.colorScheme.tertiary)
                 holder.freshnessBucket == FreshnessBucket.UNMONITORED -> FreshnessLabel(R.string.home_freshness_unmonitored, Icons.Filled.VisibilityOff, MaterialTheme.colorScheme.onSurfaceVariant)
@@ -538,7 +538,7 @@ private fun ShareItem(
     label: String,
     createdAt: Instant,
     sender: String? = null,
-    // Item 15 — the sender's pseudonym, shown only when `sender` above is actually a nickname.
+    // The sender's pseudonym, shown only when `sender` above is actually a nickname.
     senderSubtitle: String? = null,
     onDelete: (() -> Unit)? = null,
     onClick: (() -> Unit)? = null,

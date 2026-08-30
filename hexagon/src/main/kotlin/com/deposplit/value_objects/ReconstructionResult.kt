@@ -2,7 +2,7 @@ package com.deposplit.value_objects
 
 import java.util.UUID
 
-// Item 13 — the outcome of ShareManagement.reconstruct's over-determination cross-check. NoMargin
+// The outcome of ShareManagement.reconstruct's over-determination cross-check. NoMargin
 // means exactly k shares were available (no surplus to check against — the "reconstructed without
 // integrity margin" case). Confirmed means more than k were collected and all of them agreed.
 // ExcludedSuspects means more than k were collected, at least one disagreed, and the disagreeing

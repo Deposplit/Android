@@ -21,7 +21,7 @@ import com.deposplit.value_objects.ReconstructionIntegrity
 import java.util.UUID
 
 /**
- * A one-line advisory summarizing item 13's integrity cross-check result, shown wherever a
+ * A one-line advisory summarizing the reconstruction integrity cross-check, shown wherever a
  * reconstructed secret is displayed (ShareDetailScreen, RepairScreen).
  */
 @Composable

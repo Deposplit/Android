@@ -51,7 +51,7 @@ class ContactsViewModel(
         }
     }
 
-    // Item 10 — flags this contact's *current* key as compromised, out-of-band-triggered (the user
+    // Flags this contact's *current* key as compromised, out-of-band-triggered (the user
     // has some independent reason to believe it). From this point, any signed rotation notice
     // claiming continuity from that key is refused auto-accept; only a fresh human-verified relink
     // can move the contact forward.
@@ -63,7 +63,7 @@ class ContactsViewModel(
         }
     }
 
-    // Item 12 — this device's own choice to stop (or resume) heartbeating this contact (who is
+    // This device's own choice to stop (or resume) heartbeating this contact (who is
     // the owner of shares this device holds from them). Low-stakes and reversible, unlike marking
     // a key compromised — no confirmation needed.
     fun toggleHeartbeatEmission(contact: Contact) {
@@ -73,7 +73,7 @@ class ContactsViewModel(
         }
     }
 
-    // Item 15 — purely local disambiguation label; never touches keys/level/cipherSuite. Pass
+    // A purely local disambiguation label; never touches keys/level/cipherSuite. Pass
     // null (or a blank string, normalized service-side) to clear an existing nickname.
     fun rename(contactId: UUID, nickname: String?) {
         viewModelScope.launch {

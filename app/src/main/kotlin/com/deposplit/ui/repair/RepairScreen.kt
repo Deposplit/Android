@@ -60,7 +60,7 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 
 /**
- * Item 9's "reconstruct-and-re-split" repair flow: gather k approved retrievals → reconstruct →
+ * The "reconstruct-and-re-split" repair flow: gather k approved retrievals → reconstruct →
  * re-deposit (prefilled) → optionally discard the old distribution. One screen with internal
  * wizard state ([RepairPhase]), so the reconstructed plaintext never leaves this route's
  * ViewModels or gets serialized into a navigation argument.

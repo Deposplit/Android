@@ -2,7 +2,7 @@ package com.deposplit.driving_ports
 
 import com.deposplit.value_objects.Catalog
 
-// Optional catalog export/import (item 8) — a convenience backup of the *non-secret* catalog,
+// Optional catalog export/import — a convenience backup of the *non-secret* catalog,
 // never shares or private keys.
 interface CatalogManagement {
     fun exportCatalog(): Catalog

@@ -24,7 +24,7 @@ import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Holder-side "this contact's key changed" flow (deposplit.com/CLAUDE.md "What is next" item 8).
+ * Holder-side "this contact's key changed" flow, used to relink a re-presented identity.
  * Scans the contact's re-presented QR code, updates the existing contact record **in place**
  * (preserving `contactId` — see [ContactManagement.updateContact]), then pushes a metadata-only
  * recovery report for every share held from them, so a recovering owner on a fresh device can
@@ -75,9 +75,8 @@ class RelinkContactViewModel(
             pendingCipherSuite = CipherSuite.fromWire(payload.cipherSuite)
                 ?: error("Unknown cipher suite in QR payload: ${payload.cipherSuite}")
         }.onSuccess {
-            // In-person re-scan is the strongest assurance this flow can claim (item 6) —
-            // defaulted, but always shown for confirmation since a key change forces a fresh
-            // choice (item 8).
+            // In-person re-scan is the strongest assurance this flow can claim — defaulted, but
+            // always shown for confirmation since a key change forces a fresh choice.
             _uiState.update { it.copy(pendingLevel = VerificationLevel.VERY_HIGH, error = null) }
         }.onFailure {
             hasScanned.set(false)

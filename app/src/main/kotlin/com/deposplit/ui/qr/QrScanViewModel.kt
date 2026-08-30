@@ -44,7 +44,7 @@ class QrScanViewModel(private val contactManagement: ContactManagement) : ViewMo
                 val cipherSuite = CipherSuite.fromWire(payload.cipherSuite)
                     ?: error("Unknown cipher suite in QR payload: ${payload.cipherSuite}")
                 // A QR scan defaults to in-person co-presence, the strongest assurance the current
-                // scan flow can claim (CLAUDE.md item 6). A remote/video-call scan is a weaker
+                // scan flow can claim. A remote/video-call scan is a weaker
                 // claim, but there's no UI step here to downgrade it yet.
                 contactManagement.addFromQr(payload.pseudonym, verifyKey, encKey, cipherSuite, VerificationLevel.VERY_HIGH, payload.relay)
             }.onSuccess {

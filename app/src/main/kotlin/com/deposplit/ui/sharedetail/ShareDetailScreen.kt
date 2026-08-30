@@ -296,7 +296,7 @@ private fun RequestSection(
             ShareRequestState.PENDING -> stringResource(R.string.share_request_state_pending) to MaterialTheme.colorScheme.onSurfaceVariant
             ShareRequestState.APPROVED -> stringResource(R.string.share_request_state_approved) to MaterialTheme.colorScheme.primary
             ShareRequestState.DENIED -> stringResource(R.string.share_request_state_denied) to MaterialTheme.colorScheme.error
-            // Deposit-only (item 9) — a syncDistributed() poll removes the local pointer for a
+            // Deposit-only — a syncDistributed() poll removes the local pointer for a
             // withdrawn deposit as soon as it's observed, so this rarely reaches the UI in practice.
             ShareRequestState.WITHDRAWN -> stringResource(R.string.share_request_state_withdrawn) to MaterialTheme.colorScheme.onSurfaceVariant
         }

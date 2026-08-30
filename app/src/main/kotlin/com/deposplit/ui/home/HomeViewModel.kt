@@ -26,8 +26,8 @@ import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
-// Item 12's three-bucket freshness model — see CustodyHeartbeatTuning for the underlying windows
-// and deposplit.com/CLAUDE.md "What is next" item 12 for the rationale.
+// The three-bucket custody-freshness model — see CustodyHeartbeatTuning for the underlying
+// windows and the reasoning behind them.
 enum class FreshnessBucket {
     // Proof-of-custody (heartbeat, pickup, or retrieve approval) observed within
     // CustodyHeartbeatTuning.lossThreshold. Counts toward n_live.
@@ -47,7 +47,7 @@ data class HolderStatus(
     val retrievalRequest: ShareRequest?,
     val lastConfirmedAt: Instant?,
     val heartbeatOptedOutAt: Instant?,
-    // Item 15 — the contact's pseudonym, shown as a secondary line, but only when recipientName
+    // The contact's pseudonym, shown as a secondary line, but only when recipientName
     // is actually a nickname (i.e. there's something to disambiguate); null otherwise.
     val recipientSubtitle: String? = null,
 ) {
@@ -58,21 +58,21 @@ data class HolderStatus(
             else -> FreshnessBucket.SILENT_OVERDUE
         }
 
-    // Item 12's early nudge — surfaced before a holder actually drops out of n_live, while still
+    // The early nudge — surfaced before a holder actually drops out of n_live, while still
     // comfortably CONFIRMED.
     val isGettingStale: Boolean
         get() = freshnessBucket == FreshnessBucket.CONFIRMED && lastConfirmedAt != null &&
             Duration.between(lastConfirmedAt, Instant.now()) > CustodyHeartbeatTuning.staleWarningThreshold
 }
 
-// Graduated n_live health alarm — see deposplit.com/CLAUDE.md "What is next" item 11.
+// Graduated n_live health alarm.
 enum class SecretHealth { HEALTHY, CAUTION, CRITICAL, LOST, DISCARDING }
 
 data class SecretGroup(
     val secret: Secret,
     val holders: List<HolderStatus>,
 ) {
-    // Item 12 — n_live is now the freshness-gated CONFIRMED count, not a raw ShareMetadata-row
+    // n_live is the freshness-gated CONFIRMED count, not a raw ShareMetadata-row
     // count: an UNMONITORED holder never alarms, and a SILENT_OVERDUE one drops out (reversibly)
     // instead of being counted as still-live.
     val health: SecretHealth
@@ -92,7 +92,7 @@ data class SecretGroup(
 data class HeldShareDisplay(
     val share: HeldShare,
     val senderName: String,
-    // Item 15 — the contact's pseudonym, shown as a secondary line, but only when senderName is
+    // The contact's pseudonym, shown as a secondary line, but only when senderName is
     // actually a nickname; null otherwise (including when there's no local Contact at all, in
     // which case senderName already falls back to HeldShare's own denormalized senderPseudonym).
     val senderSubtitle: String? = null,

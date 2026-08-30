@@ -90,7 +90,7 @@ class RequestsViewModel(
         }
     }
 
-    // Item 10's retrieve-approval hardening: the attack signature is key change → quick retrieval,
+    // Retrieve-approval hardening: the attack signature is key change → quick retrieval,
     // so this is surfaced only for Retrieval requests, not every request type.
     fun keyChangedDaysAgo(request: ShareRequest): Long? {
         if (request.transactionType != ShareTransactionType.RETRIEVAL) return null
@@ -103,7 +103,7 @@ class RequestsViewModel(
     fun contactName(conflict: KeyConflict): String? =
         uiState.value.contacts.find { it.id == conflict.contactId }?.displayName
 
-    // Item 10 — resolving "yes, this really was them" goes through the existing Relink flow (a
+    // Resolving "yes, this really was them" goes through the existing Relink flow (a
     // fresh human-verified re-scan), not through this dismiss action — dismissing only
     // acknowledges the alert (a false alarm, or already handled out-of-band).
     fun dismissConflict(id: UUID) {

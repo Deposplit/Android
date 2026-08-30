@@ -4,7 +4,7 @@ import java.time.Instant
 import java.util.UUID
 
 /**
- * Item 10 — captured the instant a rotation notice's [oldVerifyKey] is found in a contact's
+ * Captured the instant a rotation notice's [oldVerifyKey] is found in a contact's
  * [Contact.revokedVerifyKeys]. Durable and local: the relay may lose its state at any time, so this is
  * saved before the corresponding relay notice is deleted, never re-derived from the relay later.
  * Never auto-resolved — the only path forward is a fresh human-verified relink (the existing item-8

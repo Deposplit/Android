@@ -124,7 +124,7 @@ fun RecipientRequestsTab(
     }
 }
 
-/** Item 10 — never auto-resolved. Resolving "yes, this really was them" goes through the existing
+/** Never auto-resolved. Resolving "yes, this really was them" goes through the existing
  * Relink (Key Changed) flow on the Contacts screen, not through anything here; this card only
  * warns and lets the user acknowledge (dismiss) the alert.
  */
@@ -164,7 +164,7 @@ private fun KeyConflictItem(conflict: KeyConflict, contactName: String, onDismis
 private fun RequestItem(
     request: ShareRequest,
     senderName: String,
-    // Item 15 — the sender's pseudonym, shown only when senderName above is actually a nickname.
+    // The sender's pseudonym, shown only when senderName above is actually a nickname.
     senderSubtitle: String? = null,
     keyChangedDaysAgo: Long?,
     isResponding: Boolean,
@@ -233,7 +233,7 @@ private fun RequestItem(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            // Item 10's retrieve-approval hardening — the attack signature is key change followed
+            // Retrieve-approval hardening — the attack signature is key change followed
             // by a quick retrieval request, so nudge toward a fresh out-of-band check.
             if (keyChangedDaysAgo != null) {
                 Spacer(Modifier.height(4.dp))

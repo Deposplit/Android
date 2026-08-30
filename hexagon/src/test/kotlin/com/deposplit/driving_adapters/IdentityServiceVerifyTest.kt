@@ -77,7 +77,7 @@ class IdentityServiceVerifyTest {
     }
 
     // -------------------------------------------------------------------------
-    // generateNewKeyPair() / activateKeyPair() — item 9's identity-regen trigger
+    // generateNewKeyPair() / activateKeyPair() — the identity-regeneration trigger
     // -------------------------------------------------------------------------
 
     @Test
@@ -116,7 +116,7 @@ class IdentityServiceVerifyTest {
     }
 
     // -------------------------------------------------------------------------
-    // encrypt()/decrypt() suite-tag wire format — item 14
+    // encrypt()/decrypt() suite-tag wire format
     // -------------------------------------------------------------------------
 
     @Test

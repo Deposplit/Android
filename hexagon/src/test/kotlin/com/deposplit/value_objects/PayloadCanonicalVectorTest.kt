@@ -40,7 +40,7 @@ class PayloadCanonicalVectorTest {
     private val label = "cross-platform test vector"
     private val secretCreatedAt: Instant = Instant.parse("2026-01-01T00:00:00Z")
     private val ciphertext: ByteArray = byteArrayOf(1, 2, 3, 4, 5)
-    // k/n (item 8) — appended at the end of the field sequence, so the pre-item-8 fields above are
+    // k/n — appended at the end of the field sequence, so the fields above are
     // byte-identical to the original vector; only the two new trailing lines are new.
     private val k = 2
     private val n = 3
@@ -78,15 +78,14 @@ class PayloadCanonicalVectorTest {
         assertTrue(verifier.verifySignature(sigBytes))
     }
 
-    // ── forRotation (item 9) — same cross-platform-interop purpose as forOpen above, checked into
+    // ── forRotation — same cross-platform-interop purpose as forOpen above, checked into
     // the relay's and iOS's PayloadCanonicalVectorTests. Uses the same fixed private key seed as
     // forOpen so both vectors are anchored to one known keypair.
 
     private val rotationRecipientKey: ByteArray = ByteArray(32) { 0x03 }
     private val newVerifyKey: ByteArray = ByteArray(32) { 0x04 }
     private val newEncKey: ByteArray = ByteArray(32) { 0x05 }
-    // item 14 — appended as a 4th line; the pre-item-14 fields above are byte-identical to the
-    // original vector.
+    // Appended as a 4th line; the fields above are byte-identical to the original vector.
     private val newCipherSuite = CipherSuite.current
     private val expectedRotationSignatureBase64Url =
         "EH45bL4chGQALZ6J9IDhfUAtPNovGHmqlJvF6HBKa8sqkF3SU1NhMGWmSTGM87isxdHIxoQCHFITplmzN1zeDg"
@@ -121,7 +120,7 @@ class PayloadCanonicalVectorTest {
         assertTrue(verifier.verifySignature(sigBytes))
     }
 
-    // ── forHeartbeat (item 12) — same cross-platform-interop purpose as forOpen/forRotation
+    // ── forHeartbeat — same cross-platform-interop purpose as forOpen/forRotation
     // above, checked into the relay's PayloadCanonicalVectorTests. Uses the same fixed private
     // key seed so all three vectors are anchored to one known keypair.
 

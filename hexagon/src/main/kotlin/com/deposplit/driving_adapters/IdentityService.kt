@@ -103,7 +103,7 @@ class IdentityService(private val identityStore: IdentityStore) : Identity, Shar
         false
     }
 
-    // Item 14 — wire format is now suiteTag(1) || nonce(12) || ciphertext+tag. No persistent state
+    // Wire format is suiteTag(1) || nonce(12) || ciphertext+tag. No persistent state
     // needed: a device always encrypts with its current preferred TransportSuite, and a decrypting
     // device dispatches on the tag it reads.
     override fun encrypt(plaintext: ByteArray, recipientEncKey: ByteArray): ByteArray {

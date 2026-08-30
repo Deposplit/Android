@@ -15,7 +15,7 @@ import java.util.Base64
 import java.util.UUID
 
 /**
- * JSON (de)serialization for [Catalog] — the optional non-secret backup export/import (item 8).
+ * JSON (de)serialization for [Catalog] — the optional non-secret backup export/import.
  * Lives in the app layer, not the hexagon: serialization is an adapter concern, and the hexagon
  * has no JSON dependency (see [com.deposplit.value_objects.Catalog]'s doc comment). Mirrors the
  * wire shapes already used by `LocalContactRepository`/`LocalSecretRepository`/
@@ -35,10 +35,10 @@ object CatalogCodec {
         val verifiedAt: String?,
         val addedAt: String,
         val relayBaseUrl: String? = null,
-        // Item 14 — no default/fallback decode shim: Deposplit is pre-launch, local stores are
+        // No default/fallback decode shim: Deposplit is pre-launch, local stores are
         // wiped, not migrated.
         val cipherSuite: String,
-        // Item 15 — for full catalog round-trip fidelity, same reasoning as cipherSuite above.
+        // Carried for full catalog round-trip fidelity, same reasoning as cipherSuite above.
         val nickname: String? = null,
         // Trust state. Defaulted so an export written before these were carried still decodes.
         // revokedVerifyKeys is the security-relevant one: losing it on a restore silently re-enables

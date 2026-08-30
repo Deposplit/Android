@@ -178,7 +178,7 @@ class ShamirTest {
     }
 
     // -------------------------------------------------------------------------
-    // combineWithIntegrity() — item 13 (reconstruction integrity via over-determination)
+    // combineWithIntegrity() — reconstruction integrity via over-determination
     // -------------------------------------------------------------------------
 
     // Corrupts every secret byte of a share (leaving its x-coordinate intact), simulating a
@@ -213,7 +213,7 @@ class ShamirTest {
 
     @Test
     fun `combineWithIntegrity at margin 1 with one bad share detects but cannot correct`() {
-        // threshold+1 collected, one bad: can only *detect* a problem exists (CLAUDE.md item 13),
+        // threshold+1 collected, one bad: can only *detect* that a problem exists,
         // never identify which side is at fault — must throw rather than guess.
         val secret = "margin one".encodeToByteArray()
         val shares = split(secret, 5, 4).toMutableList()

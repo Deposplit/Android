@@ -55,9 +55,9 @@ class DepositViewModel(
         data object NavigateBack : Effect
     }
 
-    // Non-blocking "Are you sure?" warnings across item 11's three soft axes — operational
-    // burden, confidentiality tail, and availability tail. Thresholds/wording are UI tuning, not
-    // load-bearing spec — see deposplit.com/CLAUDE.md "What is next" item 11.
+    // Non-blocking "Are you sure?" warnings across the three soft axes of choosing k and n —
+    // operational burden, confidentiality tail, and availability tail. Thresholds and wording are
+    // UI tuning, not load-bearing spec.
     sealed interface SplitTimeWarning {
         data class OperationalLarge(val n: Int) : SplitTimeWarning
         data class OperationalMedium(val n: Int) : SplitTimeWarning

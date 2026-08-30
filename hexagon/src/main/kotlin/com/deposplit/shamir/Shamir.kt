@@ -192,7 +192,7 @@ fun combine(shares: List<ByteArray>): ByteArray {
 
 /**
  * Result of [combineWithIntegrity]. [hasIntegrityMargin] is `false` only when exactly [threshold]
- * shares were supplied (nothing to cross-check against — item 13's "reconstructed without
+ * shares were supplied (nothing to cross-check against — the "reconstructed without
  * integrity margin" case). [excludedIndices] are positions in the input `shares` list identified
  * as inconsistent with the rest and excluded from reconstruction; empty when every share agreed.
  */
@@ -221,7 +221,6 @@ private const val MAX_INTEGRITY_COMBINATIONS_TRIED = 5000
  * Reconstructs from more than [threshold] shares by finding the largest mutually-consistent
  * subset and using it — classic Shamir has no built-in integrity, so passing extra shares to
  * plain [combine] would silently mix in a bad one and produce a wrong secret with no error
- * signal. See deposplit.com/CLAUDE.md item 13.
  *
  * Algorithm: bounded-exhaustive maximum-agreement decoding. Every size-[threshold] subset of
  * [shares] is a "hypothesis"; for each, the implied secret is interpolated and every one of the

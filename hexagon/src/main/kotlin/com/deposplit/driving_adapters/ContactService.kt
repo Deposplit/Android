@@ -22,7 +22,7 @@ class ContactService(
         require(verifyKey.size == cipherSuite.verifyKeyLength) { "Verify key must be ${cipherSuite.verifyKeyLength} bytes for $cipherSuite" }
         require(encKey.size == cipherSuite.encKeyLength) { "Enc key must be ${cipherSuite.encKeyLength} bytes for $cipherSuite" }
         // Physical co-presence can't be asserted by typing a key in by hand — that's what the
-        // in-person QR scan flow is for. See CLAUDE.md item 6.
+        // in-person QR scan flow is for.
         require(verificationLevel != VerificationLevel.VERY_HIGH) { "Very High verification requires an in-person QR scan" }
         val now = Instant.now()
         contactRepository.save(
@@ -64,7 +64,7 @@ class ContactService(
 
     override fun updateContact(contactId: UUID, verifyKey: ByteArray?, encKey: ByteArray?, cipherSuite: CipherSuite?, verificationLevel: VerificationLevel?) {
         val existing = contactRepository.getById(contactId) ?: error("Contact not found for id $contactId")
-        // Item 14 — a cipher-suite-only change (no key-value change) forces the same fresh-level
+        // A cipher-suite-only change (no key-value change) forces the same fresh-level
         // rule as a key change: it's still continuity of key control, not a fresh personhood check.
         val changingIdentity = verifyKey != null || encKey != null || cipherSuite != null
         require(!changingIdentity || verificationLevel != null) {
@@ -86,7 +86,7 @@ class ContactService(
         )
     }
 
-    // Item 15 — deliberately separate from updateContact: never touches keys, cipherSuite,
+    // Deliberately separate from updateContact: never touches keys, cipherSuite,
     // verificationLevel, verifiedAt, or keyChangedAt. Pass null to clear an existing nickname.
     override fun renameContact(contactId: UUID, nickname: String?) {
         val existing = contactRepository.getById(contactId) ?: error("Contact not found for id $contactId")
@@ -95,7 +95,7 @@ class ContactService(
 
     override fun deleteContact(contactId: UUID) = contactRepository.delete(contactId)
 
-    // Item 10 — idempotent: a no-op if the key is already in revokedVerifyKeys.
+    // Idempotent: a no-op if the key is already in revokedVerifyKeys.
     override fun markKeyCompromised(contactId: UUID, verifyKey: ByteArray?) {
         val existing = contactRepository.getById(contactId) ?: error("Contact not found for id $contactId")
         val keyToFlag = verifyKey ?: existing.verifyKey
@@ -103,7 +103,7 @@ class ContactService(
         contactRepository.save(existing.copy(revokedVerifyKeys = existing.revokedVerifyKeys + keyToFlag))
     }
 
-    // Item 15 — trim, then collapse blank to absent. Lives here (not the UI layer) so every
+    // Trim, then collapse blank to absent. Lives here (not the UI layer) so every
     // caller — UI, tests, a future relink flow — gets consistent normalization for free.
     private fun normalizeNickname(nickname: String?): String? = nickname?.trim()?.ifBlank { null }
 }
