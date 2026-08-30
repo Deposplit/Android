@@ -31,7 +31,7 @@ compileSdk 37, targetSdk 36, minSdk 29.
 ## Build and test
 
 ```bash
-./gradlew test                    # JVM unit tests — no device needed (115 :hexagon, 20 :app)
+./gradlew test                    # JVM unit tests — no device needed (116 :hexagon, 20 :app)
 ./gradlew :hexagon:test           # the domain only
 ./gradlew :hexagon:test --tests "com.deposplit.shamir.ShamirTest"
 ./gradlew assembleDebug           # → app/build/outputs/apk/debug/app-debug.apk
@@ -45,7 +45,10 @@ covered by the [manual end-to-end
 flows](https://github.com/Deposplit/deposplit.com/blob/main/docs/testing.md) instead.
 
 The Gradle daemon runs on whichever JDK `JAVA_HOME` names, because nothing pins it to a
-version. Do not reintroduce `gradle/gradle-daemon-jvm.properties`: [CLAUDE.md](CLAUDE.md)
+version. Android Studio has to be told separately — its Gradle JDK defaults to the bundled
+JetBrains Runtime, which builds in a second daemon of its own — so point it at the `JAVA_HOME`
+entry under Settings → Build, Execution, Deployment → Build Tools → Gradle. Do not reintroduce
+`gradle/gradle-daemon-jvm.properties`, whatever the IDE suggests: [CLAUDE.md](CLAUDE.md)
 explains what pinning the daemon broke, and how to find out which JVM actually served a build
 before theorising about one.
 

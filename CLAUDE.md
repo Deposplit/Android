@@ -77,6 +77,24 @@ was never the problem.
 no `jvmToolchain(N)` nothing requests toolchain resolution, so it is inert today — but it is a
 cheap guard if anyone adds one later.
 
+**Android Studio offers to create the file for you.** Its "Daemon toolchain" notification
+sells it on detecting an installed toolchain, downloading a compatible one when there is
+none, and aligning the JVM the IDE and the CLI use. Decline it. The download is the CI
+regression above, and the alignment is criteria-based daemon matching — the very mechanism
+that let a `jlink`-less Java 21 image serve this build.
+
+The alignment is available without it: set the IDE's **Gradle JDK** to the `JAVA_HOME` entry
+(Settings → Build, Execution, Deployment → Build Tools → Gradle). Studio records that as
+`gradleJvm` in `.idea/gradle.xml`, or as `java.home` in `.gradle/config.properties` where it
+has migrated the project to `#GRADLE_LOCAL_JAVA_HOME`. Both are gitignored, so this is a
+per-machine setting, not a repository one. "Multiple Gradle daemons might be spawned" is the
+warning that says it is unset: the IDE otherwise builds on its bundled JetBrains Runtime,
+which is a second daemon beside the terminal's.
+
+The **project** JDK is a third setting again. `.idea/misc.xml`'s `jbr-25` runs the IDE's own
+indexing and language level, not the build, so a complaint about it says nothing about which
+JVM Gradle uses.
+
 A running daemon caches all of this, so after changing anything in this area run
 `./gradlew --stop` (`.\gradlew.bat --stop`) once before believing the result.
 
