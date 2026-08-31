@@ -207,7 +207,7 @@ class ShareService(
     // that decides "still counts toward n_live" already trusts them: an unexpired
     // proof-of-custody and no standing opt-out. Recomputed here (not shared with the UI layer's
     // own FreshnessBucket, which serves display, not targeting) — a small, deliberate duplication
-    // of a threshold check rather than restructuring already-shipped item-12 UI code.
+    // of a threshold check rather than restructuring already-shipped UI code.
     private fun isConfirmed(meta: ShareMetadata): Boolean {
         val contact = contactRepository.getById(meta.contactId) ?: return false
         if (contact.heartbeatOptedOutAt != null) return false

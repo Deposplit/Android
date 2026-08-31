@@ -7,7 +7,7 @@ import java.util.UUID
  * Captured the instant a rotation notice's [oldVerifyKey] is found in a contact's
  * [Contact.revokedVerifyKeys]. Durable and local: the relay may lose its state at any time, so this is
  * saved before the corresponding relay notice is deleted, never re-derived from the relay later.
- * Never auto-resolved — the only path forward is a fresh human-verified relink (the existing item-8
+ * Never auto-resolved — the only path forward is a fresh human-verified relink (the existing
  * "Relink (Key Changed)" flow); this record only exists to be surfaced and dismissed.
  */
 data class KeyConflict(
