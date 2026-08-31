@@ -31,7 +31,7 @@ compileSdk 37, targetSdk 36, minSdk 29.
 ## Build and test
 
 ```bash
-./gradlew test                    # JVM unit tests — no device needed (116 :hexagon, 20 :app)
+./gradlew test                    # JVM unit tests — no device needed (117 :hexagon, 20 :app)
 ./gradlew :hexagon:test           # the domain only
 ./gradlew :hexagon:test --tests "com.deposplit.shamir.ShamirTest"
 ./gradlew assembleDebug           # → app/build/outputs/apk/debug/app-debug.apk

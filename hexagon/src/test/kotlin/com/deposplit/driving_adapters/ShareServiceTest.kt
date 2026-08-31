@@ -156,6 +156,13 @@ private object NoOpShareEncryption : ShareEncryption {
     override fun decrypt(noncePlusCiphertext: ByteArray, recipientEncKey: ByteArray) = noncePlusCiphertext
 }
 
+/** Stands in for the real failure at pickup: a share sealed to a key this device no longer holds. */
+private object FailingShareEncryption : ShareEncryption {
+    override fun encrypt(plaintext: ByteArray, recipientEncKey: ByteArray) = plaintext
+    override fun decrypt(noncePlusCiphertext: ByteArray, recipientEncKey: ByteArray): ByteArray =
+        throw RuntimeException("simulated decryption failure")
+}
+
 /** In-memory ShareRelay test double. listShareRequests filters by transactionType/state (role is
  * ignored — every fixture row here is already addressed correctly) since syncInbox now issues two
  * differently-filtered queries per relay (deposit/pending, then inventory/approved) that
@@ -289,7 +296,11 @@ class ShareServiceTest {
         val retainedRepo: FakeRetainedDepositRepository,
     )
 
-    private fun newService(relay: FakeShareRelay, contacts: List<Contact> = listOf(aliceContact)): ShareServiceFixture {
+    private fun newService(
+        relay: FakeShareRelay,
+        contacts: List<Contact> = listOf(aliceContact),
+        encryption: ShareEncryption = NoOpShareEncryption,
+    ): ShareServiceFixture {
         val bobIdentity = IdentityService(InMemoryIdentityStoreForShareServiceTest())
         bobIdentity.register("bob")
         val shareRepo = FakeShareRepository()
@@ -299,7 +310,7 @@ class ShareServiceTest {
         val retainedRepo = FakeRetainedDepositRepository()
         val svc = ShareService(
             relayResolver = FixedShareRelayResolver(relay),
-            encryption = NoOpShareEncryption,
+            encryption = encryption,
             shareRepository = shareRepo,
             shareMetadataRepository = metaRepo,
             secretRepository = FakeSecretRepository(),
@@ -349,6 +360,26 @@ class ShareServiceTest {
 
         assertEquals(listOf(id), relay.respondCalls)
         assertEquals(listOf(id), shareRepo.getAll().map { it.id })
+    }
+
+    @Test
+    fun `syncInbox leaves a Deposit pending when the share cannot be decrypted`() {
+        val relay = FakeShareRelay()
+        val (svc, bob, shareRepo, _, _, _, _) = newService(relay, encryption = FailingShareEncryption)
+        val id = UUID.randomUUID()
+        val unsigned = depositRow(id, aliceKeys.publicKey, bob.verifyKey(), ByteArray(0))
+        val row = unsigned.copy(senderSignature = signOpenAs(aliceKeys, unsigned))
+        relay.pending = listOf(row)
+        relay.byId[id] = row
+
+        svc.syncInbox()
+
+        // Approving is what clears the relay's only copy of the ciphertext, so a pickup that
+        // couldn't be stored locally must leave the row pending for the next poll to retry —
+        // approving first would consume the share and lose it silently.
+        assertEquals(emptyList<UUID>(), relay.respondCalls)
+        assertEquals(emptyList<UUID>(), shareRepo.getAll().map { it.id })
+        assertEquals(ShareRequestState.PENDING, relay.byId.getValue(id).state)
     }
 
     @Test

@@ -340,12 +340,17 @@ class ShareService(
                 // later report thresholds for during recovery.
                 val k = req.k ?: continue
                 val n = req.n ?: continue
-                if (shareRepository.getPlaintextShare(req.secretId) == null) {
-                    runCatching {
-                        val canon = PayloadCanonical.forRespond(req.id, approved = true, ciphertext = null)
-                        val recipientSignature = identity.sign(canon)
-                        val responded = relay.respondToShareRequest(req.id, true, recipientSignature = recipientSignature)
-                        responded.ciphertext?.let { ct ->
+                // Order is load-bearing: approving is what clears the relay's only copy of the
+                // ciphertext, so it is the last step of pickup and never the first. Decrypting and
+                // storing first means a failure leaves the row pending with the relay's copy
+                // intact, and the next poll simply retries. The ciphertext is already in hand and
+                // already authenticated — verifyOpen above covers it — so the approval response's
+                // echoed copy adds nothing. runCatching isolates one bad row from the rest of the
+                // poll; it must never span a half-completed pickup.
+                runCatching {
+                    var stored = shareRepository.getPlaintextShare(req.secretId) != null
+                    if (!stored) {
+                        req.ciphertext?.let { ct ->
                             val plaintext = encryption.decrypt(ct, senderContact.encKey)
                             shareRepository.save(
                                 HeldShare(
@@ -361,7 +366,15 @@ class ShareService(
                                     n = n,
                                 )
                             )
+                            stored = true
                         }
+                    }
+                    // Sent even when an earlier poll already stored the share but failed to
+                    // acknowledge it: without the approval the sender never observes the pickup and
+                    // keeps her retained blob forever.
+                    if (stored) {
+                        val canon = PayloadCanonical.forRespond(req.id, approved = true, ciphertext = null)
+                        relay.respondToShareRequest(req.id, true, recipientSignature = identity.sign(canon))
                     }
                 }
             }
