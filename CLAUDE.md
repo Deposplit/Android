@@ -145,7 +145,9 @@ not supported there.
   lazysodium, no JNA, no `.so` files beyond what AndroidX already packages. BouncyCastle is
   pure JVM, so it works on every emulator ABI with no extra configuration.
 - **Private keys live in the Android Keystore**, wrapped with AES-256-GCM under the
-  `deposplit_master` alias, and never leave the device as raw key material.
+  `deposplit_master` alias, and never leave the device as raw key material. `previous_dec_key`
+  holds the key-agreement key displaced by the last rotation, kept one generation under the same
+  wrapping so a share sealed before the rotation can still be opened at pickup.
 - **Session state is plain `SharedPreferences`** — just an "is registered" flag. Do **not**
   add `EncryptedSharedPreferences`; `security-crypto` is deliberately not a dependency, and
   adding it needs a concrete reason, because the sensitive material is already in Keystore.
@@ -197,7 +199,7 @@ own debug-only fake-Premium `PurchaseRepository` in the same shape as `SKIP_BIOM
 ## Build and test
 
 ```bash
-./gradlew test                    # JVM unit tests (117 in :hexagon, 20 in :app) — what CI runs
+./gradlew test                    # JVM unit tests (124 in :hexagon, 20 in :app) — what CI runs
 ./gradlew :hexagon:test           # domain only
 ./gradlew :hexagon:test --tests "com.deposplit.shamir.ShamirTest"
 ./gradlew assembleDebug           # → app/build/outputs/apk/debug/app-debug.apk

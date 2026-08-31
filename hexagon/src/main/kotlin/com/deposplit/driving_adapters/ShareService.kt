@@ -506,6 +506,18 @@ class ShareService(
         relayForContact(contact).pushRotation(contact.verifyKey, newVerifyKey, newEncKey, newCipherSuite, signature)
     }
 
+    // Whether every relay this device knows of answered. syncInbox and syncDistributed soft-fail
+    // per relay on purpose — one dark BYOR relay must not blank out results from the others — which
+    // also means neither can tell its caller that a relay went unheard. Rotation is the one caller
+    // that needs to know, because it is about to retire the identity those rows are addressed to,
+    // so it asks separately rather than the fan-out growing a return value every other caller
+    // would ignore.
+    private fun allRelaysAnswered(): Boolean = allRelays().all { relay ->
+        runCatching {
+            relay.listShareRequests(Role.RECIPIENT, ShareTransactionType.DEPOSIT, ShareRequestState.PENDING)
+        }.isSuccess
+    }
+
     // The identity-regeneration trigger. Order matters: the drain and rotation pushes must both
     // happen before activateKeyPair, since pushRotation (and the drain's own relay calls) sign
     // with whatever identity is currently persisted — that's what proves continuity from the old
@@ -516,6 +528,7 @@ class ShareService(
     override fun regenerateIdentity(): RegenerateIdentityResult {
         runCatching { syncInbox() }
         runCatching { syncDistributed() }
+        val drainSucceeded = allRelaysAnswered()
         val newKeys = identity.generateNewKeyPair()
         val contacts = contactRepository.getAll()
         var notified = 0
@@ -524,7 +537,7 @@ class ShareService(
             if (success) notified++
         }
         identity.activateKeyPair(newKeys)
-        return RegenerateIdentityResult(notified, contacts.size)
+        return RegenerateIdentityResult(notified, contacts.size, drainSucceeded)
     }
 
     // Identity recovery — sender/owner side. Consumes pending recoveryMetadata pushes addressed

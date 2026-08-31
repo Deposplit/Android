@@ -62,9 +62,10 @@ class SettingsViewModel(
 
     /** The identity-regeneration trigger. Best-effort drains pending relay state under the *old*
      * identity, notifies every contact of the new key, then activates it — see
-     * ShareService.regenerateIdentity's doc comment for why the ordering matters. Any request
-     * still pending with a counterparty at this exact moment may become unreachable afterward
-     * (surfaced in the confirmation dialog's copy, not repeated here).
+     * ShareService.regenerateIdentity's doc comment for why the ordering matters. A drain that
+     * could not reach every relay is reported rather than swallowed: it no longer risks losing a
+     * share, since the displaced key is retained one generation, but the user is told what was
+     * skipped instead of the rotation quietly deciding for them.
      */
     fun regenerateIdentity() {
         _uiState.update { it.copy(isRegeneratingIdentity = true, regenerateResult = null, regenerateError = null) }

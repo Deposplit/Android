@@ -32,10 +32,28 @@ package com.deposplit.driven_ports
  */
 interface IdentityStore {
     fun isRegistered(): Boolean
+
+    /* Registration. Establishes a brand-new identity, so any retained previous decKey is cleared — it belonged to an
+     * identity this device is no longer continuous with. */
     fun save(pseudonym: String, verifyKey: ByteArray, signKey: ByteArray, encKey: ByteArray, decKey: ByteArray)
+
+    /* Rotation. Persists the new keys and moves the displaced decKey into the previous slot, preserving the pseudonym.
+     * Separate from save() because only rotation is continuous with what came before, and only rotation may leave an
+     * old key readable.
+     *
+     * Only the decKey is kept. The old signKey is destroyed here: retaining it would let someone who extracts an
+     * unlocked device sign a rotation notice as the *previous* identity, which every contact would auto-accept as
+     * proof of key continuity. */
+    fun rotate(verifyKey: ByteArray, signKey: ByteArray, encKey: ByteArray, decKey: ByteArray)
+
     fun pseudonym(): String
     fun verifyKey(): ByteArray
     fun signKey(): ByteArray
     fun encKey(): ByteArray
     fun decKey(): ByteArray
+
+    /* The decKey displaced by the most recent rotate(), or null on an identity that has never rotated. Does not throw:
+     * absence is the ordinary case, and a storage read that fails should cost the fallback, never the decryption that
+     * was going to succeed anyway. */
+    fun previousDecKey(): ByteArray?
 }

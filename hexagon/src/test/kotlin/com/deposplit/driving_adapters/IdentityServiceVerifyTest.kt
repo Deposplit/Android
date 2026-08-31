@@ -17,6 +17,7 @@ private class InMemoryIdentityStore : IdentityStore {
     private var edSk = ByteArray(0)
     private var xPk = ByteArray(0)
     private var xSk = ByteArray(0)
+    private var previousXSk: ByteArray? = null
 
     override fun isRegistered() = registered
 
@@ -26,7 +27,16 @@ private class InMemoryIdentityStore : IdentityStore {
         this.edSk = edSk
         this.xPk = xPk
         this.xSk = xSk
+        this.previousXSk = null
         registered = true
+    }
+
+    override fun rotate(verifyKey: ByteArray, signKey: ByteArray, encKey: ByteArray, decKey: ByteArray) {
+        this.previousXSk = xSk
+        this.edPk = verifyKey
+        this.edSk = signKey
+        this.xPk = encKey
+        this.xSk = decKey
     }
 
     override fun pseudonym() = _pseudonym
@@ -34,6 +44,7 @@ private class InMemoryIdentityStore : IdentityStore {
     override fun signKey() = edSk
     override fun encKey() = xPk
     override fun decKey() = xSk
+    override fun previousDecKey() = previousXSk
 }
 
 /**
@@ -101,6 +112,65 @@ class IdentityServiceVerifyTest {
         assertTrue(alice.verifyKey().contentEquals(candidate.verifyKey))
         assertTrue(alice.encKey().contentEquals(candidate.encKey))
         assertTrue(alice.pseudonym() == "test")
+    }
+
+    // A share is sealed to whichever encKey the holder advertised at deposit time. If rotating
+    // destroyed the matching decKey outright, a holder who rotates between a deposit and their
+    // pickup could never collect it — the row would stay pending and every later poll would fail
+    // identically.
+
+    @Test
+    fun `decrypt falls back to the decKey displaced by the last rotation`() {
+        val alice = newIdentity()
+        val bob = newIdentity()
+        val share = "one share".encodeToByteArray()
+        val sealedToAlicesOldKey = bob.encrypt(share, alice.encKey())
+
+        alice.activateKeyPair(alice.generateNewKeyPair())
+
+        assertTrue(alice.decrypt(sealedToAlicesOldKey, bob.encKey()).contentEquals(share))
+    }
+
+    @Test
+    fun `decrypt does not reach back past one generation`() {
+        val alice = newIdentity()
+        val bob = newIdentity()
+        val sealedToAlicesOldestKey = bob.encrypt("one share".encodeToByteArray(), alice.encKey())
+
+        alice.activateKeyPair(alice.generateNewKeyPair())
+        alice.activateKeyPair(alice.generateNewKeyPair())
+
+        // Deliberate: one generation covers the deposit-to-pickup window, and no more key material
+        // than that lingers at rest.
+        assertFailsWith<Exception> { alice.decrypt(sealedToAlicesOldestKey, bob.encKey()) }
+    }
+
+    @Test
+    fun `encrypt never seals under the displaced key`() {
+        val alice = newIdentity()
+        val bob = newIdentity()
+        val alicesOldEncKey = alice.encKey()
+        alice.activateKeyPair(alice.generateNewKeyPair())
+
+        val sealed = alice.encrypt("outgoing".encodeToByteArray(), bob.encKey())
+
+        assertTrue(bob.decrypt(sealed, alice.encKey()).contentEquals("outgoing".encodeToByteArray()))
+        assertFailsWith<Exception> { bob.decrypt(sealed, alicesOldEncKey) }
+    }
+
+    @Test
+    fun `registering a fresh identity drops the retained key`() {
+        val store = InMemoryIdentityStore()
+        val alice = IdentityService(store)
+        alice.register("test")
+        val bob = newIdentity()
+        val sealedToAlicesOldKey = bob.encrypt("one share".encodeToByteArray(), alice.encKey())
+        alice.activateKeyPair(alice.generateNewKeyPair())
+
+        // Registration is a new identity, not a continuation of the old one, so nothing carries over.
+        alice.register("test")
+
+        assertFailsWith<Exception> { alice.decrypt(sealedToAlicesOldKey, bob.encKey()) }
     }
 
     @Test

@@ -128,13 +128,14 @@
     <string name="settings_catalog_imported">%1$s neue(n) Kontakt(e) importiert.</string>
     <string name="settings_catalog_import_error">Katalog konnte nicht importiert werden</string>
     <string name="settings_identity_title">Identität</string>
-    <string name="settings_regenerate_description">Erzeugt ein brandneues Schlüsselpaar für dieses Gerät und benachrichtigt automatisch alle deine Kontakte. Anfragen, die gerade bei jemand anderem offen sind, können danach unerreichbar werden — lass diese besser zuerst abschließen. Das lässt sich nicht rückgängig machen.</string>
+    <string name="settings_regenerate_description">Erzeugt ein brandneues Schlüsselpaar für dieses Gerät und benachrichtigt automatisch alle deine Kontakte. Ein bereits an dich unterwegs befindlicher Anteil kann danach weiterhin abgeholt werden, ein jetzt nicht erreichbarer Kontakt erfährt aber nichts vom neuen Schlüssel. Das lässt sich nicht rückgängig machen.</string>
     <string name="settings_regenerate_button">Meine Identität neu erzeugen</string>
     <string name="settings_regenerate_confirm_title">Identität neu erzeugen?</string>
-    <string name="settings_regenerate_confirm_body">Damit wird ein neues Schlüsselpaar erzeugt und %1$d Kontakt(e) benachrichtigt. Jede gerade bei jemand anderem offene Anfrage kann verloren gehen.</string>
+    <string name="settings_regenerate_confirm_body">Damit wird ein neues Schlüsselpaar erzeugt und %1$d Kontakt(e) benachrichtigt. Ein bereits an dich unterwegs befindlicher Anteil kann danach weiterhin abgeholt werden; ein jetzt nicht erreichbarer Kontakt erfährt nichts vom neuen Schlüssel.</string>
     <string name="settings_regenerate_confirm_action">Neu erzeugen</string>
     <string name="settings_regenerate_result">%1$d von %2$d Kontakt(en) benachrichtigt.</string>
     <string name="settings_regenerate_error">Identität konnte nicht neu erzeugt werden</string>
+    <string name="settings_regenerate_drain_warning">Einige Relays waren nicht erreichbar, daher wurden noch offene Übertragungen nicht vorab eingesammelt — sie kommen bei einer späteren Synchronisierung an.</string>
 
     <!-- Deposit -->
     <string name="deposit_title">Geheimnis aufteilen &amp; verteilen</string>

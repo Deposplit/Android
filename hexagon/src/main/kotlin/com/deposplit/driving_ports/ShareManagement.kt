@@ -71,6 +71,7 @@ interface ShareManagement {
     // drains the inbox/distributed state under the old identity, generates a fresh keypair, pushes
     // a signed rotation notice (via the existing pushRotation, unchanged) to every contact while
     // still signing as the old identity, then activates the new keypair locally. A contact whose
-    // push fails is not retried — same one-shot semantics as pushRotation itself.
+    // push fails is not retried — same one-shot semantics as pushRotation itself. A drain that
+    // fails does not stop the rotation, but is reported in the result rather than dropped.
     fun regenerateIdentity(): RegenerateIdentityResult
 }

@@ -59,7 +59,7 @@ class IdentityService(private val identityStore: IdentityStore) : Identity, Shar
     override fun generateNewKeyPair(): KeyPairMaterial = generateKeyPairMaterial()
 
     override fun activateKeyPair(keyPair: KeyPairMaterial) {
-        identityStore.save(identityStore.pseudonym(), keyPair.verifyKey, keyPair.signKey, keyPair.encKey, keyPair.decKey)
+        identityStore.rotate(keyPair.verifyKey, keyPair.signKey, keyPair.encKey, keyPair.decKey)
     }
 
     private fun generateKeyPairMaterial(): KeyPairMaterial {
@@ -118,13 +118,31 @@ class IdentityService(private val identityStore: IdentityStore) : Identity, Shar
         return byteArrayOf(TransportSuite.current.tag) + nonce + out.copyOf(len)
     }
 
+    // Falls back to the decKey displaced by the last rotation when the current one cannot open the
+    // box. A share is sealed to whichever encKey the holder advertised at deposit time, so a holder
+    // who rotates between a deposit and their pickup would otherwise never be able to collect it:
+    // the row stays pending and every later poll fails identically. One generation is enough to
+    // cover that window without keeping a keyring.
+    //
+    // Never used for encrypt() — this device always seals under its current key.
     override fun decrypt(noncePlusCiphertext: ByteArray, recipientEncKey: ByteArray): ByteArray {
         val tag = noncePlusCiphertext.getOrNull(0)
             ?: throw UnsupportedTransportSuiteException("ciphertext is empty — no transport suite tag")
         if (TransportSuite.fromTag(tag) == null) {
             throw UnsupportedTransportSuiteException("this share used an encryption scheme this app version doesn't support")
         }
-        val sk = X25519PrivateKeyParameters(identityStore.decKey())
+        return try {
+            open(noncePlusCiphertext, recipientEncKey, identityStore.decKey())
+        } catch (e: Exception) {
+            // The current key's failure is the one worth reporting — the fallback missing or failing
+            // too just means there was no earlier generation this box belongs to.
+            val previous = identityStore.previousDecKey() ?: throw e
+            runCatching { open(noncePlusCiphertext, recipientEncKey, previous) }.getOrElse { throw e }
+        }
+    }
+
+    private fun open(noncePlusCiphertext: ByteArray, recipientEncKey: ByteArray, decKey: ByteArray): ByteArray {
+        val sk = X25519PrivateKeyParameters(decKey)
         val nonce = noncePlusCiphertext.copyOfRange(1, 1 + NONCE_BYTES)
         val ciphertext = noncePlusCiphertext.copyOfRange(1 + NONCE_BYTES, noncePlusCiphertext.size)
         val key = deriveKey(sk, X25519PublicKeyParameters(recipientEncKey), nonce)

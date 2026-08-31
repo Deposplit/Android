@@ -26,9 +26,32 @@ class AndroidIdentityStore(context: Context) : IdentityStore {
             .putEncrypted(masterKey, "sign_key", signKey)
             .putString("enc_key", encKey.encodeBase64())
             .putEncrypted(masterKey, "dec_key", decKey)
+            .remove("previous_dec_key")
+            .remove("previous_dec_key_iv")
             .putBoolean("registered", true)
             .apply()
     }
+
+    // One commit, so the displaced key and the new one can never disagree about which generation
+    // is current.
+    override fun rotate(verifyKey: ByteArray, signKey: ByteArray, encKey: ByteArray, decKey: ByteArray) {
+        val masterKey = loadOrCreateMasterKey()
+        val displaced = runCatching { prefs.getDecrypted(masterKey, "dec_key") }.getOrNull()
+        val editor = prefs.edit()
+            .putString("verify_key", verifyKey.encodeBase64())
+            .putEncrypted(masterKey, "sign_key", signKey)
+            .putString("enc_key", encKey.encodeBase64())
+            .putEncrypted(masterKey, "dec_key", decKey)
+        if (displaced == null) {
+            editor.remove("previous_dec_key").remove("previous_dec_key_iv")
+        } else {
+            editor.putEncrypted(masterKey, "previous_dec_key", displaced)
+        }
+        editor.apply()
+    }
+
+    override fun previousDecKey(): ByteArray? =
+        runCatching { prefs.getDecrypted(loadOrCreateMasterKey(), "previous_dec_key") }.getOrNull()
 
     override fun pseudonym(): String = requirePref("pseudonym")
 
