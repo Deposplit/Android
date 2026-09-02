@@ -20,7 +20,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.deposplit.R
 import com.deposplit.value_objects.MimeType
-import java.io.ByteArrayOutputStream
 
 /**
  * Renders whatever `reconstruct` produced, forking on [ReconstructedSecret]. Shown wherever a
@@ -41,7 +40,9 @@ fun ReconstructedSecretContent(
     val context = LocalContext.current
     val exportBytes = when (secret) {
         is ReconstructedSecret.Text -> secret.text.toByteArray(Charsets.UTF_8)
-        is ReconstructedSecret.Image -> secret.bitmap.toPngBytes()
+        // The payload, not a re-encode of the bitmap — re-encoding would export bytes that are not
+        // the secret, under a filename claiming the original's type.
+        is ReconstructedSecret.Image -> secret.bytes
         is ReconstructedSecret.Binary -> secret.bytes
     }
     val exportLauncher = rememberLauncherForActivityResult(
@@ -100,5 +101,3 @@ private fun exportFileName(label: String, mimeType: MimeType): String {
     return if (extension != null) "$base.$extension" else base
 }
 
-private fun android.graphics.Bitmap.toPngBytes(): ByteArray =
-    ByteArrayOutputStream().also { compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()

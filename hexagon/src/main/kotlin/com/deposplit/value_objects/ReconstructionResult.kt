@@ -22,7 +22,9 @@ data class ReconstructionResult(
     val integrity: ReconstructionIntegrity,
     val mimeType: MimeType,
 ) {
+    // mimeType belongs in both: two results over the same bytes but a different declared type are
+    // not the same result, and leaving it out silently made them compare equal.
     override fun equals(other: Any?) = other is ReconstructionResult &&
-        secret.contentEquals(other.secret) && integrity == other.integrity
-    override fun hashCode() = 31 * secret.contentHashCode() + integrity.hashCode()
+        secret.contentEquals(other.secret) && integrity == other.integrity && mimeType == other.mimeType
+    override fun hashCode() = 31 * (31 * secret.contentHashCode() + integrity.hashCode()) + mimeType.hashCode()
 }

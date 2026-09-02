@@ -32,6 +32,8 @@ import com.deposplit.value_objects.ShareMetadata
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareRequestState
 import com.deposplit.value_objects.ShareTransactionType
+import com.deposplit.value_objects.SecretLimits
+import com.deposplit.value_objects.SecretTooLargeException
 import com.deposplit.value_objects.SignatureVerificationException
 import com.deposplit.value_objects.VerificationLevel
 import java.time.Duration
@@ -101,6 +103,9 @@ class ShareService(
         threshold: Int,
         mimeType: MimeType,
     ) {
+        if (secret.size > SecretLimits.MAX_SECRET_BYTES) {
+            throw SecretTooLargeException(secret.size, SecretLimits.MAX_SECRET_BYTES)
+        }
         val shares = split(secret, contacts.size, threshold)
         val secretId = UUID.randomUUID()
         val createdAt = Instant.now()

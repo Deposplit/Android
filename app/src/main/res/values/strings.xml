@@ -142,6 +142,10 @@
     <string name="deposit_label_label">Label</string>
     <string name="deposit_label_placeholder">e.g. BitLocker key</string>
     <string name="deposit_secret_label">Secret</string>
+    <string name="deposit_secret_choose_photo">Choose photo…</string>
+    <string name="deposit_secret_choose_file">Choose file…</string>
+    <string name="deposit_secret_remove">Remove</string>
+    <string name="deposit_selected_image_description">Selected image</string>
     <string name="deposit_recipients_title">Recipients</string>
     <string name="deposit_no_contacts">No contacts yet — add contacts first</string>
     <string name="deposit_threshold_title">Required to reconstruct</string>
@@ -151,6 +155,8 @@
     <string name="deposit_error_select_at_least_2">Select at least 2 recipients</string>
     <string name="deposit_error_load_contacts">Failed to load contacts</string>
     <string name="deposit_error_fallback">Deposit failed</string>
+    <string name="deposit_error_unsupported_type">Only PNG and JPEG images can be split.</string>
+    <string name="deposit_error_too_large">That image is %1$s. The largest secret Deposplit can split is %2$s.</string>
     <string name="deposit_warning_title">Are you sure?</string>
     <string name="deposit_warning_deposit_anyway">Deposit Anyway</string>
     <string name="deposit_warning_operational_large">Distributing to %1$d people is a lot to manage — you\'ll need to exchange keys, approve every pickup, and keep track of all of them.</string>

@@ -23,7 +23,9 @@ import com.deposplit.value_objects.ReconstructionIntegrity
 import com.deposplit.value_objects.RetainedDepositBlob
 import com.deposplit.value_objects.Role
 import com.deposplit.value_objects.Secret
+import com.deposplit.value_objects.SecretLimits
 import com.deposplit.value_objects.SecretState
+import com.deposplit.value_objects.SecretTooLargeException
 import com.deposplit.value_objects.ShareMetadata
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareRequestState
@@ -42,6 +44,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /** A keypair not tied to any Identity instance — used to sign fixture rows "as" a third party
@@ -1552,6 +1555,53 @@ class ShareServiceTest {
     }
 
     // ── mimeType ────────────────────────────────────────────────────────────────────────────────
+
+    // ---- secret size and format ----
+
+    @Test
+    fun `deposit accepts a secret exactly at the limit`() {
+        val relay = FakeShareRelay()
+        val holderKeys = TestKeyPair.generate()
+        val holderContact = aliceContact.copy(id = UUID.randomUUID(), pseudonym = "holder", verifyKey = holderKeys.publicKey)
+        val (svc, _, _, _, _, _, _) = newService(relay, contacts = listOf(aliceContact, holderContact))
+
+        svc.deposit(ByteArray(SecretLimits.MAX_SECRET_BYTES) { 0x41 }, "s", listOf(aliceContact, holderContact), 2)
+
+        assertEquals(2, relay.openedRequests.size)
+    }
+
+    @Test
+    fun `deposit refuses a secret one byte over the limit`() {
+        val relay = FakeShareRelay()
+        val holderKeys = TestKeyPair.generate()
+        val holderContact = aliceContact.copy(id = UUID.randomUUID(), pseudonym = "holder", verifyKey = holderKeys.publicKey)
+        val (svc, _, _, _, _, _, _) = newService(relay, contacts = listOf(aliceContact, holderContact))
+
+        assertFailsWith<SecretTooLargeException> {
+            svc.deposit(ByteArray(SecretLimits.MAX_SECRET_BYTES + 1) { 0x41 }, "s", listOf(aliceContact, holderContact), 2)
+        }
+        // Nothing reached the relay — the guard runs before the split, not after it.
+        assertTrue(relay.openedRequests.isEmpty())
+    }
+
+    @Test
+    fun `sniffed recognises PNG and JPEG and nothing else`() {
+        val png = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x01)
+        val jpeg = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE0.toByte(), 0x00, 0x10)
+        assertEquals(MimeType.PNG, MimeType.sniffed(png))
+        assertEquals(MimeType.JPEG, MimeType.sniffed(jpeg))
+        assertNull(MimeType.sniffed("hello".toByteArray(Charsets.UTF_8)))
+        // GIF is deliberately not accepted.
+        assertNull(MimeType.sniffed(byteArrayOf(0x47, 0x49, 0x46, 0x38)))
+    }
+
+    @Test
+    fun `sniffed does not overrun a buffer shorter than the magic bytes`() {
+        assertNull(MimeType.sniffed(ByteArray(0)))
+        assertNull(MimeType.sniffed(byteArrayOf(0xFF.toByte())))
+        assertNull(MimeType.sniffed(byteArrayOf(0xFF.toByte(), 0xD8.toByte())))
+        assertNull(MimeType.sniffed(byteArrayOf(0x89.toByte(), 0x50, 0x4E)))
+    }
 
     @Test
     fun `deposit records the mimeType on the Secret and signs it into every deposit row`() {

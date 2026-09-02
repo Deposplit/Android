@@ -8,6 +8,7 @@ import com.deposplit.driving_ports.ContactManagement
 import com.deposplit.driving_ports.ShareManagement
 import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.MimeType
+import com.deposplit.value_objects.SecretLimits
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,11 +50,15 @@ class DepositViewModel(
     data class UiState(
         val label: String = "",
         val secret: String = "",
-        // Set only by a prefill whose payload is not editable text. When present it is what gets
-        // split, verbatim, and the text field is replaced by a read-only summary — re-encoding it
+        // Set by a picked image, or by a prefill whose payload is not editable text. When present it
+        // is what gets split, verbatim, and the text field is replaced by a summary — re-encoding it
         // as a String is exactly the corruption Prefill's comment describes.
         val opaqueSecret: ByteArray? = null,
         val mimeType: MimeType = MimeType.DEFAULT,
+        // True when opaqueSecret arrived from a repair rather than the picker. The two look the same
+        // to deposit, but not to the user: one is something to explain, the other something to undo.
+        val isCarriedThrough: Boolean = false,
+        val pickError: PickError? = null,
         val threshold: Int = 2,
         val contacts: List<Contact> = emptyList(),
         val selectedContactIds: Set<UUID> = emptySet(),
@@ -79,12 +84,21 @@ class DepositViewModel(
             selectedContactIds == other.selectedContactIds && isLoadingContacts == other.isLoadingContacts &&
             isDepositing == other.isDepositing && error == other.error && labelError == other.labelError &&
             secretError == other.secretError && selectionError == other.selectionError &&
-            pendingWarnings == other.pendingWarnings
+            pendingWarnings == other.pendingWarnings &&
+            isCarriedThrough == other.isCarriedThrough && pickError == other.pickError
 
         override fun hashCode() = listOf(
             label, secret, opaqueSecret?.contentHashCode(), mimeType, threshold, contacts, selectedContactIds,
             isLoadingContacts, isDepositing, error, labelError, secretError, selectionError, pendingWarnings,
+            isCarriedThrough, pickError,
         ).hashCode()
+    }
+
+    // Why a picked file was refused. Carries the numbers rather than a string id alone, because the
+    // message names the actual size — which is the whole point of refusing rather than shrinking.
+    sealed interface PickError {
+        data object UnsupportedType : PickError
+        data class TooLarge(val bytes: Long, val limit: Long) : PickError
     }
 
     sealed interface Effect {
@@ -113,6 +127,7 @@ class DepositViewModel(
                 secret = text ?: "",
                 opaqueSecret = if (text == null) prefill.secret else null,
                 mimeType = prefill.mimeType,
+                isCarriedThrough = text == null,
                 threshold = prefill.threshold,
                 selectedContactIds = prefill.selectedContactIds,
             )
@@ -140,6 +155,51 @@ class DepositViewModel(
 
     fun onLabelChange(value: String) = _uiState.update { it.copy(label = value, labelError = null) }
     fun onSecretChange(value: String) = _uiState.update { it.copy(secret = value, secretError = null) }
+
+    /**
+     * Takes a picked file as the secret, or refuses it and says why.
+     *
+     * Both checks happen here rather than at deposit time so the answer arrives while the user is
+     * still looking at the picker's result. The domain re-checks the size regardless — this is the
+     * courteous half, not the enforcing one.
+     *
+     * The declared type comes from the bytes, never from the picker's claim or the file's name, so
+     * what gets signed cannot disagree with what got split.
+     */
+    fun onFilePicked(bytes: ByteArray) {
+        val sniffed = MimeType.sniffed(bytes)
+        _uiState.update {
+            when {
+                sniffed == null -> it.copy(pickError = PickError.UnsupportedType)
+                bytes.size > SecretLimits.MAX_SECRET_BYTES ->
+                    it.copy(pickError = PickError.TooLarge(bytes.size.toLong(), SecretLimits.MAX_SECRET_BYTES.toLong()))
+                else -> it.copy(
+                    opaqueSecret = bytes,
+                    mimeType = sniffed,
+                    isCarriedThrough = false,
+                    pickError = null,
+                    secretError = null,
+                )
+            }
+        }
+    }
+
+    /**
+     * Refuses a pick whose size the picker reported up front, so an oversized file never has to be
+     * read into memory just to be turned away. [Long] because a provider reports a file length,
+     * which may be far larger than the limit.
+     */
+    fun onPickedFileTooLarge(bytes: Long) = _uiState.update {
+        it.copy(pickError = PickError.TooLarge(bytes, SecretLimits.MAX_SECRET_BYTES.toLong()))
+    }
+
+    /**
+     * Drops a picked image and returns the form to text entry. Whatever was typed before the pick is
+     * still in [UiState.secret], so it comes back rather than being lost.
+     */
+    fun onPickedFileCleared() = _uiState.update {
+        it.copy(opaqueSecret = null, mimeType = MimeType.DEFAULT, isCarriedThrough = false, pickError = null)
+    }
 
     fun onToggleContact(contactId: UUID) {
         _uiState.update { state ->

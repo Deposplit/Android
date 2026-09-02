@@ -1,5 +1,10 @@
 package com.deposplit.ui.deposit
 
+import android.content.res.AssetFileDescriptor
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -9,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -34,6 +40,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -45,8 +53,10 @@ import com.deposplit.DeposplitApp
 import com.deposplit.R
 import com.deposplit.ui.contacts.badgeColor
 import com.deposplit.ui.contacts.displayName
+import com.deposplit.ui.reconstruction.ReconstructedSecret
 import com.deposplit.ui.reconstruction.formatByteCount
 import com.deposplit.value_objects.Contact
+import com.deposplit.value_objects.SecretLimits
 import com.deposplit.value_objects.VerificationLevel
 import com.deposplit.value_objects.displayName
 import java.util.UUID
@@ -100,6 +110,34 @@ fun DepositForm(
     viewModel: DepositViewModel,
     contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
+    val context = LocalContext.current
+
+    // Asks the provider how big the file is before opening it, so an oversized pick is refused —
+    // with its real size in the message — without pulling the whole thing into memory first. A
+    // provider that will not say (UNKNOWN_LENGTH) just falls through to the read.
+    fun readPicked(uri: android.net.Uri) {
+        val declaredSize = runCatching {
+            context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length }
+        }.getOrNull() ?: AssetFileDescriptor.UNKNOWN_LENGTH
+        if (declaredSize > SecretLimits.MAX_SECRET_BYTES) {
+            viewModel.onPickedFileTooLarge(declaredSize)
+            return
+        }
+        val bytes = runCatching {
+            context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+        }.getOrNull()
+        if (bytes != null) viewModel.onFilePicked(bytes)
+    }
+
+    // The photo picker needs no storage permission of any kind; the document picker reaches images
+    // that live in Files or Drive rather than the gallery.
+    val photoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) readPicked(uri)
+    }
+    val fileLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) readPicked(uri)
+    }
+
     if (uiState.isLoadingContacts) {
         Box(
             modifier = Modifier
@@ -134,20 +172,36 @@ fun DepositForm(
         Spacer(Modifier.height(12.dp))
 
         if (uiState.opaqueSecret != null) {
-            // Reconstructed as something other than text, so it is re-split exactly as it came back
-            // rather than edited through a text field.
+            // Bytes rather than editable text — a picked image, or something a repair carried back.
+            // Either way it is split exactly as it stands: re-encoding it through a text field is
+            // what used to corrupt a non-text secret.
             Text(stringResource(R.string.deposit_secret_label), style = MaterialTheme.typography.titleSmall)
             Spacer(Modifier.height(4.dp))
+            val classified = ReconstructedSecret.of(uiState.opaqueSecret, uiState.mimeType)
+            if (classified is ReconstructedSecret.Image) {
+                Image(
+                    bitmap = classified.bitmap.asImageBitmap(),
+                    contentDescription = stringResource(R.string.deposit_selected_image_description),
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 160.dp),
+                )
+                Spacer(Modifier.height(4.dp))
+            }
             Text(
                 text = "${uiState.mimeType.value} · ${formatByteCount(uiState.opaqueSecret.size)}",
                 style = MaterialTheme.typography.bodyMedium,
             )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = stringResource(R.string.deposit_secret_carried_through),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            if (uiState.isCarriedThrough) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.deposit_secret_carried_through),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            TextButton(onClick = viewModel::onPickedFileCleared) {
+                Text(stringResource(R.string.deposit_secret_remove))
+            }
         } else {
             OutlinedTextField(
                 value = uiState.secret,
@@ -158,6 +212,32 @@ fun DepositForm(
                 minLines = 3,
                 maxLines = 6,
                 modifier = Modifier.fillMaxWidth(),
+            )
+            Row {
+                TextButton(onClick = {
+                    photoLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                }) {
+                    Text(stringResource(R.string.deposit_secret_choose_photo))
+                }
+                TextButton(onClick = { fileLauncher.launch(arrayOf("image/png", "image/jpeg")) }) {
+                    Text(stringResource(R.string.deposit_secret_choose_file))
+                }
+            }
+        }
+        uiState.pickError?.let { pickError ->
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = when (pickError) {
+                    is DepositViewModel.PickError.UnsupportedType ->
+                        stringResource(R.string.deposit_error_unsupported_type)
+                    is DepositViewModel.PickError.TooLarge -> stringResource(
+                        R.string.deposit_error_too_large,
+                        formatByteCount(pickError.bytes),
+                        formatByteCount(pickError.limit),
+                    )
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
             )
         }
 

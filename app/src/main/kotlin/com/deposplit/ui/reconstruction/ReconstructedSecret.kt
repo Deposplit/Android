@@ -22,7 +22,15 @@ import java.text.StringCharacterIterator
  */
 sealed interface ReconstructedSecret {
     data class Text(val text: String) : ReconstructedSecret
-    data class Image(val bitmap: Bitmap) : ReconstructedSecret
+    /**
+     * Carries the payload beside the decoded bitmap, because the decoded bitmap is *not* the
+     * secret: re-encoding it would hand back different bytes under the original type's name. Export
+     * uses [bytes]; only the display uses the [bitmap].
+     */
+    data class Image(val bitmap: Bitmap, val bytes: ByteArray) : ReconstructedSecret {
+        override fun equals(other: Any?) = other is Image && bitmap == other.bitmap && bytes.contentEquals(other.bytes)
+        override fun hashCode() = 31 * bitmap.hashCode() + bytes.contentHashCode()
+    }
     data class Binary(val bytes: ByteArray) : ReconstructedSecret {
         override fun equals(other: Any?) = other is Binary && bytes.contentEquals(other.bytes)
         override fun hashCode() = bytes.contentHashCode()
@@ -34,7 +42,7 @@ sealed interface ReconstructedSecret {
                 secret.decodeToStringOrNull()?.let { return Text(it) }
             }
             if (mimeType.isImage) {
-                secret.decodeBitmapOrNull()?.let { return Image(it) }
+                secret.decodeBitmapOrNull()?.let { return Image(it, secret) }
             }
             return Binary(secret)
         }
@@ -59,8 +67,11 @@ private fun ByteArray.decodeBitmapOrNull(): Bitmap? = runCatching {
 }.getOrNull()
 
 /** Human-readable byte count, for the binary view and the repair form's carried-through payload. */
-fun formatByteCount(bytes: Int): String {
-    var value = bytes.toLong()
+fun formatByteCount(bytes: Int): String = formatByteCount(bytes.toLong())
+
+/** Long overload: a picker reports a file length, which can exceed what an Int would hold. */
+fun formatByteCount(bytes: Long): String {
+    var value = bytes
     if (-1000 < value && value < 1000) return "$value B"
     val units: CharacterIterator = StringCharacterIterator("kMGTPE")
     while (value <= -999_950 || value >= 999_950) {

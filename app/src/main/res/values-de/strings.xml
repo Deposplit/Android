@@ -75,7 +75,7 @@
     <string name="contacts_mark_compromised_description">Schlüssel von %1$s als kompromittiert markieren</string>
     <string name="contacts_revoked_badge_description">Ein früherer Schlüssel dieses Kontakts ist als kompromittiert markiert</string>
     <string name="contacts_mark_compromised_title">Den aktuellen Schlüssel dieses Kontakts als kompromittiert markieren?</string>
-    <string name="contacts_mark_compromised_message">Tun Sie dies nur, wenn Sie außerhalb dieses Kanals Grund zur Annahme haben, dass der Schlüssel von %1$s gestohlen wurde. Deposplit lehnt dann jede künftige Schlüsseländerung ab, die Kontinuität zu diesem Schlüssel beansprucht — Sie müssen die Person erneut verifizieren, persönlich oder über einen vertrauenswürdigen Kanal, um die Verbindung wiederherzustellen.</string>
+    <string name="contacts_mark_compromised_message">Tun Sie dies nur, wenn Sie ausserhalb dieses Kanals Grund zur Annahme haben, dass der Schlüssel von %1$s gestohlen wurde. Deposplit lehnt dann jede künftige Schlüsseländerung ab, die Kontinuität zu diesem Schlüssel beansprucht — Sie müssen die Person erneut verifizieren, persönlich oder über einen vertrauenswürdigen Kanal, um die Verbindung wiederherzustellen.</string>
     <string name="contacts_mark_compromised_confirm">Als kompromittiert markieren</string>
     <string name="contacts_error_mark_compromised">Markieren als kompromittiert fehlgeschlagen</string>
 
@@ -142,6 +142,10 @@
     <string name="deposit_label_label">Bezeichnung</string>
     <string name="deposit_label_placeholder">z. B. BitLocker-Schlüssel</string>
     <string name="deposit_secret_label">Geheimnis</string>
+    <string name="deposit_secret_choose_photo">Foto auswählen…</string>
+    <string name="deposit_secret_choose_file">Datei auswählen…</string>
+    <string name="deposit_secret_remove">Entfernen</string>
+    <string name="deposit_selected_image_description">Ausgewähltes Bild</string>
     <string name="deposit_recipients_title">Empfänger</string>
     <string name="deposit_no_contacts">Noch keine Kontakte — zuerst Kontakte hinzufügen</string>
     <string name="deposit_threshold_title">Zum Rekonstruieren benötigt</string>
@@ -151,6 +155,8 @@
     <string name="deposit_error_select_at_least_2">Mindestens 2 Empfänger auswählen</string>
     <string name="deposit_error_load_contacts">Kontakte konnten nicht geladen werden</string>
     <string name="deposit_error_fallback">Hinterlegen fehlgeschlagen</string>
+    <string name="deposit_error_unsupported_type">Nur PNG- und JPEG-Bilder können aufgeteilt werden.</string>
+    <string name="deposit_error_too_large">Dieses Bild ist %1$s gross. Das grösste Geheimnis, das Deposplit aufteilen kann, ist %2$s.</string>
     <string name="deposit_warning_title">Bist du sicher?</string>
     <string name="deposit_warning_deposit_anyway">Trotzdem hinterlegen</string>
     <string name="deposit_warning_operational_large">%1$d Personen zu beteiligen ist viel Aufwand — du musst Schlüssel austauschen, jede Abholung bestätigen und den Überblick über alle behalten.</string>
@@ -232,7 +238,7 @@
     <string name="repair_discard_old_button">Alte Verteilung verwerfen</string>
     <string name="repair_not_now_button">Jetzt nicht</string>
     <string name="repair_done_title">Fertig</string>
-    <string name="repair_close_button">Schließen</string>
+    <string name="repair_close_button">Schliessen</string>
     <string name="repair_error_load">Laden fehlgeschlagen</string>
     <string name="repair_error_reconstruct">Rekonstruktion fehlgeschlagen</string>
     <string name="repair_error_integrity">Integritätsprüfung der Rekonstruktion fehlgeschlagen — zu viele inkonsistente Anteile, um das Geheimnis sicher zu bestimmen</string>
