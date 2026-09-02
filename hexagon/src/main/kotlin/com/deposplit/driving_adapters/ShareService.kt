@@ -19,6 +19,7 @@ import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.CustodyHeartbeatTuning
 import com.deposplit.value_objects.HeldShare
 import com.deposplit.value_objects.KeyConflict
+import com.deposplit.value_objects.MimeType
 import com.deposplit.value_objects.PayloadCanonical
 import com.deposplit.value_objects.ReconstructionIntegrity
 import com.deposplit.value_objects.ReconstructionResult
@@ -77,7 +78,7 @@ class ShareService(
         val contact = contactRepository.getByVerifyKey(req.senderKey) ?: return false
         val canon = PayloadCanonical.forOpen(
             req.secretId, req.transactionType, req.recipientKey, req.label, req.secretCreatedAt, req.shareId, req.ciphertext,
-            req.k, req.n,
+            req.k, req.n, req.mimeType,
         )
         return identity.verify(canon, req.senderSignature, contact.verifyKey)
     }
@@ -93,25 +94,35 @@ class ShareService(
 
     // ── Sender flows ──────────────────────────────────────────────────────────
 
-    override fun deposit(secret: ByteArray, label: String, contacts: List<Contact>, threshold: Int) {
+    override fun deposit(
+        secret: ByteArray,
+        label: String,
+        contacts: List<Contact>,
+        threshold: Int,
+        mimeType: MimeType,
+    ) {
         val shares = split(secret, contacts.size, threshold)
         val secretId = UUID.randomUUID()
         val createdAt = Instant.now()
         shares.zip(contacts).forEach { (share, contact) ->
             val ciphertext = encryption.encrypt(share, contact.encKey)
-            val canon = PayloadCanonical.forOpen(secretId, ShareTransactionType.DEPOSIT, contact.verifyKey, label, createdAt, null, ciphertext, threshold, contacts.size)
+            val canon = PayloadCanonical.forOpen(secretId, ShareTransactionType.DEPOSIT, contact.verifyKey, label, createdAt, null, ciphertext, threshold, contacts.size, mimeType)
             val senderSignature = identity.sign(canon)
             val req = relayForContact(contact).openShareRequest(
                 secretId, contact.verifyKey, label, createdAt, ShareTransactionType.DEPOSIT, null, ciphertext,
-                k = threshold, n = contacts.size, senderSignature = senderSignature,
+                k = threshold, n = contacts.size, mimeType = mimeType, senderSignature = senderSignature,
             )
             shareMetadataRepository.save(ShareMetadata(req.id, secretId, contact.id))
             // Retained until this holder's pickup is confirmed (relay-observed or
             // heartbeat-attested), then discarded. Safe to retain: this blob is encrypted to the
             // holder's X25519 key, so this device cannot decrypt it itself.
-            runCatching { retainedDepositRepository.save(RetainedDepositBlob(req.id, secretId, contact.id, label, createdAt, ciphertext, threshold, contacts.size)) }
+            runCatching {
+                retainedDepositRepository.save(
+                    RetainedDepositBlob(req.id, secretId, contact.id, label, createdAt, ciphertext, threshold, contacts.size, mimeType),
+                )
+            }
         }
-        secretRepository.save(Secret(secretId, label, threshold, contacts.size, createdAt, SecretState.ACTIVE))
+        secretRepository.save(Secret(secretId, label, mimeType, threshold, contacts.size, createdAt, SecretState.ACTIVE))
     }
 
     override fun listSecrets(): List<Secret> = secretRepository.getAll()
@@ -301,7 +312,7 @@ class ShareService(
             result.excludedIndices.isEmpty() -> ReconstructionIntegrity.Confirmed
             else -> ReconstructionIntegrity.ExcludedSuspects(result.excludedIndices.map { contactIds[it] }.toSet())
         }
-        return ReconstructionResult(result.secret, integrity)
+        return ReconstructionResult(result.secret, integrity, secret.mimeType)
     }
 
     // Fans out a sender-initiated removal to every known holder of secretId and flips the Secret
@@ -335,11 +346,12 @@ class ShareService(
             // Unknown sender or unverified senderSignature: skip silently, do not auto-approve.
             for (req in pending.filter(::verifyOpen)) {
                 val senderContact = contactRepository.getByVerifyKey(req.senderKey) ?: continue
-                // A deposit without valid k/n can't happen against a conforming relay (required by
-                // ShareRequestsService) — skip defensively rather than store a share we can't
-                // later report thresholds for during recovery.
+                // A deposit without valid k/n/mimeType can't happen against a conforming relay
+                // (all three required by ShareRequestsService) — skip defensively rather than store
+                // a share we can't later report thresholds for during recovery.
                 val k = req.k ?: continue
                 val n = req.n ?: continue
+                val mimeType = req.mimeType ?: continue
                 // Order is load-bearing: approving is what clears the relay's only copy of the
                 // ciphertext, so it is the last step of pickup and never the first. Decrypting and
                 // storing first means a failure leaves the row pending with the relay's copy
@@ -364,6 +376,7 @@ class ShareService(
                                     plaintextShare = plaintext,
                                     k = k,
                                     n = n,
+                                    mimeType = mimeType,
                                 )
                             )
                             stored = true
@@ -554,8 +567,9 @@ class ShareService(
                 val holderContact = contactRepository.getByVerifyKey(req.senderKey) ?: continue
                 val k = req.k ?: continue
                 val n = req.n ?: continue
+                val mimeType = req.mimeType ?: continue
                 if (secretRepository.getAll().none { it.id == req.secretId }) {
-                    runCatching { secretRepository.save(Secret(req.secretId, req.label, k, n, req.secretCreatedAt, SecretState.ACTIVE)) }
+                    runCatching { secretRepository.save(Secret(req.secretId, req.label, mimeType, k, n, req.secretCreatedAt, SecretState.ACTIVE)) }
                 }
                 if (shareMetadataRepository.getAll().none { it.secretId == req.secretId && it.contactId == holderContact.id }) {
                     runCatching { shareMetadataRepository.save(ShareMetadata(UUID.randomUUID(), req.secretId, holderContact.id)) }
@@ -571,12 +585,12 @@ class ShareService(
             runCatching {
                 val canon = PayloadCanonical.forOpen(
                     share.secretId, ShareTransactionType.INVENTORY, contact.verifyKey, share.label, share.createdAt, null, null,
-                    share.k, share.n,
+                    share.k, share.n, share.mimeType,
                 )
                 val senderSignature = identity.sign(canon)
                 relayForContact(contact).openShareRequest(
                     share.secretId, contact.verifyKey, share.label, share.createdAt, ShareTransactionType.INVENTORY, null, null,
-                    k = share.k, n = share.n, senderSignature = senderSignature,
+                    k = share.k, n = share.n, mimeType = share.mimeType, senderSignature = senderSignature,
                 )
             }
         }

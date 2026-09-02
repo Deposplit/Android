@@ -3,6 +3,7 @@ package com.deposplit.settings
 import com.deposplit.value_objects.Catalog
 import com.deposplit.value_objects.CipherSuite
 import com.deposplit.value_objects.Contact
+import com.deposplit.value_objects.MimeType
 import com.deposplit.value_objects.Secret
 import com.deposplit.value_objects.SecretState
 import com.deposplit.value_objects.ShareMetadata
@@ -185,6 +186,9 @@ class CatalogCodecTest {
     private fun fullyPopulatedSecret() = Secret(
         id = UUID.fromString("22222222-2222-2222-2222-222222222222"),
         label = "BitLocker key",
+        // Deliberately not MimeType.DEFAULT: the round-trip audit would pass vacuously if the
+        // fixture happened to carry whatever a dropped field decodes back to.
+        mimeType = MimeType("image/png"),
         k = 2,
         n = 3,
         secretCreatedAt = Instant.parse("2026-05-06T07:08:09Z"),

@@ -2,6 +2,7 @@ package com.deposplit.shares
 
 import android.content.Context
 import com.deposplit.driven_ports.SecretRepository
+import com.deposplit.value_objects.MimeType
 import com.deposplit.value_objects.Secret
 import com.deposplit.value_objects.SecretState
 import kotlinx.serialization.Serializable
@@ -22,6 +23,7 @@ class LocalSecretRepository(context: Context) : SecretRepository {
         val label: String,
         val k: Int,
         val n: Int,
+        val mimeType: String,
         val secretCreatedAt: String,
         val state: String,
     )
@@ -58,6 +60,7 @@ class LocalSecretRepository(context: Context) : SecretRepository {
     private fun SecretWire.toDomain() = Secret(
         id = UUID.fromString(id),
         label = label,
+        mimeType = MimeType(mimeType),
         k = k,
         n = n,
         secretCreatedAt = Instant.parse(secretCreatedAt),
@@ -67,6 +70,7 @@ class LocalSecretRepository(context: Context) : SecretRepository {
     private fun Secret.toWire() = SecretWire(
         id = id.toString(),
         label = label,
+        mimeType = mimeType.value,
         k = k,
         n = n,
         secretCreatedAt = secretCreatedAt.toString(),

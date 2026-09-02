@@ -2,6 +2,7 @@ package com.deposplit.shares
 
 import android.content.Context
 import com.deposplit.driven_ports.RetainedDepositRepository
+import com.deposplit.value_objects.MimeType
 import com.deposplit.value_objects.RetainedDepositBlob
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -31,6 +32,7 @@ class LocalRetainedDepositRepository(context: Context) : RetainedDepositReposito
         val ciphertext: String,
         val k: Int,
         val n: Int,
+        val mimeType: String,
     )
 
     @Synchronized
@@ -71,6 +73,7 @@ class LocalRetainedDepositRepository(context: Context) : RetainedDepositReposito
         ciphertext = Base64.getDecoder().decode(ciphertext),
         k = k,
         n = n,
+        mimeType = MimeType(mimeType),
     )
 
     private fun RetainedDepositBlob.toWire() = RetainedDepositBlobWire(
@@ -82,5 +85,6 @@ class LocalRetainedDepositRepository(context: Context) : RetainedDepositReposito
         ciphertext = Base64.getEncoder().encodeToString(ciphertext),
         k = k,
         n = n,
+        mimeType = mimeType.value,
     )
 }

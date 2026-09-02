@@ -213,6 +213,12 @@
     <string name="reconstruction_advisory_confirmed">Integrity confirmed — every collected share agreed.</string>
     <string name="reconstruction_advisory_excluded">Excluded %1$d inconsistent share(s) (from: %2$s). Reconstructed from the remaining consistent shares.</string>
 
+    <!-- Reconstructed secret rendering -->
+    <string name="reconstructed_image_description">Reconstructed image</string>
+    <string name="reconstructed_binary_explanation">This secret is not text that can be shown here. Export it to open it elsewhere.</string>
+    <string name="reconstructed_export_button">Export\u2026</string>
+    <string name="deposit_secret_carried_through">Carried through unchanged — this secret is not text and cannot be edited here.</string>
+
     <!-- Reconstruct-and-re-split repair flow -->
     <string name="repair_title_format">Repair %1$s</string>
     <string name="repair_title_fallback">Repair</string>

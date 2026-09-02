@@ -213,6 +213,12 @@
     <string name="reconstruction_advisory_confirmed">Integrität bestätigt — alle gesammelten Anteile stimmten überein.</string>
     <string name="reconstruction_advisory_excluded">%1$d inkonsistente(n) Anteil(e) ausgeschlossen (von: %2$s). Aus den übrigen konsistenten Anteilen rekonstruiert.</string>
 
+    <!-- Darstellung des rekonstruierten Geheimnisses -->
+    <string name="reconstructed_image_description">Rekonstruiertes Bild</string>
+    <string name="reconstructed_binary_explanation">Dieses Geheimnis ist kein Text und kann hier nicht angezeigt werden. Exportiere es, um es woanders zu öffnen.</string>
+    <string name="reconstructed_export_button">Exportieren\u2026</string>
+    <string name="deposit_secret_carried_through">Unverändert übernommen — dieses Geheimnis ist kein Text und kann hier nicht bearbeitet werden.</string>
+
     <!-- Reparatur-Fluss (Rekonstruieren + neu aufteilen) -->
     <string name="repair_title_format">%1$s reparieren</string>
     <string name="repair_title_fallback">Reparieren</string>

@@ -17,6 +17,7 @@ import com.deposplit.value_objects.KeyConflict
 import com.deposplit.value_objects.KeyRotation
 import com.deposplit.shamir.ReconstructionIntegrityException
 import com.deposplit.shamir.split
+import com.deposplit.value_objects.MimeType
 import com.deposplit.value_objects.PayloadCanonical
 import com.deposplit.value_objects.ReconstructionIntegrity
 import com.deposplit.value_objects.RetainedDepositBlob
@@ -179,7 +180,14 @@ private object FailingShareEncryption : ShareEncryption {
  * must not see each other's rows.
  */
 private class FakeShareRelay(var unreachable: Boolean = false) : ShareRelay {
-    data class OpenedRequest(val secretId: UUID, val recipientKey: ByteArray, val transactionType: ShareTransactionType, val k: Int?, val n: Int?)
+    data class OpenedRequest(
+        val secretId: UUID,
+        val recipientKey: ByteArray,
+        val transactionType: ShareTransactionType,
+        val k: Int?,
+        val n: Int?,
+        val mimeType: MimeType?,
+    )
 
     var pending: List<ShareRequest> = emptyList()
     var byId: MutableMap<UUID, ShareRequest> = mutableMapOf()
@@ -198,9 +206,10 @@ private class FakeShareRelay(var unreachable: Boolean = false) : ShareRelay {
 
     override fun openShareRequest(
         secretId: UUID, recipientKey: ByteArray, label: String, secretCreatedAt: Instant,
-        transactionType: ShareTransactionType, shareId: UUID?, ciphertext: ByteArray?, k: Int?, n: Int?, senderSignature: ByteArray,
+        transactionType: ShareTransactionType, shareId: UUID?, ciphertext: ByteArray?, k: Int?, n: Int?,
+        mimeType: MimeType?, senderSignature: ByteArray,
     ): ShareRequest {
-        openedRequests.add(OpenedRequest(secretId, recipientKey, transactionType, k, n))
+        openedRequests.add(OpenedRequest(secretId, recipientKey, transactionType, k, n, mimeType))
         val selfApproved = transactionType == ShareTransactionType.INVENTORY
         val now = Instant.now()
         return ShareRequest(
@@ -208,7 +217,7 @@ private class FakeShareRelay(var unreachable: Boolean = false) : ShareRelay {
             label = label, secretCreatedAt = secretCreatedAt, transactionType = transactionType,
             state = if (selfApproved) ShareRequestState.APPROVED else ShareRequestState.PENDING,
             shareId = shareId, requestedAt = now, respondedAt = if (selfApproved) now else null,
-            ciphertext = null, k = k, n = n, senderSignature = senderSignature, recipientSignature = null,
+            ciphertext = null, k = k, n = n, mimeType = mimeType, senderSignature = senderSignature, recipientSignature = null,
         )
     }
 
@@ -333,7 +342,14 @@ class ShareServiceTest {
         return ShareServiceFixture(svc, bobIdentity, shareRepo, contactRepo, metaRepo, conflictRepo, retainedRepo)
     }
 
-    private fun depositRow(id: UUID, senderKey: ByteArray, recipientKey: ByteArray, senderSignature: ByteArray, ciphertext: ByteArray = byteArrayOf(1, 2, 3)): ShareRequest =
+    private fun depositRow(
+        id: UUID,
+        senderKey: ByteArray,
+        recipientKey: ByteArray,
+        senderSignature: ByteArray,
+        ciphertext: ByteArray = byteArrayOf(1, 2, 3),
+        mimeType: MimeType = MimeType.DEFAULT,
+    ): ShareRequest =
         ShareRequest(
             id = id,
             secretId = UUID.randomUUID(),
@@ -349,12 +365,18 @@ class ShareServiceTest {
             ciphertext = ciphertext,
             k = 2,
             n = 3,
+            mimeType = mimeType,
             senderSignature = senderSignature,
             recipientSignature = null,
         )
 
     private fun signOpenAs(signer: TestKeyPair, row: ShareRequest): ByteArray =
-        signer.sign(PayloadCanonical.forOpen(row.secretId, row.transactionType, row.recipientKey, row.label, row.secretCreatedAt, row.shareId, row.ciphertext, row.k, row.n))
+        signer.sign(
+            PayloadCanonical.forOpen(
+                row.secretId, row.transactionType, row.recipientKey, row.label, row.secretCreatedAt, row.shareId,
+                row.ciphertext, row.k, row.n, row.mimeType,
+            ),
+        )
 
     @Test
     fun `syncInbox approves and saves a Deposit with a valid senderSignature from a known contact`() {
@@ -580,16 +602,16 @@ class ShareServiceTest {
      */
     private fun approvedRecoveryMetadataRow(
         secretId: UUID, senderKey: ByteArray, recipientKey: ByteArray, signer: TestKeyPair,
-        k: Int = 2, n: Int = 3, label: String = "recovered secret",
+        k: Int = 2, n: Int = 3, mimeType: MimeType = MimeType.DEFAULT, label: String = "recovered secret",
     ): ShareRequest {
         val createdAt = Instant.now()
-        val canon = PayloadCanonical.forOpen(secretId, ShareTransactionType.INVENTORY, recipientKey, label, createdAt, null, null, k, n)
+        val canon = PayloadCanonical.forOpen(secretId, ShareTransactionType.INVENTORY, recipientKey, label, createdAt, null, null, k, n, mimeType)
         val sig = signer.sign(canon)
         val now = Instant.now()
         return ShareRequest(
             id = UUID.randomUUID(), secretId = secretId, senderKey = senderKey, recipientKey = recipientKey, label = label,
             secretCreatedAt = createdAt, transactionType = ShareTransactionType.INVENTORY, state = ShareRequestState.APPROVED,
-            shareId = null, requestedAt = now, respondedAt = now, ciphertext = null, k = k, n = n,
+            shareId = null, requestedAt = now, respondedAt = now, ciphertext = null, k = k, n = n, mimeType = mimeType,
             senderSignature = sig, recipientSignature = null,
         )
     }
@@ -603,7 +625,7 @@ class ShareServiceTest {
             HeldShare(
                 id = UUID.randomUUID(), secretId = secretId, label = "test secret", contactId = aliceContact.id,
                 senderPseudonym = "alice", createdAt = Instant.now(), pickedUpAt = Instant.now(),
-                plaintextShare = byteArrayOf(9), k = 2, n = 3,
+                plaintextShare = byteArrayOf(9), k = 2, n = 3, mimeType = MimeType.DEFAULT,
             )
         )
 
@@ -790,7 +812,7 @@ class ShareServiceTest {
             HeldShare(
                 id = shareId, secretId = secretId, label = "x", contactId = aliceContact.id,
                 senderPseudonym = "alice", createdAt = Instant.now(), pickedUpAt = Instant.now(),
-                plaintextShare = byteArrayOf(1), k = 2, n = 3,
+                plaintextShare = byteArrayOf(1), k = 2, n = 3, mimeType = MimeType.DEFAULT,
             )
         )
 
@@ -808,14 +830,14 @@ class ShareServiceTest {
             HeldShare(
                 id = UUID.randomUUID(), secretId = UUID.randomUUID(), label = "x", contactId = aliceContact.id,
                 senderPseudonym = "alice", createdAt = Instant.now(), pickedUpAt = Instant.now(),
-                plaintextShare = byteArrayOf(1), k = 2, n = 3,
+                plaintextShare = byteArrayOf(1), k = 2, n = 3, mimeType = MimeType.DEFAULT,
             )
         )
         shareRepo.save(
             HeldShare(
                 id = UUID.randomUUID(), secretId = UUID.randomUUID(), label = "y", contactId = aliceContact.id,
                 senderPseudonym = "alice", createdAt = Instant.now(), pickedUpAt = Instant.now(),
-                plaintextShare = byteArrayOf(2), k = 2, n = 3,
+                plaintextShare = byteArrayOf(2), k = 2, n = 3, mimeType = MimeType.DEFAULT,
             )
         )
 
@@ -837,7 +859,7 @@ class ShareServiceTest {
             HeldShare(
                 id = shareId, secretId = UUID.randomUUID(), label = "x", contactId = aliceContact.id,
                 senderPseudonym = "alice", createdAt = Instant.now(), pickedUpAt = Instant.now(),
-                plaintextShare = byteArrayOf(1), k = 2, n = 3,
+                plaintextShare = byteArrayOf(1), k = 2, n = 3, mimeType = MimeType.DEFAULT,
             )
         )
 
@@ -855,7 +877,8 @@ class ShareServiceTest {
             label = "test secret", secretCreatedAt = Instant.now(), transactionType = ShareTransactionType.DEPOSIT,
             state = state, shareId = null, requestedAt = Instant.now(),
             respondedAt = if (state == ShareRequestState.PENDING) null else Instant.now(),
-            ciphertext = null, k = 2, n = 3, senderSignature = ByteArray(0), recipientSignature = null,
+            ciphertext = null, k = 2, n = 3, mimeType = MimeType.DEFAULT, senderSignature = ByteArray(0),
+            recipientSignature = null,
         )
 
     @Test
@@ -971,7 +994,7 @@ class ShareServiceTest {
         val (svc, _, _, _, metaRepo, _, retainedRepo) = newService(relay)
         val depositId = UUID.randomUUID()
         val secretId = UUID.randomUUID()
-        retainedRepo.save(RetainedDepositBlob(depositId, secretId, aliceContact.id, "s", Instant.now(), byteArrayOf(1), 2, 3))
+        retainedRepo.save(RetainedDepositBlob(depositId, secretId, aliceContact.id, "s", Instant.now(), byteArrayOf(1), 2, 3, MimeType.DEFAULT))
         relay.pending = listOf(bareDepositRow(depositId, secretId, aliceContact.verifyKey, ShareRequestState.APPROVED))
 
         svc.syncDistributed()
@@ -987,7 +1010,7 @@ class ShareServiceTest {
         val (svc, _, _, _, metaRepo, _, retainedRepo) = newService(relay)
         val depositId = UUID.randomUUID()
         val secretId = UUID.randomUUID()
-        retainedRepo.save(RetainedDepositBlob(depositId, secretId, aliceContact.id, "s", Instant.now(), byteArrayOf(1), 2, 3))
+        retainedRepo.save(RetainedDepositBlob(depositId, secretId, aliceContact.id, "s", Instant.now(), byteArrayOf(1), 2, 3, MimeType.DEFAULT))
         relay.pending = listOf(bareDepositRow(depositId, secretId, aliceContact.verifyKey, ShareRequestState.APPROVED))
         svc.syncDistributed()
         val firstConfirmedAt = metaRepo.getAll().find { it.id == depositId }?.lastConfirmedAt
@@ -1025,7 +1048,7 @@ class ShareServiceTest {
         val relay = FakeShareRelay()
         val (svc, bob, shareRepo, _, _, _, _) = newService(relay)
         val secretId = UUID.randomUUID()
-        shareRepo.save(HeldShare(UUID.randomUUID(), secretId, "x", aliceContact.id, "alice", Instant.now(), Instant.now(), byteArrayOf(1), 2, 3))
+        shareRepo.save(HeldShare(UUID.randomUUID(), secretId, "x", aliceContact.id, "alice", Instant.now(), Instant.now(), byteArrayOf(1), 2, 3, MimeType.DEFAULT))
 
         svc.syncInbox()
 
@@ -1043,7 +1066,7 @@ class ShareServiceTest {
         val relay = FakeShareRelay()
         val recentlyHeartbeatedAlice = aliceContact.copy(lastHeartbeatSentAt = Instant.now())
         val (svc, _, shareRepo, _, _, _, _) = newService(relay, contacts = listOf(recentlyHeartbeatedAlice))
-        shareRepo.save(HeldShare(UUID.randomUUID(), UUID.randomUUID(), "x", aliceContact.id, "alice", Instant.now(), Instant.now(), byteArrayOf(1), 2, 3))
+        shareRepo.save(HeldShare(UUID.randomUUID(), UUID.randomUUID(), "x", aliceContact.id, "alice", Instant.now(), Instant.now(), byteArrayOf(1), 2, 3, MimeType.DEFAULT))
 
         svc.syncInbox()
 
@@ -1055,7 +1078,7 @@ class ShareServiceTest {
         val relay = FakeShareRelay()
         val optedOutAlice = aliceContact.copy(heartbeatEmissionOptedOut = true)
         val (svc, _, shareRepo, _, _, _, _) = newService(relay, contacts = listOf(optedOutAlice))
-        shareRepo.save(HeldShare(UUID.randomUUID(), UUID.randomUUID(), "x", aliceContact.id, "alice", Instant.now(), Instant.now(), byteArrayOf(1), 2, 3))
+        shareRepo.save(HeldShare(UUID.randomUUID(), UUID.randomUUID(), "x", aliceContact.id, "alice", Instant.now(), Instant.now(), byteArrayOf(1), 2, 3, MimeType.DEFAULT))
 
         svc.syncInbox()
 
@@ -1068,7 +1091,7 @@ class ShareServiceTest {
         val relay = FakeShareRelay()
         relay.throwOnPushHeartbeat = true
         val (svc, _, shareRepo, contactRepo, _, _, _) = newService(relay)
-        shareRepo.save(HeldShare(UUID.randomUUID(), UUID.randomUUID(), "x", aliceContact.id, "alice", Instant.now(), Instant.now(), byteArrayOf(1), 2, 3))
+        shareRepo.save(HeldShare(UUID.randomUUID(), UUID.randomUUID(), "x", aliceContact.id, "alice", Instant.now(), Instant.now(), byteArrayOf(1), 2, 3, MimeType.DEFAULT))
 
         svc.syncInbox()
 
@@ -1092,7 +1115,7 @@ class ShareServiceTest {
         val depositId = UUID.randomUUID()
         val secretId = UUID.randomUUID()
         metaRepo.save(ShareMetadata(depositId, secretId, aliceContact.id))
-        retainedRepo.save(RetainedDepositBlob(depositId, secretId, aliceContact.id, "s", Instant.now(), byteArrayOf(1), 2, 3))
+        retainedRepo.save(RetainedDepositBlob(depositId, secretId, aliceContact.id, "s", Instant.now(), byteArrayOf(1), 2, 3, MimeType.DEFAULT))
         relay.heartbeatsToReturn = listOf(signedHeartbeat(aliceKeys.publicKey, bob.verifyKey(), aliceKeys, secretIds = listOf(secretId)))
 
         svc.syncDistributed()
@@ -1212,7 +1235,7 @@ class ShareServiceTest {
         val secretBytes = "no margin test secret".encodeToByteArray()
         val shares = split(secretBytes, 4, 4)
         val secretId = UUID.randomUUID()
-        secretRepo.save(Secret(secretId, "s", 4, 4, Instant.now(), SecretState.ACTIVE))
+        secretRepo.save(Secret(secretId, "s", MimeType.DEFAULT, 4, 4, Instant.now(), SecretState.ACTIVE))
         relay.pending = holders.zip(shares).map { (holder, share) -> makeApprovedRetrievalRow(secretId, holder, share) }
 
         val result = svc.reconstruct(secretId)
@@ -1229,7 +1252,7 @@ class ShareServiceTest {
         val secretBytes = "surplus confirmed test secret".encodeToByteArray()
         val shares = split(secretBytes, 5, 4)
         val secretId = UUID.randomUUID()
-        secretRepo.save(Secret(secretId, "s", 4, 5, Instant.now(), SecretState.ACTIVE))
+        secretRepo.save(Secret(secretId, "s", MimeType.DEFAULT, 4, 5, Instant.now(), SecretState.ACTIVE))
         relay.pending = holders.zip(shares).map { (holder, share) -> makeApprovedRetrievalRow(secretId, holder, share) }
 
         val result = svc.reconstruct(secretId)
@@ -1248,7 +1271,7 @@ class ShareServiceTest {
         // Simulate a compromised/corrupted holder — every secret byte wrong, x-coordinate untouched.
         shares[2] = shares[2].copyOf().also { for (i in 0 until it.size - 1) it[i] = (it[i] + 1).toByte() }
         val secretId = UUID.randomUUID()
-        secretRepo.save(Secret(secretId, "s", 4, 6, Instant.now(), SecretState.ACTIVE))
+        secretRepo.save(Secret(secretId, "s", MimeType.DEFAULT, 4, 6, Instant.now(), SecretState.ACTIVE))
         relay.pending = holders.zip(shares).map { (holder, share) -> makeApprovedRetrievalRow(secretId, holder, share) }
 
         val result = svc.reconstruct(secretId)
@@ -1266,7 +1289,7 @@ class ShareServiceTest {
         val shares = split(secretBytes, 5, 4).toMutableList()
         shares[0] = shares[0].copyOf().also { for (i in 0 until it.size - 1) it[i] = (it[i] + 1).toByte() }
         val secretId = UUID.randomUUID()
-        secretRepo.save(Secret(secretId, "s", 4, 5, Instant.now(), SecretState.ACTIVE))
+        secretRepo.save(Secret(secretId, "s", MimeType.DEFAULT, 4, 5, Instant.now(), SecretState.ACTIVE))
         relay.pending = holders.zip(shares).map { (holder, share) -> makeApprovedRetrievalRow(secretId, holder, share) }
 
         assertFailsWith<ReconstructionIntegrityException> {
@@ -1283,7 +1306,7 @@ class ShareServiceTest {
         val (svc, _, _, secretRepo, metaRepo) =
             newServiceForRecoveryTest(relay, listOf(fresh1.contact, fresh2.contact, stale.contact))
         val secretId = UUID.randomUUID()
-        secretRepo.save(Secret(secretId, "s", 2, 3, Instant.now(), SecretState.ACTIVE))
+        secretRepo.save(Secret(secretId, "s", MimeType.DEFAULT, 2, 3, Instant.now(), SecretState.ACTIVE))
         val now = Instant.now()
         metaRepo.save(ShareMetadata(UUID.randomUUID(), secretId, fresh1.contact.id, lastConfirmedAt = now))
         metaRepo.save(ShareMetadata(UUID.randomUUID(), secretId, fresh2.contact.id, lastConfirmedAt = now))
@@ -1305,7 +1328,7 @@ class ShareServiceTest {
         val (svc, _, _, secretRepo, metaRepo) =
             newServiceForRecoveryTest(relay, listOf(fresh.contact, stale1.contact, stale2.contact))
         val secretId = UUID.randomUUID()
-        secretRepo.save(Secret(secretId, "s", 2, 3, Instant.now(), SecretState.ACTIVE))
+        secretRepo.save(Secret(secretId, "s", MimeType.DEFAULT, 2, 3, Instant.now(), SecretState.ACTIVE))
         metaRepo.save(ShareMetadata(UUID.randomUUID(), secretId, fresh.contact.id, lastConfirmedAt = Instant.now()))
         metaRepo.save(ShareMetadata(UUID.randomUUID(), secretId, stale1.contact.id, lastConfirmedAt = null))
         metaRepo.save(ShareMetadata(UUID.randomUUID(), secretId, stale2.contact.id, lastConfirmedAt = null))
@@ -1325,7 +1348,7 @@ class ShareServiceTest {
         val (svc, _, _, secretRepo, metaRepo) =
             newServiceForRecoveryTest(relay, listOf(standing.contact, untouched.contact))
         val secretId = UUID.randomUUID()
-        secretRepo.save(Secret(secretId, "s", 2, 2, Instant.now(), SecretState.ACTIVE))
+        secretRepo.save(Secret(secretId, "s", MimeType.DEFAULT, 2, 2, Instant.now(), SecretState.ACTIVE))
         metaRepo.save(ShareMetadata(UUID.randomUUID(), secretId, standing.contact.id, lastConfirmedAt = null))
         metaRepo.save(ShareMetadata(UUID.randomUUID(), secretId, untouched.contact.id, lastConfirmedAt = null))
         // Neither holder is confirmed, so targeting widens to both — the case the per-secret skip
@@ -1348,7 +1371,7 @@ class ShareServiceTest {
         val (svc, _, _, secretRepo, metaRepo) =
             newServiceForRecoveryTest(relay, listOf(optedOutContact, other.contact))
         val secretId = UUID.randomUUID()
-        secretRepo.save(Secret(secretId, "s", 2, 2, Instant.now(), SecretState.ACTIVE))
+        secretRepo.save(Secret(secretId, "s", MimeType.DEFAULT, 2, 2, Instant.now(), SecretState.ACTIVE))
         metaRepo.save(ShareMetadata(UUID.randomUUID(), secretId, optedOutContact.id, lastConfirmedAt = Instant.now()))
         metaRepo.save(ShareMetadata(UUID.randomUUID(), secretId, other.contact.id, lastConfirmedAt = null))
 
@@ -1526,5 +1549,141 @@ class ShareServiceTest {
         assertTrue(byorRelay.pushedRotations.isEmpty())
         // The swap still completes even though one contact couldn't be notified.
         assertTrue(!bobIdentity.verifyKey().contentEquals(oldVerifyKey))
+    }
+
+    // ── mimeType ────────────────────────────────────────────────────────────────────────────────
+
+    @Test
+    fun `deposit records the mimeType on the Secret and signs it into every deposit row`() {
+        val relay = FakeShareRelay()
+        val holderKeys = TestKeyPair.generate()
+        val holderContact = aliceContact.copy(id = UUID.randomUUID(), pseudonym = "holder", verifyKey = holderKeys.publicKey)
+        val (svc, _, _, _, _, _, retainedRepo) = newService(relay, contacts = listOf(aliceContact, holderContact))
+
+        svc.deposit(byteArrayOf(1, 2, 3), "s", listOf(aliceContact, holderContact), 2, MimeType("image/png"))
+
+        assertTrue(relay.openedRequests.all { it.mimeType == MimeType("image/png") })
+        assertTrue(retainedRepo.getAll().all { it.mimeType == MimeType("image/png") })
+    }
+
+    @Test
+    fun `syncInbox carries the deposited mimeType onto the HeldShare`() {
+        val relay = FakeShareRelay()
+        val (svc, bob, shareRepo, _, _, _, _) = newService(relay)
+        val id = UUID.randomUUID()
+        val unsigned = depositRow(id, aliceKeys.publicKey, bob.verifyKey(), ByteArray(0), mimeType = MimeType("image/png"))
+        val row = unsigned.copy(senderSignature = signOpenAs(aliceKeys, unsigned))
+        relay.pending = listOf(row)
+        relay.byId = mutableMapOf(id to row)
+
+        svc.syncInbox()
+
+        assertEquals(listOf(MimeType("image/png")), shareRepo.getAll().map { it.mimeType })
+    }
+
+    /**
+     * A deposit whose mimeType is absent cannot come from a conforming relay, and storing the share
+     * without one would leave the holder unable to report it during the owner's recovery — so the
+     * pickup is skipped and retried, exactly as it is for a missing k/n.
+     */
+    @Test
+    fun `syncInbox leaves a Deposit pending when the mimeType is missing`() {
+        val relay = FakeShareRelay()
+        val (svc, bob, shareRepo, _, _, _, _) = newService(relay)
+        val id = UUID.randomUUID()
+        val unsigned = depositRow(id, aliceKeys.publicKey, bob.verifyKey(), ByteArray(0)).copy(mimeType = null)
+        val row = unsigned.copy(senderSignature = signOpenAs(aliceKeys, unsigned))
+        relay.pending = listOf(row)
+        relay.byId = mutableMapOf(id to row)
+
+        svc.syncInbox()
+
+        assertTrue(relay.respondCalls.isEmpty())
+        assertTrue(shareRepo.getAll().isEmpty())
+    }
+
+    @Test
+    fun `pushRecoveryMetadata reports the mimeType of the share it holds`() {
+        val relay = FakeShareRelay()
+        val (svc, _, shareRepo, _, _) = newServiceForRecoveryTest(relay)
+        shareRepo.save(
+            HeldShare(
+                id = UUID.randomUUID(), secretId = UUID.randomUUID(), label = "test secret", contactId = aliceContact.id,
+                senderPseudonym = "alice", createdAt = Instant.now(), pickedUpAt = Instant.now(),
+                plaintextShare = byteArrayOf(9), k = 2, n = 3, mimeType = MimeType("image/jpeg"),
+            )
+        )
+
+        svc.pushRecoveryMetadata(aliceContact.id)
+
+        assertEquals(MimeType("image/jpeg"), relay.openedRequests.first().mimeType)
+    }
+
+    @Test
+    fun `syncInbox rebuilds a Secret with the mimeType the holder reports`() {
+        val relay = FakeShareRelay()
+        val (svc, bob, _, secretRepo, _) = newServiceForRecoveryTest(relay)
+        val secretId = UUID.randomUUID()
+        relay.pending = listOf(
+            approvedRecoveryMetadataRow(secretId, aliceKeys.publicKey, bob.verifyKey(), aliceKeys, mimeType = MimeType("image/png")),
+        )
+
+        svc.syncInbox()
+
+        assertEquals(listOf(MimeType("image/png")), secretRepo.getAll().map { it.mimeType })
+    }
+
+    @Test
+    fun `reconstruct reports the mimeType the owner recorded for the secret`() {
+        val relay = FakeShareRelay()
+        val holders = (0 until 2).map { makeHolderFixture("holder$it") }
+        val (svc, _, _, secretRepo, _) = newServiceForRecoveryTest(relay, holders.map { it.contact })
+        val secretBytes = "mime round trip".encodeToByteArray()
+        val shares = split(secretBytes, 2, 2)
+        val secretId = UUID.randomUUID()
+        secretRepo.save(Secret(secretId, "s", MimeType("image/png"), 2, 2, Instant.now(), SecretState.ACTIVE))
+        relay.pending = holders.zip(shares).map { (holder, share) -> makeApprovedRetrievalRow(secretId, holder, share) }
+
+        val result = svc.reconstruct(secretId)
+
+        assertTrue(result.secret.contentEquals(secretBytes))
+        assertEquals(MimeType("image/png"), result.mimeType)
+    }
+
+    /**
+     * mimeType rides inside senderSignature, so a relay that rewrote it — pointing a text secret at
+     * an image decoder, say — invalidates the row rather than changing how it renders. The holder
+     * skips it silently, as it does any deposit whose signature does not verify.
+     */
+    @Test
+    fun `syncInbox skips a Deposit whose mimeType was altered after signing`() {
+        val relay = FakeShareRelay()
+        val (svc, bob, shareRepo, _, _, _, _) = newService(relay)
+        val id = UUID.randomUUID()
+        val unsigned = depositRow(id, aliceKeys.publicKey, bob.verifyKey(), ByteArray(0))
+        val signed = unsigned.copy(senderSignature = signOpenAs(aliceKeys, unsigned))
+        val tampered = signed.copy(mimeType = MimeType("image/png"))
+        relay.pending = listOf(tampered)
+        relay.byId = mutableMapOf(id to tampered)
+
+        svc.syncInbox()
+
+        assertTrue(relay.respondCalls.isEmpty())
+        assertTrue(shareRepo.getAll().isEmpty())
+    }
+
+    /**
+     * Classification tolerates the shapes a real Content-Type takes — parameters and casing — while
+     * the value itself stays byte-exact, because it is what the sender signed.
+     */
+    @Test
+    fun `MimeType classifies ignoring case and parameters without rewriting its value`() {
+        val declared = MimeType("Text/Plain; charset=utf-8")
+        assertTrue(declared.isText)
+        assertTrue(!declared.isImage)
+        assertEquals("Text/Plain; charset=utf-8", declared.value)
+        assertTrue(MimeType("image/PNG").isImage)
+        assertTrue(!MimeType("application/octet-stream").isText)
+        assertTrue(!MimeType("application/octet-stream").isImage)
     }
 }

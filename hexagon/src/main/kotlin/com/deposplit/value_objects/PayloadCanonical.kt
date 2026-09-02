@@ -28,8 +28,12 @@ object PayloadCanonical {
     /**
      * Signed by the sender when opening a share request (`senderSignature`).
      *
-     * `k`/`n` are appended at the end of the sequence, keeping the existing field order
-     * — and this construction's cross-platform byte-vector test — undisturbed.
+     * `k`/`n`, then `mimeType`, are each appended at the end of the sequence in turn, keeping the
+     * field order that predates them — and this construction's cross-platform byte-vector test —
+     * undisturbed.
+     *
+     * A null and an empty-string `mimeType` produce identical bytes here, which is why the relay
+     * refuses to store an empty one.
      */
     fun forOpen(
         secretId: UUID,
@@ -41,6 +45,7 @@ object PayloadCanonical {
         ciphertext: ByteArray?,
         k: Int? = null,
         n: Int? = null,
+        mimeType: MimeType? = null,
     ): ByteArray = listOf(
         secretId.toString(),
         transactionType.wireValue,
@@ -51,6 +56,7 @@ object PayloadCanonical {
         ciphertext?.let { base64Std.encodeToString(it) } ?: "",
         k?.toString() ?: "",
         n?.toString() ?: "",
+        mimeType?.value ?: "",
     ).joinToString("\n").toByteArray(Charsets.UTF_8)
 
     /** Signed by the recipient when responding to a share request (`recipientSignature`). */

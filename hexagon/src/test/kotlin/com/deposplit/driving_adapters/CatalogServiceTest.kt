@@ -5,6 +5,7 @@ import com.deposplit.driven_ports.SecretRepository
 import com.deposplit.driven_ports.ShareMetadataRepository
 import com.deposplit.value_objects.Catalog
 import com.deposplit.value_objects.Contact
+import com.deposplit.value_objects.MimeType
 import com.deposplit.value_objects.Secret
 import com.deposplit.value_objects.SecretState
 import com.deposplit.value_objects.ShareMetadata
@@ -67,7 +68,7 @@ class CatalogServiceTest {
 
         val contact = makeContact("alice")
         contactRepo.save(contact)
-        val secret = Secret(UUID.randomUUID(), "test", 2, 3, Instant.now(), SecretState.ACTIVE)
+        val secret = Secret(UUID.randomUUID(), "test", MimeType.DEFAULT, 2, 3, Instant.now(), SecretState.ACTIVE)
         secretRepo.save(secret)
         val meta = ShareMetadata(UUID.randomUUID(), secret.id, contact.id)
         metaRepo.save(meta)

@@ -27,6 +27,7 @@ data class RetainedDepositBlob(
     val ciphertext: ByteArray,
     val k: Int,
     val n: Int,
+    val mimeType: MimeType,
 ) {
     override fun equals(other: Any?) = other is RetainedDepositBlob && id == other.id
     override fun hashCode() = id.hashCode()

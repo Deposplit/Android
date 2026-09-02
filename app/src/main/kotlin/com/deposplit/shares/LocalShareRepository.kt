@@ -3,6 +3,7 @@ package com.deposplit.shares
 import android.content.Context
 import com.deposplit.driven_ports.ShareRepository
 import com.deposplit.value_objects.HeldShare
+import com.deposplit.value_objects.MimeType
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -28,6 +29,7 @@ class LocalShareRepository(context: Context) : ShareRepository {
         val plaintextShare: String,
         val k: Int,
         val n: Int,
+        val mimeType: String,
     )
 
     @Synchronized
@@ -76,6 +78,7 @@ class LocalShareRepository(context: Context) : ShareRepository {
         plaintextShare = Base64.getDecoder().decode(plaintextShare),
         k = k,
         n = n,
+        mimeType = MimeType(mimeType),
     )
 
     private fun HeldShare.toWire() = HeldShareWire(
@@ -89,5 +92,6 @@ class LocalShareRepository(context: Context) : ShareRepository {
         plaintextShare = Base64.getEncoder().encodeToString(plaintextShare),
         k = k,
         n = n,
+        mimeType = mimeType.value,
     )
 }

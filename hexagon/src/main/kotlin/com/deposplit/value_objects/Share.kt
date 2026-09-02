@@ -62,9 +62,11 @@ data class ShareRequest(
     val requestedAt: Instant,
     val respondedAt: Instant?,
     val ciphertext: ByteArray?,
-    // SSS threshold/share-count — populated for DEPOSIT/INVENTORY, null for RETRIEVAL/REMOVAL.
+    // SSS threshold/share-count and the sender's declared media type — all populated for
+    // DEPOSIT/INVENTORY, null for RETRIEVAL/REMOVAL.
     val k: Int? = null,
     val n: Int? = null,
+    val mimeType: MimeType? = null,
     // Ed25519 signature over PayloadCanonical.forOpen — see that object for what's signed.
     val senderSignature: ByteArray,
     // Ed25519 signature over PayloadCanonical.forRespond; null while pending.

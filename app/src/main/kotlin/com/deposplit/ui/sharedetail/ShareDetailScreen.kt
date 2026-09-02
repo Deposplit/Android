@@ -45,7 +45,9 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.deposplit.BuildConfig
 import com.deposplit.DeposplitApp
 import com.deposplit.R
+import com.deposplit.ui.reconstruction.ReconstructedSecretContent
 import com.deposplit.value_objects.Contact
+import com.deposplit.value_objects.MimeType
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareRequestState
 import com.deposplit.value_objects.displayName
@@ -179,10 +181,10 @@ fun ShareDetailScreen(shareId: UUID, onNavigateBack: () -> Unit) {
                             color = MaterialTheme.colorScheme.surfaceVariant,
                             shape = MaterialTheme.shapes.medium,
                         ) {
-                            Text(
-                                text = uiState.reconstructedSecret!!,
-                                modifier = Modifier.padding(12.dp),
-                                style = MaterialTheme.typography.bodyMedium,
+                            ReconstructedSecretContent(
+                                secret = uiState.reconstructedSecret!!,
+                                mimeType = uiState.secret?.mimeType ?: MimeType.DEFAULT,
+                                label = uiState.secret?.label.orEmpty(),
                             )
                         }
                         uiState.reconstructionIntegrity?.let { integrity ->

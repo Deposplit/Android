@@ -45,6 +45,7 @@ import com.deposplit.DeposplitApp
 import com.deposplit.R
 import com.deposplit.ui.contacts.badgeColor
 import com.deposplit.ui.contacts.displayName
+import com.deposplit.ui.reconstruction.formatByteCount
 import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.VerificationLevel
 import com.deposplit.value_objects.displayName
@@ -132,16 +133,33 @@ fun DepositForm(
 
         Spacer(Modifier.height(12.dp))
 
-        OutlinedTextField(
-            value = uiState.secret,
-            onValueChange = viewModel::onSecretChange,
-            label = { Text(stringResource(R.string.deposit_secret_label)) },
-            isError = uiState.secretError != null,
-            supportingText = uiState.secretError?.let { resId -> { Text(stringResource(resId)) } },
-            minLines = 3,
-            maxLines = 6,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        if (uiState.opaqueSecret != null) {
+            // Reconstructed as something other than text, so it is re-split exactly as it came back
+            // rather than edited through a text field.
+            Text(stringResource(R.string.deposit_secret_label), style = MaterialTheme.typography.titleSmall)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "${uiState.mimeType.value} · ${formatByteCount(uiState.opaqueSecret.size)}",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = stringResource(R.string.deposit_secret_carried_through),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            OutlinedTextField(
+                value = uiState.secret,
+                onValueChange = viewModel::onSecretChange,
+                label = { Text(stringResource(R.string.deposit_secret_label)) },
+                isError = uiState.secretError != null,
+                supportingText = uiState.secretError?.let { resId -> { Text(stringResource(resId)) } },
+                minLines = 3,
+                maxLines = 6,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
 
         Spacer(Modifier.height(20.dp))
 

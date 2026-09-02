@@ -4,6 +4,7 @@ import com.deposplit.value_objects.CipherSuite
 import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.HeldShare
 import com.deposplit.value_objects.KeyConflict
+import com.deposplit.value_objects.MimeType
 import com.deposplit.value_objects.ReconstructionResult
 import com.deposplit.value_objects.RegenerateIdentityResult
 import com.deposplit.value_objects.Secret
@@ -14,7 +15,13 @@ import java.util.UUID
 
 interface ShareManagement {
     // ─── Sender ───────────────────────────────────────────────────────────────
-    fun deposit(secret: ByteArray, label: String, contacts: List<Contact>, threshold: Int)
+    fun deposit(
+        secret: ByteArray,
+        label: String,
+        contacts: List<Contact>,
+        threshold: Int,
+        mimeType: MimeType = MimeType.DEFAULT,
+    )
     fun listSecrets(): List<Secret>
     fun syncDistributed()
     fun listDistributed(): List<ShareMetadata>

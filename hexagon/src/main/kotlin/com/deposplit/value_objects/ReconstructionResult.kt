@@ -14,9 +14,13 @@ sealed class ReconstructionIntegrity {
     data class ExcludedSuspects(val excludedContactIds: Set<UUID>) : ReconstructionIntegrity()
 }
 
+// mimeType is the owner's own record of what she split, carried alongside the bytes so a caller
+// deciding how to render them never has to go back to the Secret aggregate and risk pairing bytes
+// with the wrong type.
 data class ReconstructionResult(
     val secret: ByteArray,
     val integrity: ReconstructionIntegrity,
+    val mimeType: MimeType,
 ) {
     override fun equals(other: Any?) = other is ReconstructionResult &&
         secret.contentEquals(other.secret) && integrity == other.integrity

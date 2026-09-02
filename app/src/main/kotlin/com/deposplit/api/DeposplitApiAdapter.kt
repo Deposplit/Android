@@ -5,6 +5,7 @@ import com.deposplit.driven_ports.ShareRelay
 import com.deposplit.value_objects.CipherSuite
 import com.deposplit.value_objects.CustodyHeartbeat
 import com.deposplit.value_objects.KeyRotation
+import com.deposplit.value_objects.MimeType
 import com.deposplit.value_objects.Role
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareRequestState
@@ -39,6 +40,7 @@ class DeposplitApiAdapter(
         ciphertext: ByteArray?,
         k: Int?,
         n: Int?,
+        mimeType: MimeType?,
         senderSignature: ByteArray,
     ): ShareRequest {
         val body = json.encodeToString(
@@ -52,6 +54,7 @@ class DeposplitApiAdapter(
                 ciphertext = ciphertext?.encodeBase64(),
                 k = k,
                 n = n,
+                mimeType = mimeType?.value,
                 senderSignature = senderSignature.encodeBase64Url(),
             )
         )
@@ -215,6 +218,7 @@ class DeposplitApiAdapter(
         val ciphertext: String? = null,
         val k: Int? = null,
         val n: Int? = null,
+        val mimeType: String? = null,
         val senderSignature: String,
     )
 
@@ -277,6 +281,7 @@ class DeposplitApiAdapter(
         val ciphertext: String? = null,
         val k: Int? = null,
         val n: Int? = null,
+        val mimeType: String? = null,
         val senderSignature: String,
         val recipientSignature: String? = null,
     )
@@ -304,6 +309,7 @@ class DeposplitApiAdapter(
         ciphertext = ciphertext?.decodeBase64(),
         k = k,
         n = n,
+        mimeType = mimeType?.let(::MimeType),
         senderSignature = senderSignature.decodeBase64Url(),
         recipientSignature = recipientSignature?.decodeBase64Url(),
     )

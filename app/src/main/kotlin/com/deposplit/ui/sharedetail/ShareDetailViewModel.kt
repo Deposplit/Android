@@ -7,6 +7,7 @@ import com.deposplit.R
 import com.deposplit.driving_ports.ContactManagement
 import com.deposplit.driving_ports.ShareManagement
 import com.deposplit.shamir.ReconstructionIntegrityException
+import com.deposplit.ui.reconstruction.ReconstructedSecret
 import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.ReconstructionIntegrity
 import com.deposplit.value_objects.Secret
@@ -40,7 +41,7 @@ class ShareDetailViewModel(
         val isOpeningRetrieval: Boolean = false,
         val isOpeningRemoval: Boolean = false,
         val isReconstructing: Boolean = false,
-        val reconstructedSecret: String? = null,
+        val reconstructedSecret: ReconstructedSecret? = null,
         val reconstructionIntegrity: ReconstructionIntegrity? = null,
         @StringRes val error: Int? = null,
         @StringRes val actionError: Int? = null,
@@ -144,7 +145,11 @@ class ShareDetailViewModel(
                     _uiState.update {
                         it.copy(
                             isReconstructing = false,
-                            reconstructedSecret = result.secret.toString(Charsets.UTF_8),
+                            // The declared type decides how the bytes are shown, and
+                            // ReconstructedSecret falls back to a binary view whenever the type and
+                            // the bytes disagree — so nothing here force-decodes, and the original
+                            // bytes survive whichever branch runs.
+                            reconstructedSecret = ReconstructedSecret.of(result.secret, result.mimeType),
                             reconstructionIntegrity = result.integrity,
                         )
                     }

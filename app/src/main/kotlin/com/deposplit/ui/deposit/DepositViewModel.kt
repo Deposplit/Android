@@ -7,6 +7,7 @@ import com.deposplit.R
 import com.deposplit.driving_ports.ContactManagement
 import com.deposplit.driving_ports.ShareManagement
 import com.deposplit.value_objects.Contact
+import com.deposplit.value_objects.MimeType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,16 +28,32 @@ class DepositViewModel(
     // Seeds the form's initial state — used by the Repair flow to pre-fill a reconstructed
     // secret's label/value/holders/threshold into an otherwise-ordinary deposit. All fields stay
     // editable afterward; this only affects the starting values.
+    //
+    // The secret arrives as *bytes*, not a String. Round-tripping it through text is what used to
+    // corrupt a non-text secret on re-split: it was decoded lossily and then re-encoded, so the
+    // repair wrote back something other than what it reconstructed.
     data class Prefill(
         val label: String,
-        val secretText: String,
+        val secret: ByteArray,
+        val mimeType: MimeType,
         val selectedContactIds: Set<UUID>,
         val threshold: Int,
-    )
+    ) {
+        override fun equals(other: Any?) = other is Prefill &&
+            label == other.label && secret.contentEquals(other.secret) && mimeType == other.mimeType &&
+            selectedContactIds == other.selectedContactIds && threshold == other.threshold
+
+        override fun hashCode() = listOf(label, secret.contentHashCode(), mimeType, selectedContactIds, threshold).hashCode()
+    }
 
     data class UiState(
         val label: String = "",
         val secret: String = "",
+        // Set only by a prefill whose payload is not editable text. When present it is what gets
+        // split, verbatim, and the text field is replaced by a read-only summary — re-encoding it
+        // as a String is exactly the corruption Prefill's comment describes.
+        val opaqueSecret: ByteArray? = null,
+        val mimeType: MimeType = MimeType.DEFAULT,
         val threshold: Int = 2,
         val contacts: List<Contact> = emptyList(),
         val selectedContactIds: Set<UUID> = emptySet(),
@@ -49,6 +66,25 @@ class DepositViewModel(
         val pendingWarnings: List<SplitTimeWarning> = emptyList(),
     ) {
         val selectedCount: Int get() = selectedContactIds.size
+
+        // The bytes this form will split — the edited text, or the prefilled payload untouched.
+        val secretBytes: ByteArray get() = opaqueSecret ?: secret.toByteArray(Charsets.UTF_8)
+
+        // Data classes with an array member need these by hand; equals/hashCode are otherwise
+        // identity-based on `opaqueSecret` and two equal states would compare unequal.
+        override fun equals(other: Any?) = other is UiState &&
+            label == other.label && secret == other.secret &&
+            (opaqueSecret?.contentEquals(other.opaqueSecret ?: ByteArray(0)) ?: (other.opaqueSecret == null)) &&
+            mimeType == other.mimeType && threshold == other.threshold && contacts == other.contacts &&
+            selectedContactIds == other.selectedContactIds && isLoadingContacts == other.isLoadingContacts &&
+            isDepositing == other.isDepositing && error == other.error && labelError == other.labelError &&
+            secretError == other.secretError && selectionError == other.selectionError &&
+            pendingWarnings == other.pendingWarnings
+
+        override fun hashCode() = listOf(
+            label, secret, opaqueSecret?.contentHashCode(), mimeType, threshold, contacts, selectedContactIds,
+            isLoadingContacts, isDepositing, error, labelError, secretError, selectionError, pendingWarnings,
+        ).hashCode()
     }
 
     sealed interface Effect {
@@ -69,9 +105,14 @@ class DepositViewModel(
 
     private val _uiState = MutableStateFlow(
         if (prefill != null) {
+            // Editable only when it really is text — a declared text type whose bytes are not valid
+            // UTF-8 is carried through opaquely rather than mangled into the field.
+            val text = if (prefill.mimeType.isText) prefill.secret.decodeToStringOrNull() else null
             UiState(
                 label = prefill.label,
-                secret = prefill.secretText,
+                secret = text ?: "",
+                opaqueSecret = if (text == null) prefill.secret else null,
+                mimeType = prefill.mimeType,
                 threshold = prefill.threshold,
                 selectedContactIds = prefill.selectedContactIds,
             )
@@ -123,7 +164,7 @@ class DepositViewModel(
     fun onDepositClick() {
         val state = _uiState.value
         val labelError = if (state.label.isBlank()) R.string.deposit_error_required else null
-        val secretError = if (state.secret.isBlank()) R.string.deposit_error_required else null
+        val secretError = if (state.secretBytes.isEmpty()) R.string.deposit_error_required else null
         val selectionError = if (state.selectedCount < 2) R.string.deposit_error_select_at_least_2 else null
 
         if (labelError != null || secretError != null || selectionError != null) {
@@ -155,10 +196,9 @@ class DepositViewModel(
         viewModelScope.launch {
             runCatching {
                 val selectedContacts = state.contacts.filter { it.id in state.selectedContactIds }
-                val secretBytes = state.secret.toByteArray(Charsets.UTF_8)
                 val label = state.label.trim()
                 withContext(Dispatchers.IO) {
-                    shareManagement.deposit(secretBytes, label, selectedContacts, state.threshold)
+                    shareManagement.deposit(state.secretBytes, label, selectedContacts, state.threshold, state.mimeType)
                 }
             }
                 .onSuccess { _effects.send(Effect.NavigateBack) }
@@ -184,3 +224,7 @@ class DepositViewModel(
         return warnings
     }
 }
+
+/** Strict UTF-8 decode: null rather than U+FFFD, so a caller can tell "not text" from "text". */
+private fun ByteArray.decodeToStringOrNull(): String? =
+    runCatching { Charsets.UTF_8.newDecoder().decode(java.nio.ByteBuffer.wrap(this)).toString() }.getOrNull()

@@ -3,6 +3,7 @@ package com.deposplit.settings
 import com.deposplit.value_objects.Catalog
 import com.deposplit.value_objects.CipherSuite
 import com.deposplit.value_objects.Contact
+import com.deposplit.value_objects.MimeType
 import com.deposplit.value_objects.Secret
 import com.deposplit.value_objects.SecretState
 import com.deposplit.value_objects.ShareMetadata
@@ -58,6 +59,7 @@ object CatalogCodec {
         val label: String,
         val k: Int,
         val n: Int,
+        val mimeType: String,
         val secretCreatedAt: String,
         val state: String,
     )
@@ -142,10 +144,12 @@ object CatalogCodec {
     )
 
     private fun Secret.toWire() = SecretWire(
-        id = id.toString(), label = label, k = k, n = n, secretCreatedAt = secretCreatedAt.toString(), state = state.name,
+        id = id.toString(), label = label, mimeType = mimeType.value, k = k, n = n,
+        secretCreatedAt = secretCreatedAt.toString(), state = state.name,
     )
 
     private fun SecretWire.toDomain() = Secret(
-        id = UUID.fromString(id), label = label, k = k, n = n, secretCreatedAt = Instant.parse(secretCreatedAt), state = SecretState.valueOf(state),
+        id = UUID.fromString(id), label = label, mimeType = MimeType(mimeType), k = k, n = n,
+        secretCreatedAt = Instant.parse(secretCreatedAt), state = SecretState.valueOf(state),
     )
 }

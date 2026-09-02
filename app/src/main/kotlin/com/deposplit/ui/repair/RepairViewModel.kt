@@ -145,9 +145,13 @@ class RepairViewModel(
             }
                 .onSuccess { result ->
                     val currentHolderIds = state.holderStatuses.map { it.contactId }.toSet()
+                    // The bytes go through untouched. Decoding them to a String here and
+                    // re-encoding them on deposit is what used to re-split a corrupted copy of a
+                    // non-text secret — toString(UTF_8) is lossy and substitutes U+FFFD silently.
                     val prefill = DepositViewModel.Prefill(
                         label = secret.label,
-                        secretText = result.secret.toString(Charsets.UTF_8),
+                        secret = result.secret,
+                        mimeType = result.mimeType,
                         selectedContactIds = currentHolderIds,
                         threshold = secret.k,
                     )

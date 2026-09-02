@@ -3,6 +3,7 @@ package com.deposplit.driven_ports
 import com.deposplit.value_objects.CipherSuite
 import com.deposplit.value_objects.CustodyHeartbeat
 import com.deposplit.value_objects.KeyRotation
+import com.deposplit.value_objects.MimeType
 import com.deposplit.value_objects.Role
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareRequestState
@@ -21,6 +22,7 @@ interface ShareRelay {
         ciphertext: ByteArray?,
         k: Int? = null,
         n: Int? = null,
+        mimeType: MimeType? = null,
         senderSignature: ByteArray,
     ): ShareRequest
     fun listShareRequests(role: Role, transactionType: ShareTransactionType? = null, state: ShareRequestState? = null): List<ShareRequest>
