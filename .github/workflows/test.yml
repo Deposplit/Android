@@ -26,3 +26,8 @@ jobs:
     - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
     - name: Test with Gradle
       run: ./gradlew test
+    - name: Lint
+      # Runs even when the tests fail, so one push reports both. Excludes cancellation, which
+      # this workflow does on purpose via cancel-in-progress.
+      if: success() || failure()
+      run: ./gradlew :app:lintDebug

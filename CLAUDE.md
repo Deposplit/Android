@@ -208,6 +208,7 @@ own debug-only fake-Premium `PurchaseRepository` in the same shape as `SKIP_BIOM
 
 ```bash
 ./gradlew test                    # JVM unit tests (136 in :hexagon, 20 in :app) — what CI runs
+./gradlew :app:lintDebug          # the four gated lint checks — also what CI runs
 ./gradlew :hexagon:test           # domain only
 ./gradlew :hexagon:test --tests "com.deposplit.shamir.ShamirTest"
 ./gradlew assembleDebug           # → app/build/outputs/apk/debug/app-debug.apk

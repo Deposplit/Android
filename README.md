@@ -32,16 +32,17 @@ compileSdk 37, targetSdk 36, minSdk 35.
 
 ```bash
 ./gradlew test                    # JVM unit tests — no device needed (136 :hexagon, 20 :app)
+./gradlew :app:lintDebug          # the four gated lint checks
 ./gradlew :hexagon:test           # the domain only
 ./gradlew :hexagon:test --tests "com.deposplit.shamir.ShamirTest"
 ./gradlew assembleDebug           # → app/build/outputs/apk/debug/app-debug.apk
 ./gradlew connectedAndroidTest    # instrumented tests — needs a device or emulator
 ```
 
-`./gradlew test` is what CI runs. Most coverage is in `:hexagon`; `:app` tests cover the two
-files that are pure Kotlin and hand-write a wire format — `CatalogCodec` (catalog backup) and
-`QrPayload` (contact exchange). The rest of `:app` needs Context, Compose or a device, and is
-covered by the [manual end-to-end
+`./gradlew test` and `./gradlew :app:lintDebug` are what CI runs. Most coverage is in
+`:hexagon`; `:app` tests cover the two files that are pure Kotlin and hand-write a wire format
+— `CatalogCodec` (catalog backup) and `QrPayload` (contact exchange). The rest of `:app` needs
+Context, Compose or a device, and is covered by the [manual end-to-end
 flows](https://github.com/Deposplit/deposplit.com/blob/main/docs/testing.md) instead.
 
 The Gradle daemon runs on whichever JDK `JAVA_HOME` names, because nothing pins it to a
@@ -128,9 +129,16 @@ kept in sync.
 
 ## Continuous integration
 
-`.github/workflows/test.yml` runs `./gradlew test` on every push and on pull requests
-targeting `main`. No emulator or device is involved. Dependabot updates Gradle dependencies
-and pinned action SHAs weekly.
+`.github/workflows/test.yml` runs `./gradlew test` and then `./gradlew :app:lintDebug` on every
+push and on pull requests targeting `main`. No emulator or device is involved. Dependabot updates
+Gradle dependencies and pinned action SHAs weekly.
+
+Lint runs `checkOnly`, not the full set: `MissingTranslation`, `NewApi`, `ObsoleteSdkInt` and
+`PermissionImpliesUnsupportedChromeOsHardware`, all as errors. A check outside that set cannot
+fail the build, which is what keeps an AGP bump from reddening a pull request over something the
+change did not touch — the reason a blanket `lintDebug` stayed out of CI for so long. The
+standing advisory warnings (`PluralsCandidate`, `UnusedResources`, `UseKtx`, `GradleDependency`,
+`OldTargetApi`) are deliberately outside it.
 
 ## Licence
 

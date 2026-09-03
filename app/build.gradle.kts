@@ -44,6 +44,19 @@ android {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
+    lint {
+        // Only these run, so an AGP bump cannot redden a pull request with a check nobody opted
+        // into — which is what kept a blanket lintDebug out of CI. Unlike a baseline file, this
+        // grants no exceptions to the checks that are in the set.
+        checkOnly += setOf(
+            "MissingTranslation",
+            "NewApi",
+            "ObsoleteSdkInt",
+            "PermissionImpliesUnsupportedChromeOsHardware",
+        )
+        warningsAsErrors = true
+        abortOnError = true
+    }
     buildFeatures {
         compose = true
         buildConfig = true
