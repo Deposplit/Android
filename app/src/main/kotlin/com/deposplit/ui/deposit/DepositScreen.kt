@@ -265,7 +265,7 @@ fun DepositForm(
         if (uiState.selectionError != null) {
             Spacer(Modifier.height(4.dp))
             Text(
-                text = stringResource(uiState.selectionError!!),
+                text = stringResource(uiState.selectionError),
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -286,7 +286,7 @@ fun DepositForm(
         if (uiState.error != null) {
             Spacer(Modifier.height(12.dp))
             Text(
-                text = stringResource(uiState.error!!),
+                text = stringResource(uiState.error),
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodyMedium,
             )

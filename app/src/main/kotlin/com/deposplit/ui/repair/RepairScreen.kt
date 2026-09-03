@@ -276,7 +276,7 @@ private fun GatheringContent(
             if (uiState.error != null) {
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    text = stringResource(uiState.error!!),
+                    text = stringResource(uiState.error),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium,
                 )

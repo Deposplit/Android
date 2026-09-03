@@ -66,7 +66,7 @@ fun RecipientRequestsTab(
                     modifier = Modifier.size(14.dp),
                 )
                 Text(
-                    text = stringResource(uiState.error!!),
+                    text = stringResource(uiState.error),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.weight(1f),
