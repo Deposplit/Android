@@ -73,36 +73,36 @@ private class TestKeyPair(val publicKey: ByteArray, private val privateKey: Byte
 
 private class InMemoryIdentityStoreForShareServiceTest : IdentityStore {
     private var _pseudonym = ""
-    private var edPk = ByteArray(0)
-    private var edSk = ByteArray(0)
-    private var xPk = ByteArray(0)
-    private var xSk = ByteArray(0)
-    private var previousXSk: ByteArray? = null
+    private var _verifyKey = ByteArray(0)
+    private var _signKey = ByteArray(0)
+    private var _encKey = ByteArray(0)
+    private var _decKey = ByteArray(0)
+    private var _previousDecKey: ByteArray? = null
     private var registered = false
 
     override fun isRegistered() = registered
-    override fun save(pseudonym: String, edPk: ByteArray, edSk: ByteArray, xPk: ByteArray, xSk: ByteArray) {
+    override fun save(pseudonym: String, verifyKey: ByteArray, signKey: ByteArray, encKey: ByteArray, decKey: ByteArray) {
         this._pseudonym = pseudonym
-        this.edPk = edPk
-        this.edSk = edSk
-        this.xPk = xPk
-        this.xSk = xSk
-        this.previousXSk = null
+        this._verifyKey = verifyKey
+        this._signKey = signKey
+        this._encKey = encKey
+        this._decKey = decKey
+        this._previousDecKey = null
         registered = true
     }
     override fun rotate(verifyKey: ByteArray, signKey: ByteArray, encKey: ByteArray, decKey: ByteArray) {
-        this.previousXSk = xSk
-        this.edPk = verifyKey
-        this.edSk = signKey
-        this.xPk = encKey
-        this.xSk = decKey
+        this._previousDecKey = _decKey
+        this._verifyKey = verifyKey
+        this._signKey = signKey
+        this._encKey = encKey
+        this._decKey = decKey
     }
     override fun pseudonym() = _pseudonym
-    override fun verifyKey() = edPk
-    override fun signKey() = edSk
-    override fun encKey() = xPk
-    override fun decKey() = xSk
-    override fun previousDecKey() = previousXSk
+    override fun verifyKey() = _verifyKey
+    override fun signKey() = _signKey
+    override fun encKey() = _encKey
+    override fun decKey() = _decKey
+    override fun previousDecKey() = _previousDecKey
 }
 
 /** A genuinely mutable in-memory store (not no-ops) — the rotation-processing tests need to
