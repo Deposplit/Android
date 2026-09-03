@@ -22,11 +22,11 @@ Android-specific guidance for Claude Code is in [CLAUDE.md](CLAUDE.md).
 - **JDK 25** (Temurin). The project targets JVM 21 bytecode but builds on 25.
 - **Android Studio** for running on a device or emulator. Command-line builds work without
   it, but deployment does not.
-- An AVD on **API 29 or later**, or a physical device.
+- An AVD on **API 35 or later**, or a physical device.
 
 Versions are pinned in `gradle/libs.versions.toml` and `gradle/wrapper/gradle-wrapper.properties`:
 AGP 9.3.2, Kotlin 2.4.10, Compose BOM 2026.08.00, BouncyCastle 1.85.2, Gradle 9.7.1,
-compileSdk 37, targetSdk 36, minSdk 29.
+compileSdk 37, targetSdk 36, minSdk 35.
 
 ## Build and test
 

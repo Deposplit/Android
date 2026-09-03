@@ -100,7 +100,7 @@ A running daemon caches all of this, so after changing anything in this area run
 
 Versions are pinned in `gradle/libs.versions.toml`: AGP 9.3.2, Kotlin 2.4.10, BouncyCastle
 1.85.2, Compose BOM 2026.08.00, biometric 1.1.0. Gradle wrapper 9.7.1. compileSdk 37,
-targetSdk 36, minSdk 29.
+targetSdk 36, minSdk 35.
 
 ## Module boundary
 
@@ -119,9 +119,14 @@ ports and on Android libraries, and must **never** depend on UI code.
 Packages use `snake_case` (`driving_ports`, `driven_ports`, `driving_adapters`,
 `value_objects`) to mirror the Scala relay hexagon, so the two read the same way.
 
-## Why minSdk is 29
+## Why minSdk is 35
 
-Do not lower it. Each level buys something the app relies on:
+35 is a choice, not a floor forced by the code. Deposplit is pre-launch, so there are no users
+to strand, and building against current devices costs nothing today — while lowering later is
+the easy direction if the install base ever argues for it.
+
+There *is* a hard floor further down, and it is 29. Each of these buys something the app relies
+on, so nothing may go below it:
 
 | API | Feature | Why it matters |
 |---|---|---|
@@ -131,13 +136,16 @@ Do not lower it. Each level buys something the app relies on:
 | 29 | Scoped Storage | Needed for file-based secret input |
 | 29 | TLS 1.3 by default | Baseline transport security |
 
-`BiometricPrompt` and StrongBox still need **runtime** capability checks regardless of
-`minSdk`: `BiometricManager.canAuthenticate()`, and `setIsStrongBoxBacked(true)` can throw
-`StrongBoxUnavailableException` on hardware that lacks it.
+`BiometricPrompt` and StrongBox still need **runtime** capability checks whatever `minSdk` says:
+`BiometricManager.canAuthenticate()`, and `setIsStrongBoxBacked(true)` can throw
+`StrongBoxUnavailableException` on hardware that lacks it. Those are questions about the device,
+not about the platform version, so raising `minSdk` never retires them.
 
-The prompt also behaves differently by level: API 30+ offers "or use PIN", while API 29 is
-biometric-only, because the combined `BIOMETRIC_STRONG | DEVICE_CREDENTIAL` authenticator is
-not supported there.
+Version checks are a different matter, and there are none left: `grep -rn "Build.VERSION" app/src`
+returns nothing. Lowering `minSdk` again means bringing back the guards that went with the raise
+— chiefly biometric-only authentication below API 30, where `BIOMETRIC_STRONG | DEVICE_CREDENTIAL`
+is unsupported and the prompt therefore needs a negative button of its own. `ObsoleteSdkInt` is
+in the lint gate to keep dead ones from accumulating again.
 
 ## Platform decisions worth preserving
 

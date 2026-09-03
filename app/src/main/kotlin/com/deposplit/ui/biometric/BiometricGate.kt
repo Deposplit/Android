@@ -1,24 +1,18 @@
 package com.deposplit.ui.biometric
 
 import android.content.Context
-import android.os.Build
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
 import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
-import com.deposplit.R
 import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
 
-// API 29 does not support BIOMETRIC_STRONG | DEVICE_CREDENTIAL combined; use biometric-only there.
-private fun allowedAuthenticators(): Int =
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-        BIOMETRIC_STRONG or DEVICE_CREDENTIAL
-    } else {
-        BIOMETRIC_STRONG
-    }
+// PromptInfo.Builder rejects a negative button when DEVICE_CREDENTIAL is allowed and requires one
+// when it is not, so this set and the absent negative button below belong together.
+private val ALLOWED_AUTHENTICATORS = BIOMETRIC_STRONG or DEVICE_CREDENTIAL
 
 sealed class AuthAvailability {
     object Available : AuthAvailability()
@@ -28,7 +22,7 @@ sealed class AuthAvailability {
 }
 
 fun biometricAvailability(context: Context): AuthAvailability =
-    when (val status = BiometricManager.from(context).canAuthenticate(allowedAuthenticators())) {
+    when (val status = BiometricManager.from(context).canAuthenticate(ALLOWED_AUTHENTICATORS)) {
         BiometricManager.BIOMETRIC_SUCCESS -> AuthAvailability.Available
         BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> AuthAvailability.NoneEnrolled
         BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE,
@@ -56,14 +50,9 @@ suspend fun authenticate(
         }
     }
     val prompt = BiometricPrompt(activity, executor, callback)
-    val authenticators = allowedAuthenticators()
     val builder = BiometricPrompt.PromptInfo.Builder()
         .setTitle(title)
-        .setAllowedAuthenticators(authenticators)
+        .setAllowedAuthenticators(ALLOWED_AUTHENTICATORS)
     if (subtitle != null) builder.setSubtitle(subtitle)
-    // Negative button is required when and only when DEVICE_CREDENTIAL is not allowed.
-    if (authenticators and DEVICE_CREDENTIAL == 0) {
-        builder.setNegativeButtonText(activity.getString(R.string.action_cancel))
-    }
     prompt.authenticate(builder.build())
 }
