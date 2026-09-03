@@ -114,7 +114,7 @@ fun RepairScreen(secretId: UUID, onNavigateBack: () -> Unit) {
                     val depositViewModel: DepositViewModel = viewModel(
                         key = "repair_deposit_$secretId",
                         factory = viewModelFactory {
-                            initializer { DepositViewModel(app.shareManagement, app.contactManagement, prefill) }
+                            initializer { DepositViewModel(app.shareManagement, app.contactManagement, app.purchases, prefill) }
                         }
                     )
                     val depositUiState by depositViewModel.uiState.collectAsStateWithLifecycle()

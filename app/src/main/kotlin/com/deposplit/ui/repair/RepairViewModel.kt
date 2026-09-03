@@ -159,6 +159,7 @@ class RepairViewModel(
                         mimeType = result.mimeType,
                         selectedContactIds = currentHolderIds,
                         threshold = secret.k,
+                        replacing = secret.id,
                     )
                     _uiState.update {
                         it.copy(

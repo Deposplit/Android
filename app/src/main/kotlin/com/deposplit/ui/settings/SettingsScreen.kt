@@ -43,15 +43,16 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.deposplit.DeposplitApp
 import com.deposplit.R
+import com.deposplit.value_objects.SecretLimits
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onNavigateBack: () -> Unit) {
+fun SettingsScreen(onNavigateBack: () -> Unit, onNavigateToPaywall: () -> Unit) {
     val context = LocalContext.current
     val app = context.applicationContext as DeposplitApp
     val viewModel: SettingsViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { SettingsViewModel(app.relaySettings, app.catalogManagement, app.shareManagement, app.contactManagement) }
+            initializer { SettingsViewModel(app.relaySettings, app.catalogManagement, app.shareManagement, app.contactManagement, app.purchases) }
         }
     )
     var showRegenerateConfirmation by remember { mutableStateOf(false) }
@@ -80,21 +81,47 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
             Spacer(Modifier.height(8.dp))
             Text(stringResource(R.string.settings_relay_description))
             Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                value = uiState.relayBaseUrl,
-                onValueChange = viewModel::onRelayBaseUrlChange,
-                label = { Text(stringResource(R.string.settings_relay_label)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(Modifier.height(16.dp))
-            Row {
-                Button(onClick = { viewModel.save(); onNavigateBack() }) {
-                    Text(stringResource(R.string.action_save))
+            if (uiState.isPremium) {
+                OutlinedTextField(
+                    value = uiState.relayBaseUrl,
+                    onValueChange = viewModel::onRelayBaseUrlChange,
+                    label = { Text(stringResource(R.string.settings_relay_label)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(16.dp))
+                Row {
+                    Button(onClick = { viewModel.save(); onNavigateBack() }) {
+                        Text(stringResource(R.string.action_save))
+                    }
+                    Spacer(Modifier.height(0.dp))
+                    OutlinedButton(onClick = viewModel::resetToDefault, modifier = Modifier.padding(start = 8.dp)) {
+                        Text(stringResource(R.string.settings_relay_reset))
+                    }
                 }
-                Spacer(Modifier.height(0.dp))
-                OutlinedButton(onClick = viewModel::resetToDefault, modifier = Modifier.padding(start = 8.dp)) {
-                    Text(stringResource(R.string.settings_relay_reset))
+            } else {
+                // Read-only rather than hidden: which relay this device uses is worth knowing even
+                // when changing it is not on offer.
+                Text(uiState.relayBaseUrl, style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    stringResource(R.string.settings_relay_premium_required),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.height(24.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(16.dp))
+            Text(stringResource(R.string.paywall_title), style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(4.dp))
+            if (uiState.isPremium) {
+                Text(stringResource(R.string.paywall_active))
+            } else {
+                Text(stringResource(R.string.settings_premium_inactive, SecretLimits.FREE_TIER_MAX_ACTIVE_SECRETS))
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(onClick = onNavigateToPaywall) {
+                    Text(stringResource(R.string.settings_premium_button))
                 }
             }
             Spacer(Modifier.height(24.dp))

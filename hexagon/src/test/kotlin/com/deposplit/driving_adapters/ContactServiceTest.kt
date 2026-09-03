@@ -1,8 +1,10 @@
 package com.deposplit.driving_adapters
 
 import com.deposplit.driven_ports.ContactRepository
+import com.deposplit.driven_ports.PurchaseRepository
 import com.deposplit.value_objects.CipherSuite
 import com.deposplit.value_objects.Contact
+import com.deposplit.value_objects.PremiumRequiredException
 import com.deposplit.value_objects.VerificationLevel
 import java.time.Instant
 import java.util.UUID
@@ -23,6 +25,10 @@ private class InMemoryContactRepositoryForContactServiceTest : ContactRepository
     override fun delete(contactId: UUID) { contacts.removeAll { it.id == contactId } }
 }
 
+private class FakePurchaseRepositoryForContactServiceTest(var premium: Boolean = false) : PurchaseRepository {
+    override fun isPremium() = premium
+}
+
 private fun makeContact() = Contact(
     id = UUID.randomUUID(),
     pseudonym = "bob",
@@ -40,7 +46,7 @@ class ContactServiceTest {
     @Test
     fun `updateContact preserves contactId while changing keys and level`() {
         val repo = InMemoryContactRepositoryForContactServiceTest()
-        val svc = ContactService(repo)
+        val svc = ContactService(repo, FakePurchaseRepositoryForContactServiceTest())
         val original = makeContact()
         repo.save(original)
         val newEd = ByteArray(32) { 0x03 }
@@ -59,7 +65,7 @@ class ContactServiceTest {
     @Test
     fun `updateContact throws when changing keys without supplying a level`() {
         val repo = InMemoryContactRepositoryForContactServiceTest()
-        val svc = ContactService(repo)
+        val svc = ContactService(repo, FakePurchaseRepositoryForContactServiceTest())
         val original = makeContact()
         repo.save(original)
 
@@ -71,7 +77,7 @@ class ContactServiceTest {
     @Test
     fun `updateContact can change only the level without touching keys`() {
         val repo = InMemoryContactRepositoryForContactServiceTest()
-        val svc = ContactService(repo)
+        val svc = ContactService(repo, FakePurchaseRepositoryForContactServiceTest())
         val original = makeContact()
         repo.save(original)
 
@@ -85,7 +91,7 @@ class ContactServiceTest {
     @Test
     fun `updateContact throws for an unknown contactId`() {
         val repo = InMemoryContactRepositoryForContactServiceTest()
-        val svc = ContactService(repo)
+        val svc = ContactService(repo, FakePurchaseRepositoryForContactServiceTest())
 
         assertFailsWith<IllegalStateException> {
             svc.updateContact(UUID.randomUUID(), verificationLevel = VerificationLevel.HIGH)
@@ -97,7 +103,7 @@ class ContactServiceTest {
     @Test
     fun `updateContact sets keyChangedAt only when keys actually change`() {
         val repo = InMemoryContactRepositoryForContactServiceTest()
-        val svc = ContactService(repo)
+        val svc = ContactService(repo, FakePurchaseRepositoryForContactServiceTest())
         val original = makeContact()
         repo.save(original)
         assertEquals(null, original.keyChangedAt)
@@ -112,7 +118,7 @@ class ContactServiceTest {
     @Test
     fun `markKeyCompromised flags the contact's current key by default`() {
         val repo = InMemoryContactRepositoryForContactServiceTest()
-        val svc = ContactService(repo)
+        val svc = ContactService(repo, FakePurchaseRepositoryForContactServiceTest())
         val original = makeContact()
         repo.save(original)
 
@@ -126,7 +132,7 @@ class ContactServiceTest {
     @Test
     fun `markKeyCompromised is idempotent for an already-flagged key`() {
         val repo = InMemoryContactRepositoryForContactServiceTest()
-        val svc = ContactService(repo)
+        val svc = ContactService(repo, FakePurchaseRepositoryForContactServiceTest())
         val original = makeContact()
         repo.save(original.copy(revokedVerifyKeys = listOf(original.verifyKey)))
 
@@ -138,7 +144,7 @@ class ContactServiceTest {
     @Test
     fun `markKeyCompromised can flag an explicit key other than the current one`() {
         val repo = InMemoryContactRepositoryForContactServiceTest()
-        val svc = ContactService(repo)
+        val svc = ContactService(repo, FakePurchaseRepositoryForContactServiceTest())
         val original = makeContact()
         repo.save(original)
         val oldKey = ByteArray(32) { 0x07 }
@@ -156,7 +162,7 @@ class ContactServiceTest {
     @Test
     fun `addFromQr stores the asserted cipherSuite`() {
         val repo = InMemoryContactRepositoryForContactServiceTest()
-        val svc = ContactService(repo)
+        val svc = ContactService(repo, FakePurchaseRepositoryForContactServiceTest())
 
         svc.addFromQr("bob", ByteArray(32) { 0x01 }, ByteArray(32) { 0x02 }, CipherSuite.current, VerificationLevel.VERY_HIGH)
 
@@ -166,7 +172,7 @@ class ContactServiceTest {
     @Test
     fun `addManually defaults to the current cipherSuite`() {
         val repo = InMemoryContactRepositoryForContactServiceTest()
-        val svc = ContactService(repo)
+        val svc = ContactService(repo, FakePurchaseRepositoryForContactServiceTest())
 
         svc.addManually("bob", ByteArray(32) { 0x01 }, ByteArray(32) { 0x02 }, VerificationLevel.LOW)
 
@@ -176,7 +182,7 @@ class ContactServiceTest {
     @Test
     fun `addFromQr rejects a verify key whose length does not match the asserted cipherSuite`() {
         val repo = InMemoryContactRepositoryForContactServiceTest()
-        val svc = ContactService(repo)
+        val svc = ContactService(repo, FakePurchaseRepositoryForContactServiceTest())
 
         assertFailsWith<IllegalArgumentException> {
             svc.addFromQr("bob", ByteArray(16) { 0x01 }, ByteArray(32) { 0x02 }, CipherSuite.current, VerificationLevel.VERY_HIGH)
@@ -186,7 +192,7 @@ class ContactServiceTest {
     @Test
     fun `updateContact rejects a new key whose length does not match the effective cipherSuite`() {
         val repo = InMemoryContactRepositoryForContactServiceTest()
-        val svc = ContactService(repo)
+        val svc = ContactService(repo, FakePurchaseRepositoryForContactServiceTest())
         val original = makeContact()
         repo.save(original)
 
@@ -198,7 +204,7 @@ class ContactServiceTest {
     @Test
     fun `updateContact forces a fresh verification level on a cipherSuite-only change`() {
         val repo = InMemoryContactRepositoryForContactServiceTest()
-        val svc = ContactService(repo)
+        val svc = ContactService(repo, FakePurchaseRepositoryForContactServiceTest())
         val original = makeContact()
         repo.save(original)
 
@@ -218,7 +224,7 @@ class ContactServiceTest {
     @Test
     fun `renameContact sets a nickname without touching keys, level, or keyChangedAt`() {
         val repo = InMemoryContactRepositoryForContactServiceTest()
-        val svc = ContactService(repo)
+        val svc = ContactService(repo, FakePurchaseRepositoryForContactServiceTest())
         val original = makeContact()
         repo.save(original)
 
@@ -237,7 +243,7 @@ class ContactServiceTest {
     @Test
     fun `renameContact trims and collapses a blank nickname to null`() {
         val repo = InMemoryContactRepositoryForContactServiceTest()
-        val svc = ContactService(repo)
+        val svc = ContactService(repo, FakePurchaseRepositoryForContactServiceTest())
         val original = makeContact()
         repo.save(original)
 
@@ -251,7 +257,7 @@ class ContactServiceTest {
     @Test
     fun `renameContact can clear an existing nickname`() {
         val repo = InMemoryContactRepositoryForContactServiceTest()
-        val svc = ContactService(repo)
+        val svc = ContactService(repo, FakePurchaseRepositoryForContactServiceTest())
         val original = makeContact().copy(nickname = "Paul")
         repo.save(original)
 
@@ -263,7 +269,7 @@ class ContactServiceTest {
     @Test
     fun `renameContact throws for an unknown contactId`() {
         val repo = InMemoryContactRepositoryForContactServiceTest()
-        val svc = ContactService(repo)
+        val svc = ContactService(repo, FakePurchaseRepositoryForContactServiceTest())
 
         assertFailsWith<IllegalStateException> {
             svc.renameContact(UUID.randomUUID(), "Paul")
@@ -273,7 +279,7 @@ class ContactServiceTest {
     @Test
     fun `addManually and addFromQr trim and normalize the nickname`() {
         val repo = InMemoryContactRepositoryForContactServiceTest()
-        val svc = ContactService(repo)
+        val svc = ContactService(repo, FakePurchaseRepositoryForContactServiceTest())
 
         svc.addManually("bob", ByteArray(32) { 0x01 }, ByteArray(32) { 0x02 }, VerificationLevel.LOW, nickname = "  Bobby  ")
         svc.addFromQr("carol", ByteArray(32) { 0x03 }, ByteArray(32) { 0x04 }, CipherSuite.current, VerificationLevel.VERY_HIGH, nickname = "   ")
@@ -286,10 +292,49 @@ class ContactServiceTest {
     @Test
     fun `addManually and addFromQr default the nickname to null when omitted`() {
         val repo = InMemoryContactRepositoryForContactServiceTest()
-        val svc = ContactService(repo)
+        val svc = ContactService(repo, FakePurchaseRepositoryForContactServiceTest())
 
         svc.addManually("bob", ByteArray(32) { 0x01 }, ByteArray(32) { 0x02 }, VerificationLevel.LOW)
 
         assertEquals(null, repo.getAll().single().nickname)
+    }
+
+    // ── Free tier ───────────────────────────────────────────────────────────────────────────────
+
+    @Test
+    fun `addManually refuses a relay override without Premium`() {
+        val repo = InMemoryContactRepositoryForContactServiceTest()
+        val svc = ContactService(repo, FakePurchaseRepositoryForContactServiceTest())
+
+        assertFailsWith<PremiumRequiredException> {
+            svc.addManually("bob", ByteArray(32) { 0x01 }, ByteArray(32) { 0x02 }, VerificationLevel.LOW, relayBaseUrl = "https://relay.example")
+        }
+
+        assertTrue(repo.getAll().isEmpty())
+    }
+
+    @Test
+    fun `addManually accepts a relay override with Premium`() {
+        val repo = InMemoryContactRepositoryForContactServiceTest()
+        val svc = ContactService(repo, FakePurchaseRepositoryForContactServiceTest(premium = true))
+
+        svc.addManually("bob", ByteArray(32) { 0x01 }, ByteArray(32) { 0x02 }, VerificationLevel.LOW, relayBaseUrl = "https://relay.example")
+
+        assertEquals("https://relay.example", repo.getAll().single().relayBaseUrl)
+    }
+
+    /**
+     * The free half of BYOR. A relay named in a scanned QR code is the contact saying where their
+     * own mailbox is, so refusing it would mean a free device cannot share with a self-hoster at
+     * all — a different product, not a paywall.
+     */
+    @Test
+    fun `addFromQr accepts a relay override without Premium`() {
+        val repo = InMemoryContactRepositoryForContactServiceTest()
+        val svc = ContactService(repo, FakePurchaseRepositoryForContactServiceTest())
+
+        svc.addFromQr("bob", ByteArray(32) { 0x01 }, ByteArray(32) { 0x02 }, CipherSuite.current, VerificationLevel.VERY_HIGH, relayBaseUrl = "https://relay.example")
+
+        assertEquals("https://relay.example", repo.getAll().single().relayBaseUrl)
     }
 }

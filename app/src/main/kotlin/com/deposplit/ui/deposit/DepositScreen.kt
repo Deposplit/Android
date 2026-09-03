@@ -63,12 +63,12 @@ import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DepositScreen(onNavigateBack: () -> Unit) {
+fun DepositScreen(onNavigateBack: () -> Unit, onNavigateToPaywall: () -> Unit) {
     val app = LocalContext.current.applicationContext as DeposplitApp
     val viewModel: DepositViewModel = viewModel(
         factory = viewModelFactory {
             initializer {
-                DepositViewModel(app.shareManagement, app.contactManagement)
+                DepositViewModel(app.shareManagement, app.contactManagement, app.purchases)
             }
         }
     )
@@ -94,7 +94,7 @@ fun DepositScreen(onNavigateBack: () -> Unit) {
             )
         }
     ) { padding ->
-        DepositForm(uiState = uiState, viewModel = viewModel, contentPadding = padding)
+        DepositForm(uiState = uiState, viewModel = viewModel, contentPadding = padding, onNavigateToPaywall = onNavigateToPaywall)
     }
 }
 
@@ -109,6 +109,9 @@ fun DepositForm(
     uiState: DepositViewModel.UiState,
     viewModel: DepositViewModel,
     contentPadding: PaddingValues = PaddingValues(0.dp),
+    // Defaulted because the Repair flow never needs it: a re-split is exempt from the free-tier
+    // cap, so the notice this opens is never rendered there.
+    onNavigateToPaywall: () -> Unit = {},
 ) {
     val context = LocalContext.current
 
@@ -292,11 +295,23 @@ fun DepositForm(
             )
         }
 
+        if (uiState.freeTierFull) {
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = stringResource(R.string.deposit_free_tier_full, uiState.freeTierLimit, uiState.freeTierLimit),
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            TextButton(onClick = onNavigateToPaywall, contentPadding = PaddingValues(0.dp)) {
+                Text(stringResource(R.string.settings_premium_button))
+            }
+        }
+
         Spacer(Modifier.height(24.dp))
 
         Button(
             onClick = viewModel::onDepositClick,
-            enabled = !uiState.isDepositing,
+            enabled = !uiState.isDepositing && !uiState.freeTierFull,
             modifier = Modifier.fillMaxWidth(),
         ) {
             if (uiState.isDepositing) {

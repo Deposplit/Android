@@ -255,6 +255,24 @@
     <string name="qr_scan_grant_permission">Freigabe erteilen</string>
     <string name="qr_scan_error_fallback">QR-Code konnte nicht gelesen werden</string>
 
+    <!-- Premium -->
+    <string name="paywall_title">Deposplit Premium</string>
+    <string name="paywall_intro">Einmal kaufen, fertig. Kein Abo, keine Werbung.</string>
+    <string name="paywall_benefit_secrets_title">Beliebig viele Geheimnisse</string>
+    <string name="paywall_benefit_secrets_body">Kostenlos sind %1$d Geheimnisse gleichzeitig. Ein verworfenes gibt seinen Platz sofort frei.</string>
+    <string name="paywall_benefit_byor_title">Dein eigenes Relay</string>
+    <string name="paywall_benefit_byor_body">Richte dieses Gerät oder einzelne Kontakte auf ein Relay aus, das du selbst betreibst. Teile über das Relay anderer anzunehmen bleibt kostenlos.</string>
+    <string name="paywall_active">Premium ist auf diesem Gerät freigeschaltet.</string>
+    <string name="paywall_purchase_button">Premium freischalten</string>
+    <string name="paywall_purchase_unavailable">Der Kauf ist noch nicht angebunden — Deposplit braucht zuerst einen Eintrag in der Play Console.</string>
+    <string name="paywall_restore_button">Kauf wiederherstellen</string>
+    <string name="paywall_honesty">Ob Premium freigeschaltet ist, entscheidet dieses Gerät. Das Relay erfährt davon nichts.</string>
+    <string name="settings_premium_inactive">Nicht freigeschaltet: %1$d Geheimnisse gleichzeitig und deposplit.com als Relay.</string>
+    <string name="settings_premium_button">Premium ansehen</string>
+    <string name="settings_relay_premium_required">Ein eigenes Standard-Relay zu wählen gehört zu Premium.</string>
+    <string name="add_contact_relay_premium_required">Das Relay eines Kontakts von Hand einzutragen gehört zu Premium. Ein Relay aus einem gescannten QR-Code ist immer kostenlos.</string>
+    <string name="deposit_free_tier_full">%1$d von %2$d kostenlosen Geheimnissen sind belegt. Verwirf eines oder schalte Premium frei.</string>
+
     <plurals name="share_detail_approved_shares">
         <item quantity="one">%d angenommener Teil verfügbar</item>
         <item quantity="other">%d angenommene Teile verfügbar</item>

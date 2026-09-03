@@ -12,6 +12,7 @@ import com.deposplit.ui.contacts.ContactsScreen
 import com.deposplit.ui.contacts.RelinkContactScreen
 import com.deposplit.ui.deposit.DepositScreen
 import com.deposplit.ui.home.HomeScreen
+import com.deposplit.ui.paywall.PaywallScreen
 import com.deposplit.ui.qr.QrDisplayScreen
 import com.deposplit.ui.qr.QrScanScreen
 import com.deposplit.ui.repair.RepairScreen
@@ -32,6 +33,7 @@ private const val ROUTE_REPAIR = "repair/{secretId}"
 private const val ROUTE_QR_DISPLAY = "qr_display"
 private const val ROUTE_QR_SCAN = "qr_scan"
 private const val ROUTE_SETTINGS = "settings"
+private const val ROUTE_PAYWALL = "paywall"
 
 class MainActivity : FragmentActivity() {
 
@@ -68,10 +70,19 @@ class MainActivity : FragmentActivity() {
                         )
                     }
                     composable(ROUTE_SETTINGS) {
-                        SettingsScreen(onNavigateBack = { navController.popBackStack() })
+                        SettingsScreen(
+                            onNavigateBack = { navController.popBackStack() },
+                            onNavigateToPaywall = { navController.navigate(ROUTE_PAYWALL) },
+                        )
+                    }
+                    composable(ROUTE_PAYWALL) {
+                        PaywallScreen(onNavigateBack = { navController.popBackStack() })
                     }
                     composable(ROUTE_DEPOSIT) {
-                        DepositScreen(onNavigateBack = { navController.popBackStack() })
+                        DepositScreen(
+                            onNavigateBack = { navController.popBackStack() },
+                            onNavigateToPaywall = { navController.navigate(ROUTE_PAYWALL) },
+                        )
                     }
                     composable(ROUTE_CONTACTS) {
                         ContactsScreen(
@@ -83,7 +94,8 @@ class MainActivity : FragmentActivity() {
                     }
                     composable(ROUTE_ADD_CONTACT) {
                         AddContactScreen(
-                            onNavigateBack = { navController.popBackStack() }
+                            onNavigateBack = { navController.popBackStack() },
+                            onNavigateToPaywall = { navController.navigate(ROUTE_PAYWALL) },
                         )
                     }
                     composable(ROUTE_RELINK_CONTACT) { backStackEntry ->

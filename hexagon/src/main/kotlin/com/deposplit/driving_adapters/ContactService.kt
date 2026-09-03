@@ -1,15 +1,18 @@
 package com.deposplit.driving_adapters
 
 import com.deposplit.driven_ports.ContactRepository
+import com.deposplit.driven_ports.PurchaseRepository
 import com.deposplit.driving_ports.ContactManagement
 import com.deposplit.value_objects.CipherSuite
 import com.deposplit.value_objects.Contact
+import com.deposplit.value_objects.PremiumRequiredException
 import com.deposplit.value_objects.VerificationLevel
 import java.time.Instant
 import java.util.UUID
 
 class ContactService(
     private val contactRepository: ContactRepository,
+    private val purchases: PurchaseRepository,
 ) : ContactManagement {
 
     override fun listContacts(): List<Contact> = contactRepository.getAll()
@@ -24,6 +27,11 @@ class ContactService(
         // Physical co-presence can't be asserted by typing a key in by hand — that's what the
         // in-person QR scan flow is for.
         require(verificationLevel != VerificationLevel.VERY_HIGH) { "Very High verification requires an in-person QR scan" }
+        // Typing a relay by hand is the paid half of BYOR. Reading one out of a scanned QR code is
+        // not, and addFromQr below is deliberately left open: that URL is the contact stating where
+        // their own mailbox is, and refusing it would mean a free device simply cannot share with
+        // anyone who self-hosts.
+        if (relayBaseUrl != null && !purchases.isPremium()) throw PremiumRequiredException()
         val now = Instant.now()
         contactRepository.save(
             Contact(

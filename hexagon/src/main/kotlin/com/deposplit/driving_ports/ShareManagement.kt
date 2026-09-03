@@ -15,12 +15,16 @@ import java.util.UUID
 
 interface ShareManagement {
     // ─── Sender ───────────────────────────────────────────────────────────────
+    // replacing names the active secret this deposit supersedes — a repair's re-split, which
+    // re-splits what already exists rather than adding to it, and is therefore exempt from the
+    // free-tier cap. Everything else about the deposit is identical; nothing links the two records.
     fun deposit(
         secret: ByteArray,
         label: String,
         contacts: List<Contact>,
         threshold: Int,
         mimeType: MimeType = MimeType.DEFAULT,
+        replacing: UUID? = null,
     )
     fun listSecrets(): List<Secret>
     fun syncDistributed()

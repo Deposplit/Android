@@ -2,6 +2,7 @@ package com.deposplit.driving_adapters
 
 import com.deposplit.driven_ports.ContactRepository
 import com.deposplit.driven_ports.KeyConflictRepository
+import com.deposplit.driven_ports.PurchaseRepository
 import com.deposplit.driven_ports.RetainedDepositRepository
 import com.deposplit.driven_ports.SecretRepository
 import com.deposplit.driven_ports.ShareMetadataRepository
@@ -17,6 +18,7 @@ import com.deposplit.shamir.split
 import com.deposplit.value_objects.CipherSuite
 import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.CustodyHeartbeatTuning
+import com.deposplit.value_objects.FreeTierLimitReachedException
 import com.deposplit.value_objects.HeldShare
 import com.deposplit.value_objects.KeyConflict
 import com.deposplit.value_objects.MimeType
@@ -51,6 +53,7 @@ class ShareService(
     private val keyConflictRepository: KeyConflictRepository,
     private val retainedDepositRepository: RetainedDepositRepository,
     private val identity: Identity,
+    private val purchases: PurchaseRepository,
 ) : ShareManagement {
 
     // ── Relay resolution ────────────────────────────────────────────────────
@@ -102,9 +105,19 @@ class ShareService(
         contacts: List<Contact>,
         threshold: Int,
         mimeType: MimeType,
+        replacing: UUID?,
     ) {
         if (secret.size > SecretLimits.MAX_SECRET_BYTES) {
             throw SecretTooLargeException(secret.size, SecretLimits.MAX_SECRET_BYTES)
+        }
+        // The free tier is counted here rather than at the form so that no entry point can slip
+        // past it, exactly as the size limit above is. A repair passes replacing and is exempt: it
+        // supersedes an active secret instead of adding a fourth.
+        if (replacing == null && !purchases.isPremium()) {
+            val active = secretRepository.getAll().count { it.state == SecretState.ACTIVE }
+            if (active >= SecretLimits.FREE_TIER_MAX_ACTIVE_SECRETS) {
+                throw FreeTierLimitReachedException(active, SecretLimits.FREE_TIER_MAX_ACTIVE_SECRETS)
+            }
         }
         val shares = split(secret, contacts.size, threshold)
         val secretId = UUID.randomUUID()

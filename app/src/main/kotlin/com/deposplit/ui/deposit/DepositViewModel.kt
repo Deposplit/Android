@@ -4,11 +4,14 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deposplit.R
+import com.deposplit.driven_ports.PurchaseRepository
 import com.deposplit.driving_ports.ContactManagement
 import com.deposplit.driving_ports.ShareManagement
 import com.deposplit.value_objects.Contact
+import com.deposplit.value_objects.FreeTierLimitReachedException
 import com.deposplit.value_objects.MimeType
 import com.deposplit.value_objects.SecretLimits
+import com.deposplit.value_objects.SecretState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +26,7 @@ import java.util.UUID
 class DepositViewModel(
     private val shareManagement: ShareManagement,
     private val contactManagement: ContactManagement,
+    private val purchases: PurchaseRepository,
     prefill: Prefill? = null,
 ) : ViewModel() {
 
@@ -39,12 +43,16 @@ class DepositViewModel(
         val mimeType: MimeType,
         val selectedContactIds: Set<UUID>,
         val threshold: Int,
+        // The secret this re-split supersedes. A repair is not a fourth secret, so it is exempt
+        // from the free-tier cap — see ShareManagement.deposit.
+        val replacing: UUID? = null,
     ) {
         override fun equals(other: Any?) = other is Prefill &&
             label == other.label && secret.contentEquals(other.secret) && mimeType == other.mimeType &&
-            selectedContactIds == other.selectedContactIds && threshold == other.threshold
+            selectedContactIds == other.selectedContactIds && threshold == other.threshold &&
+            replacing == other.replacing
 
-        override fun hashCode() = listOf(label, secret.contentHashCode(), mimeType, selectedContactIds, threshold).hashCode()
+        override fun hashCode() = listOf(label, secret.contentHashCode(), mimeType, selectedContactIds, threshold, replacing).hashCode()
     }
 
     data class UiState(
@@ -59,6 +67,11 @@ class DepositViewModel(
         // to deposit, but not to the user: one is something to explain, the other something to undo.
         val isCarriedThrough: Boolean = false,
         val pickError: PickError? = null,
+        // Set when a free device already holds its allowance of active secrets and this deposit is
+        // not a repair. The domain refuses such a deposit regardless — this is the courteous half,
+        // so the form says so before anything is typed rather than after everything is.
+        val freeTierFull: Boolean = false,
+        val freeTierLimit: Int = SecretLimits.FREE_TIER_MAX_ACTIVE_SECRETS,
         val threshold: Int = 2,
         val contacts: List<Contact> = emptyList(),
         val selectedContactIds: Set<UUID> = emptySet(),
@@ -85,12 +98,13 @@ class DepositViewModel(
             isDepositing == other.isDepositing && error == other.error && labelError == other.labelError &&
             secretError == other.secretError && selectionError == other.selectionError &&
             pendingWarnings == other.pendingWarnings &&
-            isCarriedThrough == other.isCarriedThrough && pickError == other.pickError
+            isCarriedThrough == other.isCarriedThrough && pickError == other.pickError &&
+            freeTierFull == other.freeTierFull && freeTierLimit == other.freeTierLimit
 
         override fun hashCode() = listOf(
             label, secret, opaqueSecret?.contentHashCode(), mimeType, threshold, contacts, selectedContactIds,
             isLoadingContacts, isDepositing, error, labelError, secretError, selectionError, pendingWarnings,
-            isCarriedThrough, pickError,
+            isCarriedThrough, pickError, freeTierFull, freeTierLimit,
         ).hashCode()
     }
 
@@ -140,8 +154,27 @@ class DepositViewModel(
     private val _effects = Channel<Effect>(Channel.BUFFERED)
     val effects = _effects.receiveAsFlow()
 
+    private val replacing: UUID? = prefill?.replacing
+
     init {
         loadContacts()
+        checkFreeTier()
+    }
+
+    /**
+     * Whether this device may deposit at all. A repair never counts — it supersedes an active
+     * secret rather than adding one — so it is exempt here just as it is in the domain.
+     */
+    private fun checkFreeTier() {
+        if (replacing != null || purchases.isPremium()) return
+        viewModelScope.launch {
+            val active = runCatching {
+                withContext(Dispatchers.IO) { shareManagement.listSecrets().count { it.state == SecretState.ACTIVE } }
+            }.getOrNull() ?: return@launch
+            if (active >= SecretLimits.FREE_TIER_MAX_ACTIVE_SECRETS) {
+                _uiState.update { it.copy(freeTierFull = true) }
+            }
+        }
     }
 
     private fun loadContacts() {
@@ -258,11 +291,22 @@ class DepositViewModel(
                 val selectedContacts = state.contacts.filter { it.id in state.selectedContactIds }
                 val label = state.label.trim()
                 withContext(Dispatchers.IO) {
-                    shareManagement.deposit(state.secretBytes, label, selectedContacts, state.threshold, state.mimeType)
+                    shareManagement.deposit(state.secretBytes, label, selectedContacts, state.threshold, state.mimeType, replacing)
                 }
             }
                 .onSuccess { _effects.send(Effect.NavigateBack) }
-                .onFailure { _uiState.update { it.copy(isDepositing = false, error = R.string.deposit_error_fallback) } }
+                .onFailure { failure ->
+                    // A refusal by the cap is not "Deposit failed" — it is an answer, and the form
+                    // has somewhere to send the user.
+                    val hitTheCap = failure is FreeTierLimitReachedException
+                    _uiState.update {
+                        it.copy(
+                            isDepositing = false,
+                            freeTierFull = it.freeTierFull || hitTheCap,
+                            error = if (hitTheCap) null else R.string.deposit_error_fallback,
+                        )
+                    }
+                }
         }
     }
 

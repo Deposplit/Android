@@ -255,6 +255,24 @@
     <string name="qr_scan_grant_permission">Grant Permission</string>
     <string name="qr_scan_error_fallback">Failed to read QR code</string>
 
+    <!-- Premium -->
+    <string name="paywall_title">Deposplit Premium</string>
+    <string name="paywall_intro">One purchase, once. No subscription, no ads.</string>
+    <string name="paywall_benefit_secrets_title">As many secrets as you like</string>
+    <string name="paywall_benefit_secrets_body">Free covers %1$d secrets at a time. Discarding one frees its slot straight away.</string>
+    <string name="paywall_benefit_byor_title">Bring your own relay</string>
+    <string name="paywall_benefit_byor_body">Point this device, or an individual contact, at a relay you run yourself. Accepting shares from someone else\'s relay stays free.</string>
+    <string name="paywall_active">Premium is unlocked on this device.</string>
+    <string name="paywall_purchase_button">Unlock Premium</string>
+    <string name="paywall_purchase_unavailable">Purchasing is not wired up yet — Deposplit needs a Play Console listing first.</string>
+    <string name="paywall_restore_button">Restore purchase</string>
+    <string name="paywall_honesty">Whether Premium is unlocked is decided on this device. The relay never learns anything about it.</string>
+    <string name="settings_premium_inactive">Not unlocked: %1$d secrets at a time, and deposplit.com as the relay.</string>
+    <string name="settings_premium_button">See Premium</string>
+    <string name="settings_relay_premium_required">Choosing your own default relay is part of Premium.</string>
+    <string name="add_contact_relay_premium_required">Naming a contact\'s relay by hand is part of Premium. A relay carried in a scanned QR code is always free.</string>
+    <string name="deposit_free_tier_full">%1$d of %2$d free secrets are in use. Discard one, or unlock Premium.</string>
+
     <plurals name="share_detail_approved_shares">
         <item quantity="one">%d approved share available</item>
         <item quantity="other">%d approved shares available</item>

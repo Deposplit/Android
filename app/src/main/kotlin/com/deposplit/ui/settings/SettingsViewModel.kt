@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deposplit.R
 import com.deposplit.api.RelayDefaults
+import com.deposplit.driven_ports.PurchaseRepository
 import com.deposplit.driven_ports.RelaySettings
 import com.deposplit.driving_ports.CatalogManagement
 import com.deposplit.driving_ports.ContactManagement
@@ -24,10 +25,14 @@ class SettingsViewModel(
     private val catalogManagement: CatalogManagement,
     private val shareManagement: ShareManagement,
     private val contactManagement: ContactManagement,
+    purchases: PurchaseRepository,
 ) : ViewModel() {
 
     data class UiState(
         val relayBaseUrl: String = "",
+        // A one-time unlock never lapses while the app is open, so this is read once rather than
+        // observed. Coming back from the paywall recreates the screen and with it this view model.
+        val isPremium: Boolean = false,
         @StringRes val catalogMessage: Int? = null,
         val catalogMessageArg: String? = null,
         // The identity-regeneration trigger. contactCount is pre-fetched so the confirmation
@@ -41,6 +46,7 @@ class SettingsViewModel(
     private val _uiState = MutableStateFlow(
         UiState(
             relayBaseUrl = relaySettings.getDefaultRelayBaseUrl(),
+            isPremium = purchases.isPremium(),
             contactCount = runCatching { contactManagement.listContacts().size }.getOrDefault(0),
         )
     )

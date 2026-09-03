@@ -3,6 +3,7 @@ package com.deposplit.driving_adapters
 import com.deposplit.driven_ports.ContactRepository
 import com.deposplit.driven_ports.IdentityStore
 import com.deposplit.driven_ports.KeyConflictRepository
+import com.deposplit.driven_ports.PurchaseRepository
 import com.deposplit.driven_ports.RetainedDepositRepository
 import com.deposplit.driven_ports.SecretRepository
 import com.deposplit.driven_ports.ShareMetadataRepository
@@ -22,6 +23,7 @@ import com.deposplit.value_objects.PayloadCanonical
 import com.deposplit.value_objects.ReconstructionIntegrity
 import com.deposplit.value_objects.RetainedDepositBlob
 import com.deposplit.value_objects.Role
+import com.deposplit.value_objects.FreeTierLimitReachedException
 import com.deposplit.value_objects.Secret
 import com.deposplit.value_objects.SecretLimits
 import com.deposplit.value_objects.SecretState
@@ -146,6 +148,11 @@ private class FakeSecretRepository : SecretRepository {
         secrets.add(secret)
     }
     override fun delete(secretId: UUID) { secrets.removeAll { it.id == secretId } }
+}
+
+/** Toggleable, like FakeShareRelay.unreachable — a test flips it to buy the unlock mid-run. */
+private class FakePurchaseRepository(var premium: Boolean = false) : PurchaseRepository {
+    override fun isPremium() = premium
 }
 
 private class FakeKeyConflictRepository : KeyConflictRepository {
@@ -316,6 +323,7 @@ class ShareServiceTest {
         val metaRepo: FakeShareMetadataRepository,
         val conflictRepo: FakeKeyConflictRepository,
         val retainedRepo: FakeRetainedDepositRepository,
+        val purchases: FakePurchaseRepository,
     )
 
     private fun newService(
@@ -330,6 +338,7 @@ class ShareServiceTest {
         val metaRepo = FakeShareMetadataRepository()
         val conflictRepo = FakeKeyConflictRepository()
         val retainedRepo = FakeRetainedDepositRepository()
+        val purchases = FakePurchaseRepository()
         val svc = ShareService(
             relayResolver = FixedShareRelayResolver(relay),
             encryption = encryption,
@@ -337,12 +346,13 @@ class ShareServiceTest {
             shareMetadataRepository = metaRepo,
             secretRepository = FakeSecretRepository(),
             contactRepository = contactRepo,
-            contactManagement = ContactService(contactRepo),
+            contactManagement = ContactService(contactRepo, purchases),
             keyConflictRepository = conflictRepo,
             retainedDepositRepository = retainedRepo,
             identity = bobIdentity,
+            purchases = purchases,
         )
-        return ShareServiceFixture(svc, bobIdentity, shareRepo, contactRepo, metaRepo, conflictRepo, retainedRepo)
+        return ShareServiceFixture(svc, bobIdentity, shareRepo, contactRepo, metaRepo, conflictRepo, retainedRepo, purchases)
     }
 
     private fun depositRow(
@@ -500,6 +510,7 @@ class ShareServiceTest {
         bobIdentity.register("bob")
         val shareRepo = FakeShareRepository()
         val contactRepo = FakeContactRepository(listOf(aliceContact, charlieContact))
+        val purchases = FakePurchaseRepository()
         val svc = ShareService(
             relayResolver = TwoRelayResolver(defaultRelay, byorUrl, byorRelay),
             encryption = NoOpShareEncryption,
@@ -507,10 +518,11 @@ class ShareServiceTest {
             shareMetadataRepository = FakeShareMetadataRepository(),
             secretRepository = FakeSecretRepository(),
             contactRepository = contactRepo,
-            contactManagement = ContactService(contactRepo),
+            contactManagement = ContactService(contactRepo, purchases),
             keyConflictRepository = FakeKeyConflictRepository(),
             retainedDepositRepository = FakeRetainedDepositRepository(),
             identity = bobIdentity,
+            purchases = purchases,
         )
 
         val fromAliceId = UUID.randomUUID()
@@ -542,6 +554,7 @@ class ShareServiceTest {
         bobIdentity.register("bob")
         val shareRepo = FakeShareRepository()
         val contactRepo = FakeContactRepository(listOf(aliceContact, charlieContact))
+        val purchases = FakePurchaseRepository()
         val svc = ShareService(
             relayResolver = TwoRelayResolver(defaultRelay, byorUrl, byorRelay),
             encryption = NoOpShareEncryption,
@@ -549,10 +562,11 @@ class ShareServiceTest {
             shareMetadataRepository = FakeShareMetadataRepository(),
             secretRepository = FakeSecretRepository(),
             contactRepository = contactRepo,
-            contactManagement = ContactService(contactRepo),
+            contactManagement = ContactService(contactRepo, purchases),
             keyConflictRepository = FakeKeyConflictRepository(),
             retainedDepositRepository = FakeRetainedDepositRepository(),
             identity = bobIdentity,
+            purchases = purchases,
         )
 
         val fromAliceId = UUID.randomUUID()
@@ -584,6 +598,7 @@ class ShareServiceTest {
         val secretRepo = FakeSecretRepository()
         val metaRepo = FakeShareMetadataRepository()
         val contactRepo = FakeContactRepository(contacts)
+        val purchases = FakePurchaseRepository()
         val svc = ShareService(
             relayResolver = FixedShareRelayResolver(relay),
             encryption = NoOpShareEncryption,
@@ -591,10 +606,11 @@ class ShareServiceTest {
             shareMetadataRepository = metaRepo,
             secretRepository = secretRepo,
             contactRepository = contactRepo,
-            contactManagement = ContactService(contactRepo),
+            contactManagement = ContactService(contactRepo, purchases),
             keyConflictRepository = FakeKeyConflictRepository(),
             retainedDepositRepository = FakeRetainedDepositRepository(),
             identity = bobIdentity,
+            purchases = purchases,
         )
         return RecoveryFixture(svc, bobIdentity, shareRepo, secretRepo, metaRepo)
     }
@@ -1458,6 +1474,7 @@ class ShareServiceTest {
         val relay = FakeShareRelay()
         val contactRepo = FakeContactRepository(listOf(alice))
         val shareRepo = FakeShareRepository()
+        val purchases = FakePurchaseRepository()
         val svc = ShareService(
             relayResolver = FixedShareRelayResolver(relay),
             encryption = bobIdentity,
@@ -1465,10 +1482,11 @@ class ShareServiceTest {
             shareMetadataRepository = FakeShareMetadataRepository(),
             secretRepository = FakeSecretRepository(),
             contactRepository = contactRepo,
-            contactManagement = ContactService(contactRepo),
+            contactManagement = ContactService(contactRepo, purchases),
             keyConflictRepository = FakeKeyConflictRepository(),
             retainedDepositRepository = FakeRetainedDepositRepository(),
             identity = bobIdentity,
+            purchases = purchases,
         )
 
         val id = UUID.randomUUID()
@@ -1529,6 +1547,7 @@ class ShareServiceTest {
         val bobIdentity = IdentityService(InMemoryIdentityStoreForShareServiceTest())
         bobIdentity.register("bob")
         val contactRepo = FakeContactRepository(listOf(aliceContact, charlieContact))
+        val purchases = FakePurchaseRepository()
         val svc = ShareService(
             relayResolver = TwoRelayResolver(defaultRelay, byorUrl, byorRelay),
             encryption = NoOpShareEncryption,
@@ -1536,10 +1555,11 @@ class ShareServiceTest {
             shareMetadataRepository = FakeShareMetadataRepository(),
             secretRepository = FakeSecretRepository(),
             contactRepository = contactRepo,
-            contactManagement = ContactService(contactRepo),
+            contactManagement = ContactService(contactRepo, purchases),
             keyConflictRepository = FakeKeyConflictRepository(),
             retainedDepositRepository = FakeRetainedDepositRepository(),
             identity = bobIdentity,
+            purchases = purchases,
         )
         val oldVerifyKey = bobIdentity.verifyKey()
 
@@ -1734,5 +1754,78 @@ class ShareServiceTest {
         assertTrue(MimeType("image/PNG").isImage)
         assertTrue(!MimeType("application/octet-stream").isText)
         assertTrue(!MimeType("application/octet-stream").isImage)
+    }
+
+    // ── Free tier ───────────────────────────────────────────────────────────────────────────────
+
+    // The cap counts *active* secrets rather than lifetime deposits, so these tests care about what
+    // listSecrets reports afterwards, not about how many rows the relay saw.
+
+    @Test
+    fun `deposit refuses one secret past the free-tier cap`() {
+        val relay = FakeShareRelay()
+        val holderKeys = TestKeyPair.generate()
+        val holderContact = aliceContact.copy(id = UUID.randomUUID(), pseudonym = "holder", verifyKey = holderKeys.publicKey)
+        val holders = listOf(aliceContact, holderContact)
+        val (svc, _, _, _, _, _, _) = newService(relay, contacts = holders)
+        repeat(SecretLimits.FREE_TIER_MAX_ACTIVE_SECRETS) { svc.deposit(byteArrayOf(1, 2, 3), "s$it", holders, 2) }
+
+        val refused = assertFailsWith<FreeTierLimitReachedException> {
+            svc.deposit(byteArrayOf(4, 5, 6), "one too many", holders, 2)
+        }
+
+        assertEquals(SecretLimits.FREE_TIER_MAX_ACTIVE_SECRETS, refused.active)
+        assertEquals(SecretLimits.FREE_TIER_MAX_ACTIVE_SECRETS, refused.limit)
+        assertEquals(SecretLimits.FREE_TIER_MAX_ACTIVE_SECRETS, svc.listSecrets().size)
+    }
+
+    @Test
+    fun `Premium lifts the free-tier cap`() {
+        val relay = FakeShareRelay()
+        val holderKeys = TestKeyPair.generate()
+        val holderContact = aliceContact.copy(id = UUID.randomUUID(), pseudonym = "holder", verifyKey = holderKeys.publicKey)
+        val holders = listOf(aliceContact, holderContact)
+        val fixture = newService(relay, contacts = holders)
+        repeat(SecretLimits.FREE_TIER_MAX_ACTIVE_SECRETS) { fixture.svc.deposit(byteArrayOf(1, 2, 3), "s$it", holders, 2) }
+
+        fixture.purchases.premium = true
+        fixture.svc.deposit(byteArrayOf(4, 5, 6), "the fourth", holders, 2)
+
+        assertEquals(SecretLimits.FREE_TIER_MAX_ACTIVE_SECRETS + 1, fixture.svc.listSecrets().size)
+    }
+
+    @Test
+    fun `discarding a secret frees a slot before any holder confirms`() {
+        val relay = FakeShareRelay()
+        val holderKeys = TestKeyPair.generate()
+        val holderContact = aliceContact.copy(id = UUID.randomUUID(), pseudonym = "holder", verifyKey = holderKeys.publicKey)
+        val holders = listOf(aliceContact, holderContact)
+        val (svc, _, _, _, _, _, _) = newService(relay, contacts = holders)
+        repeat(SecretLimits.FREE_TIER_MAX_ACTIVE_SECRETS) { svc.deposit(byteArrayOf(1, 2, 3), "s$it", holders, 2) }
+
+        // The record survives until every holder confirms removal; the slot does not wait for that.
+        svc.discardSecret(svc.listSecrets().first().id)
+        svc.deposit(byteArrayOf(4, 5, 6), "the replacement", holders, 2)
+
+        assertEquals(1, svc.listSecrets().count { it.state == SecretState.DISCARDING })
+        assertEquals(SecretLimits.FREE_TIER_MAX_ACTIVE_SECRETS, svc.listSecrets().count { it.state == SecretState.ACTIVE })
+    }
+
+    @Test
+    fun `a repair re-split is exempt from the free-tier cap`() {
+        val relay = FakeShareRelay()
+        val holderKeys = TestKeyPair.generate()
+        val holderContact = aliceContact.copy(id = UUID.randomUUID(), pseudonym = "holder", verifyKey = holderKeys.publicKey)
+        val holders = listOf(aliceContact, holderContact)
+        val (svc, _, _, _, _, _, _) = newService(relay, contacts = holders)
+        repeat(SecretLimits.FREE_TIER_MAX_ACTIVE_SECRETS) { svc.deposit(byteArrayOf(1, 2, 3), "s$it", holders, 2) }
+        val degraded = svc.listSecrets().first()
+
+        // Repair deposits the replacement before discarding the original, so at the cap both exist
+        // at once. Refusing that would leave a free user's only way out of a degrading secret the
+        // one that destroys it first.
+        svc.deposit(byteArrayOf(1, 2, 3), degraded.label, holders, 2, replacing = degraded.id)
+
+        assertEquals(SecretLimits.FREE_TIER_MAX_ACTIVE_SECRETS + 1, svc.listSecrets().size)
     }
 }

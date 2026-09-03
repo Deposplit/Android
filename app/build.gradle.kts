@@ -30,9 +30,12 @@ android {
         debug {
             val skipBiometric = localProps.getProperty("SKIP_BIOMETRIC")?.toBooleanStrictOrNull() ?: false
             buildConfigField("Boolean", "SKIP_BIOMETRIC", "$skipBiometric")
+            val fakePremium = localProps.getProperty("FAKE_PREMIUM")?.toBooleanStrictOrNull() ?: false
+            buildConfigField("Boolean", "FAKE_PREMIUM", "$fakePremium")
         }
         release {
             buildConfigField("Boolean", "SKIP_BIOMETRIC", "false")
+            buildConfigField("Boolean", "FAKE_PREMIUM", "false")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

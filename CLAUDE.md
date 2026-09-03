@@ -183,7 +183,7 @@ in the lint gate to keep dead ones from accumulating again.
 
 `NavHost` routes: `sign_in`, `home`, `contacts`, `add_contact`,
 `relink_contact/{contactId}`, `deposit`, `share_detail`, `repair/{secretId}`, `qr_display`,
-`qr_scan`, `settings`.
+`qr_scan`, `settings`, `paywall`.
 
 ## Dev conveniences
 
@@ -200,14 +200,22 @@ local relay from the in-app **Settings** screen: `http://10.0.2.2:9000` on an em
 (cleartext to that host is allowed by `app/src/debug/res/xml/network_security_config.xml`),
 or your LAN IP on a physical device.
 
-Note for whoever implements the freemium gate: putting the Settings relay editor behind
-`isPremium()` removes the only way to point a dev build at a local relay, so it needs its
-own debug-only fake-Premium `PurchaseRepository` in the same shape as `SKIP_BIOMETRIC`.
+**`FAKE_PREMIUM`** — the Settings relay editor sits behind `isPremium()`, so without this
+there is no way to point a debug build at a local relay. Set `FAKE_PREMIUM=true` in
+`local.properties`; `SharedPreferencesPurchaseRepository` then reports Premium regardless of
+what is stored. **Release is hard-coded false**, exactly as `SKIP_BIOMETRIC` is.
+
+It exists because Android has no local equivalent of Xcode's StoreKit configuration file.
+Google Play Billing talks to the Play Store app and has no offline mode: a single test
+purchase needs a Play Console entry for `com.deposplit`, an active product, a build on at
+least the internal track, and a registered license tester — and Google scopes testing to
+hardware devices, with the emulator's purchase flow unreliable even on a Play system image.
+iOS therefore has no counterpart to this flag and does not need one.
 
 ## Build and test
 
 ```bash
-./gradlew test                    # JVM unit tests (136 in :hexagon, 20 in :app) — what CI runs
+./gradlew test                    # JVM unit tests (143 in :hexagon, 20 in :app) — what CI runs
 ./gradlew :app:lintDebug          # the four gated lint checks — also what CI runs
 ./gradlew :hexagon:test           # domain only
 ./gradlew :hexagon:test --tests "com.deposplit.shamir.ShamirTest"

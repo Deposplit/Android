@@ -1,6 +1,7 @@
 package com.deposplit.ui.contacts
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,6 +25,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,11 +45,11 @@ import com.deposplit.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddContactScreen(onNavigateBack: () -> Unit) {
+fun AddContactScreen(onNavigateBack: () -> Unit, onNavigateToPaywall: () -> Unit) {
     val app = LocalContext.current.applicationContext as DeposplitApp
     val viewModel: AddContactViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { AddContactViewModel(app.contactManagement) }
+            initializer { AddContactViewModel(app.contactManagement, app.purchases) }
         }
     )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -111,13 +113,25 @@ fun AddContactScreen(onNavigateBack: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
             )
             Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                value = uiState.relayBaseUrl,
-                onValueChange = viewModel::onRelayBaseUrlChange,
-                label = { Text(stringResource(R.string.add_contact_relay_label)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            if (uiState.isPremium) {
+                OutlinedTextField(
+                    value = uiState.relayBaseUrl,
+                    onValueChange = viewModel::onRelayBaseUrlChange,
+                    label = { Text(stringResource(R.string.add_contact_relay_label)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else {
+                Text(
+                    stringResource(R.string.add_contact_relay_premium_required),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(4.dp))
+                TextButton(onClick = onNavigateToPaywall, contentPadding = PaddingValues(0.dp)) {
+                    Text(stringResource(R.string.settings_premium_button))
+                }
+            }
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
                 value = uiState.nickname,
