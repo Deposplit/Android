@@ -79,7 +79,7 @@ class ShareService(
     private fun verifyOpen(req: ShareRequest): Boolean {
         val contact = contactRepository.getByVerifyKey(req.senderKey) ?: return false
         val canon = PayloadCanonical.forOpen(
-            req.secretId, req.transactionType, req.recipientKey, req.label, req.secretCreatedAt, req.shareId, req.ciphertext,
+            req.secretId, req.transactionType, req.recipientKey, req.label, req.secretCreatedAt, req.ciphertext,
             req.k, req.n, req.mimeType,
         )
         return identity.verify(canon, req.senderSignature, contact.verifyKey)
@@ -111,10 +111,10 @@ class ShareService(
         val createdAt = Instant.now()
         shares.zip(contacts).forEach { (share, contact) ->
             val ciphertext = encryption.encrypt(share, contact.encKey)
-            val canon = PayloadCanonical.forOpen(secretId, ShareTransactionType.DEPOSIT, contact.verifyKey, label, createdAt, null, ciphertext, threshold, contacts.size, mimeType)
+            val canon = PayloadCanonical.forOpen(secretId, ShareTransactionType.DEPOSIT, contact.verifyKey, label, createdAt, ciphertext, threshold, contacts.size, mimeType)
             val senderSignature = identity.sign(canon)
             val req = relayForContact(contact).openShareRequest(
-                secretId, contact.verifyKey, label, createdAt, ShareTransactionType.DEPOSIT, null, ciphertext,
+                secretId, contact.verifyKey, label, createdAt, ShareTransactionType.DEPOSIT, ciphertext,
                 k = threshold, n = contacts.size, mimeType = mimeType, senderSignature = senderSignature,
             )
             shareMetadataRepository.save(ShareMetadata(req.id, secretId, contact.id))
@@ -252,21 +252,20 @@ class ShareService(
         val targets = if (confirmed.size >= secret.k) confirmed else deposited
         for (meta in targets) {
             val contact = contactRepository.getById(meta.contactId) ?: continue
-            // Matched on secretId plus the holder's key. Not the local shareId — a recovered
-            // ShareMetadata's id is a freshly generated local UUID with no relay-row counterpart.
-            // And not secretId alone — every holder of a secret shares it, so one standing row
-            // would silence the whole fan-out. A holder who rotated keys since the row was opened
-            // no longer matches, which is right: that row is unreachable under the new key anyway.
+            // Matched on secretId plus the holder's key. Not secretId alone — every holder of a
+            // secret shares it, so one standing row would silence the whole fan-out. A holder who
+            // rotated keys since the row was opened no longer matches, which is right: that row is
+            // unreachable under the new key anyway.
             val hasActive = existing.any {
                 it.secretId == meta.secretId &&
                     it.recipientKey.contentEquals(contact.verifyKey) &&
                     (it.state == ShareRequestState.PENDING || it.state == ShareRequestState.APPROVED)
             }
             if (!hasActive) runCatching {
-                val canon = PayloadCanonical.forOpen(meta.secretId, ShareTransactionType.RETRIEVAL, contact.verifyKey, secret.label, secret.secretCreatedAt, meta.id, null)
+                val canon = PayloadCanonical.forOpen(meta.secretId, ShareTransactionType.RETRIEVAL, contact.verifyKey, secret.label, secret.secretCreatedAt, null)
                 val senderSignature = identity.sign(canon)
                 relayForContact(contact).openShareRequest(
-                    meta.secretId, contact.verifyKey, secret.label, secret.secretCreatedAt, ShareTransactionType.RETRIEVAL, meta.id, null,
+                    meta.secretId, contact.verifyKey, secret.label, secret.secretCreatedAt, ShareTransactionType.RETRIEVAL, null,
                     senderSignature = senderSignature,
                 )
             }
@@ -280,10 +279,10 @@ class ShareService(
             ?: error("No local record for secret ${meta.secretId}")
         val contact = contactRepository.getById(meta.contactId)
             ?: error("Contact not found for id ${meta.contactId}")
-        val canon = PayloadCanonical.forOpen(meta.secretId, type, contact.verifyKey, secret.label, secret.secretCreatedAt, shareId, null)
+        val canon = PayloadCanonical.forOpen(meta.secretId, type, contact.verifyKey, secret.label, secret.secretCreatedAt, null)
         val senderSignature = identity.sign(canon)
         return relayForContact(contact).openShareRequest(
-            meta.secretId, contact.verifyKey, secret.label, secret.secretCreatedAt, type, shareId, null,
+            meta.secretId, contact.verifyKey, secret.label, secret.secretCreatedAt, type, null,
             senderSignature = senderSignature,
         )
     }
@@ -596,12 +595,12 @@ class ShareService(
         shareRepository.getAll().filter { it.contactId == contactId }.forEach { share ->
             runCatching {
                 val canon = PayloadCanonical.forOpen(
-                    share.secretId, ShareTransactionType.INVENTORY, contact.verifyKey, share.label, share.createdAt, null, null,
+                    share.secretId, ShareTransactionType.INVENTORY, contact.verifyKey, share.label, share.createdAt, null,
                     share.k, share.n, share.mimeType,
                 )
                 val senderSignature = identity.sign(canon)
                 relayForContact(contact).openShareRequest(
-                    share.secretId, contact.verifyKey, share.label, share.createdAt, ShareTransactionType.INVENTORY, null, null,
+                    share.secretId, contact.verifyKey, share.label, share.createdAt, ShareTransactionType.INVENTORY, null,
                     k = share.k, n = share.n, mimeType = share.mimeType, senderSignature = senderSignature,
                 )
             }
@@ -625,8 +624,8 @@ class ShareService(
             throw SignatureVerificationException("senderSignature does not verify for request $requestId")
         }
         val ciphertext = if (approved && request.transactionType == ShareTransactionType.RETRIEVAL) {
-            // Matched on secretId, not the sender's local shareId — that id is meaningless to this
-            // device once identities can be rebuilt independently after recovery.
+            // Matched on secretId: the request names the secret, and a holder keeps one share per
+            // secret per sender.
             val plaintext = shareRepository.getPlaintextShare(request.secretId) ?: error("Share for secret ${request.secretId} not in local storage")
             // Re-encrypt to the requester's *current* X25519 key — looked up live, not pinned at
             // deposit time. This is what lets reconstruction survive a sender key rotation/

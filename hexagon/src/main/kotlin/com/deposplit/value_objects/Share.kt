@@ -58,7 +58,6 @@ data class ShareRequest(
     val secretCreatedAt: Instant,
     val transactionType: ShareTransactionType,
     val state: ShareRequestState,
-    val shareId: UUID?,
     val requestedAt: Instant,
     val respondedAt: Instant?,
     val ciphertext: ByteArray?,

@@ -18,7 +18,6 @@ interface ShareRelay {
         label: String,
         secretCreatedAt: Instant,
         transactionType: ShareTransactionType,
-        shareId: UUID?,
         ciphertext: ByteArray?,
         k: Int? = null,
         n: Int? = null,

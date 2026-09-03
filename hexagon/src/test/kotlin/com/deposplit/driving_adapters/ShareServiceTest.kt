@@ -209,7 +209,7 @@ private class FakeShareRelay(var unreachable: Boolean = false) : ShareRelay {
 
     override fun openShareRequest(
         secretId: UUID, recipientKey: ByteArray, label: String, secretCreatedAt: Instant,
-        transactionType: ShareTransactionType, shareId: UUID?, ciphertext: ByteArray?, k: Int?, n: Int?,
+        transactionType: ShareTransactionType, ciphertext: ByteArray?, k: Int?, n: Int?,
         mimeType: MimeType?, senderSignature: ByteArray,
     ): ShareRequest {
         openedRequests.add(OpenedRequest(secretId, recipientKey, transactionType, k, n, mimeType))
@@ -219,7 +219,7 @@ private class FakeShareRelay(var unreachable: Boolean = false) : ShareRelay {
             id = UUID.randomUUID(), secretId = secretId, senderKey = ByteArray(0), recipientKey = recipientKey,
             label = label, secretCreatedAt = secretCreatedAt, transactionType = transactionType,
             state = if (selfApproved) ShareRequestState.APPROVED else ShareRequestState.PENDING,
-            shareId = shareId, requestedAt = now, respondedAt = if (selfApproved) now else null,
+            requestedAt = now, respondedAt = if (selfApproved) now else null,
             ciphertext = null, k = k, n = n, mimeType = mimeType, senderSignature = senderSignature, recipientSignature = null,
         )
     }
@@ -362,7 +362,6 @@ class ShareServiceTest {
             secretCreatedAt = Instant.now(),
             transactionType = ShareTransactionType.DEPOSIT,
             state = ShareRequestState.PENDING,
-            shareId = null,
             requestedAt = Instant.now(),
             respondedAt = null,
             ciphertext = ciphertext,
@@ -376,7 +375,7 @@ class ShareServiceTest {
     private fun signOpenAs(signer: TestKeyPair, row: ShareRequest): ByteArray =
         signer.sign(
             PayloadCanonical.forOpen(
-                row.secretId, row.transactionType, row.recipientKey, row.label, row.secretCreatedAt, row.shareId,
+                row.secretId, row.transactionType, row.recipientKey, row.label, row.secretCreatedAt,
                 row.ciphertext, row.k, row.n, row.mimeType,
             ),
         )
@@ -608,13 +607,13 @@ class ShareServiceTest {
         k: Int = 2, n: Int = 3, mimeType: MimeType = MimeType.DEFAULT, label: String = "recovered secret",
     ): ShareRequest {
         val createdAt = Instant.now()
-        val canon = PayloadCanonical.forOpen(secretId, ShareTransactionType.INVENTORY, recipientKey, label, createdAt, null, null, k, n, mimeType)
+        val canon = PayloadCanonical.forOpen(secretId, ShareTransactionType.INVENTORY, recipientKey, label, createdAt, null, k, n, mimeType)
         val sig = signer.sign(canon)
         val now = Instant.now()
         return ShareRequest(
             id = UUID.randomUUID(), secretId = secretId, senderKey = senderKey, recipientKey = recipientKey, label = label,
             secretCreatedAt = createdAt, transactionType = ShareTransactionType.INVENTORY, state = ShareRequestState.APPROVED,
-            shareId = null, requestedAt = now, respondedAt = now, ciphertext = null, k = k, n = n, mimeType = mimeType,
+            requestedAt = now, respondedAt = now, ciphertext = null, k = k, n = n, mimeType = mimeType,
             senderSignature = sig, recipientSignature = null,
         )
     }
@@ -878,7 +877,7 @@ class ShareServiceTest {
         ShareRequest(
             id = id, secretId = secretId, senderKey = ByteArray(32) { 0x05 }, recipientKey = recipientKey,
             label = "test secret", secretCreatedAt = Instant.now(), transactionType = ShareTransactionType.DEPOSIT,
-            state = state, shareId = null, requestedAt = Instant.now(),
+            state = state, requestedAt = Instant.now(),
             respondedAt = if (state == ShareRequestState.PENDING) null else Instant.now(),
             ciphertext = null, k = 2, n = 3, mimeType = MimeType.DEFAULT, senderSignature = ByteArray(0),
             recipientSignature = null,
@@ -1036,7 +1035,7 @@ class ShareServiceTest {
         val retrievalRow = ShareRequest(
             id = UUID.randomUUID(), secretId = secretId, senderKey = ByteArray(32) { 0x05 }, recipientKey = aliceContact.verifyKey,
             label = "s", secretCreatedAt = Instant.now(), transactionType = ShareTransactionType.RETRIEVAL, state = ShareRequestState.APPROVED,
-            shareId = depositId, requestedAt = Instant.now(), respondedAt = Instant.now(), ciphertext = byteArrayOf(1), k = null, n = null,
+            requestedAt = Instant.now(), respondedAt = Instant.now(), ciphertext = byteArrayOf(1), k = null, n = null,
             senderSignature = ByteArray(0), recipientSignature = null,
         )
         relay.pending = listOf(retrievalRow)
@@ -1213,7 +1212,7 @@ class ShareServiceTest {
         return ShareRequest(
             id = id, secretId = secretId, senderKey = ByteArray(0), recipientKey = holder.contact.verifyKey,
             label = "s", secretCreatedAt = Instant.now(), transactionType = ShareTransactionType.RETRIEVAL,
-            state = ShareRequestState.APPROVED, shareId = UUID.randomUUID(), requestedAt = Instant.now(),
+            state = ShareRequestState.APPROVED, requestedAt = Instant.now(),
             respondedAt = Instant.now(), ciphertext = ciphertext, k = null, n = null,
             senderSignature = ByteArray(0), recipientSignature = sig,
         )
@@ -1225,7 +1224,7 @@ class ShareServiceTest {
         ShareRequest(
             id = UUID.randomUUID(), secretId = secretId, senderKey = ByteArray(0), recipientKey = recipientKey,
             label = "s", secretCreatedAt = Instant.now(), transactionType = ShareTransactionType.RETRIEVAL,
-            state = ShareRequestState.PENDING, shareId = UUID.randomUUID(), requestedAt = Instant.now(),
+            state = ShareRequestState.PENDING, requestedAt = Instant.now(),
             respondedAt = null, ciphertext = null, k = null, n = null,
             senderSignature = ByteArray(0), recipientSignature = null,
         )
