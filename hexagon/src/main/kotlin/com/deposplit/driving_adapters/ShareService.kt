@@ -170,8 +170,12 @@ class ShareService(
             runCatching { relay.listShareRequests(Role.SENDER, ShareTransactionType.RETRIEVAL, ShareRequestState.APPROVED) }
                 .getOrDefault(emptyList())
                 .forEach { req ->
-                    val shareId = req.shareId ?: return@forEach
-                    val meta = existingMetadata.find { it.id == shareId } ?: return@forEach
+                    // Matched on secretId plus the holder's key, the same pair requestRetrieval
+                    // fans out on — the row itself carries no pointer back to this device's
+                    // records, and needs none.
+                    val contact = contactRepository.getByVerifyKey(req.recipientKey) ?: return@forEach
+                    val meta = existingMetadata.find { it.secretId == req.secretId && it.contactId == contact.id }
+                        ?: return@forEach
                     shareMetadataRepository.save(meta.copy(lastConfirmedAt = Instant.now()))
                 }
         }
@@ -200,8 +204,11 @@ class ShareService(
         for (secret in discarding) {
             val metasForSecret = shareMetadataRepository.getAll().filter { it.secretId == secret.id }
             for (meta in metasForSecret) {
-                val approvedRemoval = removalRequests.firstOrNull { (_, r) -> r.shareId == meta.id && r.state == ShareRequestState.APPROVED }
-                    ?: continue
+                val contact = contactRepository.getById(meta.contactId) ?: continue
+                val approvedRemoval = removalRequests.firstOrNull { (_, r) ->
+                    r.secretId == meta.secretId && r.recipientKey.contentEquals(contact.verifyKey) &&
+                        r.state == ShareRequestState.APPROVED
+                } ?: continue
                 runCatching { approvedRemoval.first.deleteShareRequest(meta.id) }
                 runCatching { shareMetadataRepository.delete(meta.id) }
             }

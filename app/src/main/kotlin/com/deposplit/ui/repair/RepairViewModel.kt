@@ -87,9 +87,14 @@ class RepairViewModel(
                     val requests = shareManagement.listSentRequests().filter { it.secretId == secretId }
                     val holders = distributed.map { share ->
                         val contact = contacts.find { it.id == share.contactId }
-                        val latestRetrieval = requests
-                            .filter { it.shareId == share.id && it.transactionType == ShareTransactionType.RETRIEVAL }
-                            .maxByOrNull { it.requestedAt }
+                        val latestRetrieval = contact?.let { holder ->
+                            requests
+                                .filter {
+                                    it.recipientKey.contentEquals(holder.verifyKey) &&
+                                        it.transactionType == ShareTransactionType.RETRIEVAL
+                                }
+                                .maxByOrNull { it.requestedAt }
+                        }
                         HolderRetrievalStatus(
                             contactId = share.contactId,
                             pseudonym = contact?.displayName ?: "?",

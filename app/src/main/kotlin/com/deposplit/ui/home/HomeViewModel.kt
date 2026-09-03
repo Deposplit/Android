@@ -256,9 +256,14 @@ class HomeViewModel(
                 val shares = byShareSecretId[secret.id] ?: emptyList()
                 val holders = shares.map { share ->
                     val contact = contacts.find { it.id == share.contactId }
-                    val latestRetrieval = allRequests
-                        .filter { it.shareId == share.id && it.transactionType == ShareTransactionType.RETRIEVAL }
-                        .maxByOrNull { it.requestedAt }
+                    val latestRetrieval = contact?.let { holder ->
+                        allRequests
+                            .filter {
+                                it.secretId == share.secretId && it.recipientKey.contentEquals(holder.verifyKey) &&
+                                    it.transactionType == ShareTransactionType.RETRIEVAL
+                            }
+                            .maxByOrNull { it.requestedAt }
+                    }
                     HolderStatus(
                         shareId = share.id,
                         contactId = share.contactId,

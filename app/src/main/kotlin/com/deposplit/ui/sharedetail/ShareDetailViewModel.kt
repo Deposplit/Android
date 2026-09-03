@@ -77,7 +77,10 @@ class ShareDetailViewModel(
                 }
             }
                 .onSuccess { (share, secret, allRequests, contacts) ->
-                    val forThisShare = allRequests.filter { it.shareId == shareId }
+                    val holderKey = contacts.find { it.id == share.contactId }?.verifyKey
+                    val forThisShare = holderKey?.let { key ->
+                        allRequests.filter { it.secretId == share.secretId && it.recipientKey.contentEquals(key) }
+                    }.orEmpty()
                     val retrievalReq = forThisShare
                         .filter { it.transactionType == ShareTransactionType.RETRIEVAL }
                         .maxByOrNull { it.requestedAt }
