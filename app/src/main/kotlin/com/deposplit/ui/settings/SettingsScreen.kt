@@ -151,6 +151,25 @@ fun SettingsScreen(onNavigateBack: () -> Unit, onNavigateToPaywall: () -> Unit) 
             Spacer(Modifier.height(24.dp))
             HorizontalDivider()
             Spacer(Modifier.height(16.dp))
+            // Nothing to toggle here: the platform owns this switch, and since Android 16 it
+            // offers it per app. What the app owes the user is the consequence, because the
+            // redundancy lost by excluding Deposplit is other people's, not theirs.
+            Text(stringResource(R.string.settings_backup_title), style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                stringResource(R.string.settings_backup_description),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                stringResource(R.string.settings_backup_exclusion),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(24.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(16.dp))
             Text(stringResource(R.string.settings_identity_title), style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(4.dp))
             Text(

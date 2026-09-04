@@ -133,6 +133,9 @@
     <string name="settings_catalog_import">Import…</string>
     <string name="settings_catalog_imported">Imported %1$s new contact(s).</string>
     <string name="settings_catalog_import_error">Failed to import catalog</string>
+    <string name="settings_backup_title">Device Backup</string>
+    <string name="settings_backup_description">Deposplit\'s data on this phone — your contacts, your secrets\' details, and the shares you hold for other people — is included in your device backup, so it survives a phone switch. Your private keys are not: they cannot leave this phone.</string>
+    <string name="settings_backup_exclusion">Android encrypts that backup with your screen lock, and you can exclude Deposplit in your phone\'s backup settings. If you do, a new phone starts empty — the people whose shares you guard lose that redundancy, and your new phone has no record to tell them with.</string>
     <string name="settings_identity_title">Identity</string>
     <string name="settings_regenerate_description">Generates a brand-new keypair for this device and automatically notifies all your contacts. A share already on its way to you can still be collected afterwards, but a contact you cannot reach now will not learn of the new key. This cannot be undone.</string>
     <string name="settings_regenerate_button">Regenerate My Identity</string>

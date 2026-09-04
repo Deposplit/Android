@@ -133,6 +133,9 @@
     <string name="settings_catalog_import">Importieren …</string>
     <string name="settings_catalog_imported">%1$s neue(n) Kontakt(e) importiert.</string>
     <string name="settings_catalog_import_error">Katalog konnte nicht importiert werden</string>
+    <string name="settings_backup_title">Gerätesicherung</string>
+    <string name="settings_backup_description">Die Daten von Deposplit auf diesem Telefon — deine Kontakte, die Angaben zu deinen Geheimnissen und die Anteile, die du für andere verwahrst — sind in der Gerätesicherung enthalten und überstehen so einen Telefonwechsel. Deine privaten Schlüssel nicht: Sie können dieses Telefon nicht verlassen.</string>
+    <string name="settings_backup_exclusion">Android verschlüsselt diese Sicherung mit deiner Bildschirmsperre, und du kannst Deposplit in den Sicherungseinstellungen deines Telefons ausschließen. Dann startet ein neues Telefon leer — die Menschen, deren Anteile du verwahrst, verlieren diese Redundanz, und dein neues Telefon weiß nichts davon, um es ihnen zu sagen.</string>
     <string name="settings_identity_title">Identität</string>
     <string name="settings_regenerate_description">Erzeugt ein brandneues Schlüsselpaar für dieses Gerät und benachrichtigt automatisch alle deine Kontakte. Ein bereits an dich unterwegs befindlicher Anteil kann danach weiterhin abgeholt werden, ein jetzt nicht erreichbarer Kontakt erfährt aber nichts vom neuen Schlüssel. Das lässt sich nicht rückgängig machen.</string>
     <string name="settings_regenerate_button">Meine Identität neu erzeugen</string>

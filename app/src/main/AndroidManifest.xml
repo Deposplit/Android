@@ -10,11 +10,13 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 
+    <!-- Backups and device-to-device transfers carry this app's storage; data_extraction_rules
+         says exactly what, and deposplit.com/docs/security.md says why. There is no
+         fullBackupContent counterpart because that attribute stops at API 30 and minSdk is 35. -->
     <application
         android:name=".DeposplitApp"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
-        android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
