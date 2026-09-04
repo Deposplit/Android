@@ -17,6 +17,12 @@
     <string name="signin_error_empty_name">Please enter a pseudonym.</string>
     <string name="signin_error_fallback">Setup failed</string>
 
+    <string name="keys_lost_title">Your keys did not come across</string>
+    <string name="keys_lost_what_happened">This phone restored everything except your keys. They were held by your old phone in a way that cannot be copied, so this device can no longer sign or decrypt as you.</string>
+    <string name="keys_lost_nothing_else_lost">Nothing else was lost. The secrets you split are still recoverable, and the shares you keep for other people are still here.</string>
+    <string name="keys_lost_what_to_do">Create new keys, then meet your contacts and let them scan your new code — both the people holding shares for you and the people whose shares you hold. Until they do, they cannot reach you.</string>
+    <string name="keys_lost_button">Create new keys</string>
+
     <!-- Home -->
     <string name="home_action_qr_code">My QR code</string>
     <string name="home_action_new_secret">New secret</string>

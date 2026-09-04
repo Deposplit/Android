@@ -18,11 +18,14 @@ import com.deposplit.ui.qr.QrScanScreen
 import com.deposplit.ui.repair.RepairScreen
 import com.deposplit.ui.settings.SettingsScreen
 import com.deposplit.ui.sharedetail.ShareDetailScreen
+import com.deposplit.ui.signin.KeysLostScreen
 import com.deposplit.ui.signin.SignInScreen
 import com.deposplit.ui.theme.DeposplitTheme
+import com.deposplit.value_objects.IdentityIntegrity
 import java.util.UUID
 
 private const val ROUTE_SIGN_IN = "sign_in"
+private const val ROUTE_KEYS_LOST = "keys_lost"
 private const val ROUTE_HOME = "home"
 private const val ROUTE_CONTACTS = "contacts"
 private const val ROUTE_ADD_CONTACT = "add_contact"
@@ -42,7 +45,13 @@ class MainActivity : FragmentActivity() {
         enableEdgeToEdge()
 
         val app = application as DeposplitApp
-        val startDestination = if (app.authAdapter.isRegistered()) ROUTE_HOME else ROUTE_SIGN_IN
+        // UNREADABLE deliberately lands on Home: key storage that is merely locked must never be
+        // offered a replacement identity.
+        val startDestination = when {
+            !app.authAdapter.isRegistered() -> ROUTE_SIGN_IN
+            app.authAdapter.integrity() == IdentityIntegrity.KEYS_LOST -> ROUTE_KEYS_LOST
+            else -> ROUTE_HOME
+        }
 
         setContent {
             DeposplitTheme {
@@ -53,6 +62,15 @@ class MainActivity : FragmentActivity() {
                             onNavigateToHome = {
                                 navController.navigate(ROUTE_HOME) {
                                     popUpTo(ROUTE_SIGN_IN) { inclusive = true }
+                                }
+                            }
+                        )
+                    }
+                    composable(ROUTE_KEYS_LOST) {
+                        KeysLostScreen(
+                            onNavigateToHome = {
+                                navController.navigate(ROUTE_HOME) {
+                                    popUpTo(ROUTE_KEYS_LOST) { inclusive = true }
                                 }
                             }
                         )

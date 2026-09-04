@@ -24,10 +24,20 @@
 
 package com.deposplit.driving_ports
 
+import com.deposplit.value_objects.IdentityIntegrity
 import com.deposplit.value_objects.KeyPairMaterial
 
 interface Identity {
     fun isRegistered(): Boolean
+
+    /**
+     * Whether the private keys this device believes it has are still there and still match the
+     * public keys it advertises. Total and non-throwing: a device that cannot answer the question
+     * reports [IdentityIntegrity.UNREADABLE] rather than failing, and an unregistered device
+     * reports [IdentityIntegrity.INTACT] because it has nothing to have lost.
+     */
+    fun integrity(): IdentityIntegrity
+
     fun register(pseudonym: String)
     fun pseudonym(): String
     fun verifyKey(): ByteArray

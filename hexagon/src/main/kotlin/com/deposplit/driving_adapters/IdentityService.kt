@@ -26,6 +26,8 @@ package com.deposplit.driving_adapters
 
 import com.deposplit.driven_ports.IdentityStore
 import com.deposplit.driving_ports.Identity
+import com.deposplit.value_objects.IdentityIntegrity
+import com.deposplit.value_objects.IdentityStorageUnavailableException
 import com.deposplit.value_objects.KeyPairMaterial
 import com.deposplit.value_objects.TransportSuite
 import com.deposplit.value_objects.UnsupportedTransportSuiteException
@@ -50,6 +52,26 @@ import java.security.SecureRandom
 class IdentityService(private val identityStore: IdentityStore) : Identity, ShareEncryption {
 
     override fun isRegistered(): Boolean = identityStore.isRegistered()
+
+    /* Derives each public key from its stored private half and compares it to the public key this
+     * device hands out. That single question covers every way the two can come apart: key storage
+     * emptied while the app's files survived a restore, a keystore blob that no longer decrypts,
+     * and public keys restored without the private ones — the last of which produces no error at
+     * all today, just a valid-looking QR for an identity that can no longer sign. */
+    override fun integrity(): IdentityIntegrity {
+        if (!identityStore.isRegistered()) return IdentityIntegrity.INTACT
+        return try {
+            val derivedVerifyKey = Ed25519PrivateKeyParameters(identityStore.signKey()).generatePublicKey().encoded
+            val derivedEncKey = X25519PrivateKeyParameters(identityStore.decKey()).generatePublicKey().encoded
+            val matches = derivedVerifyKey.contentEquals(identityStore.verifyKey()) &&
+                derivedEncKey.contentEquals(identityStore.encKey())
+            if (matches) IdentityIntegrity.INTACT else IdentityIntegrity.KEYS_LOST
+        } catch (e: IdentityStorageUnavailableException) {
+            IdentityIntegrity.UNREADABLE
+        } catch (e: Exception) {
+            IdentityIntegrity.KEYS_LOST
+        }
+    }
 
     override fun register(pseudonym: String) {
         val material = generateKeyPairMaterial()

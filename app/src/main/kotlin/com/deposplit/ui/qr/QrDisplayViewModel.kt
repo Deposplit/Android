@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.deposplit.R
 import com.deposplit.driven_ports.RelaySettings
 import com.deposplit.driving_ports.Identity
+import com.deposplit.value_objects.IdentityIntegrity
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +34,11 @@ class QrDisplayViewModel(private val auth: Identity, private val relaySettings: 
     private fun generate() {
         viewModelScope.launch(Dispatchers.Default) {
             runCatching {
+                // The QR is the one path by which a broken identity reaches another person's
+                // phone, and the public keys survive a restore that the private ones do not — so
+                // a code encoded here would scan cleanly and name an identity nobody can use.
+                // The launch gate should have caught that already; this is the second lock.
+                require(auth.integrity() == IdentityIntegrity.INTACT) { "identity is not usable" }
                 val payload = encodeQrPayload(auth.pseudonym(), auth.verifyKey(), auth.encKey(), relaySettings.getDefaultRelayBaseUrl())
                 val bitMatrix = QRCodeWriter().encode(payload, BarcodeFormat.QR_CODE, 512, 512)
                 val w = bitMatrix.width

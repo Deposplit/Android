@@ -51,26 +51,38 @@ class AndroidIdentityStore(context: Context) : IdentityStore {
     }
 
     override fun previousDecKey(): ByteArray? =
-        runCatching { prefs.getDecrypted(loadOrCreateMasterKey(), "previous_dec_key") }.getOrNull()
+        runCatching { prefs.getDecrypted(requireMasterKey(), "previous_dec_key") }.getOrNull()
 
     override fun pseudonym(): String = requirePref("pseudonym")
 
     override fun verifyKey(): ByteArray = requirePref("verify_key").decodeBase64()
 
-    override fun signKey(): ByteArray = prefs.getDecrypted(loadOrCreateMasterKey(), "sign_key")
+    override fun signKey(): ByteArray = prefs.getDecrypted(requireMasterKey(), "sign_key")
 
     override fun encKey(): ByteArray = requirePref("enc_key").decodeBase64()
 
-    override fun decKey(): ByteArray = prefs.getDecrypted(loadOrCreateMasterKey(), "dec_key")
+    override fun decKey(): ByteArray = prefs.getDecrypted(requireMasterKey(), "dec_key")
 
     private fun requirePref(key: String): String =
         prefs.getString(key, null) ?: error("Not registered — '$key' missing")
 
-    private fun loadOrCreateMasterKey(): SecretKey {
+    private fun loadMasterKey(): SecretKey? {
         val keyStore = KeyStore.getInstance("AndroidKeyStore").also { it.load(null) }
-        if (keyStore.containsAlias(KEYSTORE_ALIAS)) {
-            return keyStore.getKey(KEYSTORE_ALIAS, null) as SecretKey
-        }
+        return if (keyStore.containsAlias(KEYSTORE_ALIAS)) keyStore.getKey(KEYSTORE_ALIAS, null) as SecretKey else null
+    }
+
+    /* Reads must never create. A restored device has the wrapped key material in its preferences
+     * and no alias to unwrap it with; minting one here would hand every read a key that cannot
+     * decrypt anything, and leave a stray alias behind. Absence is the answer the caller needs.
+     *
+     * There is no Android equivalent of a locked keystore to report as temporarily unreadable: the
+     * master key is not bound to user authentication, so it is available whenever the app runs.
+     * That is why nothing here throws IdentityStorageUnavailableException. */
+    private fun requireMasterKey(): SecretKey =
+        loadMasterKey() ?: error("Key storage holds no '$KEYSTORE_ALIAS' — this device's private keys are gone")
+
+    private fun loadOrCreateMasterKey(): SecretKey {
+        loadMasterKey()?.let { return it }
         val gen = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
         gen.init(
             KeyGenParameterSpec.Builder(KEYSTORE_ALIAS, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)

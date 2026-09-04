@@ -17,6 +17,12 @@
     <string name="signin_error_empty_name">Bitte gib ein Pseudonym ein.</string>
     <string name="signin_error_fallback">Einrichtung fehlgeschlagen</string>
 
+    <string name="keys_lost_title">Deine Schlüssel sind nicht mitgekommen</string>
+    <string name="keys_lost_what_happened">Dieses Telefon hat alles wiederhergestellt außer deinen Schlüsseln. Dein altes Telefon hat sie so verwahrt, dass sie sich nicht kopieren lassen — dieses Gerät kann daher weder als du signieren noch entschlüsseln.</string>
+    <string name="keys_lost_nothing_else_lost">Sonst ist nichts verloren. Deine aufgeteilten Geheimnisse sind weiterhin wiederherstellbar, und die Anteile, die du für andere verwahrst, sind noch da.</string>
+    <string name="keys_lost_what_to_do">Erzeuge neue Schlüssel und triff dann deine Kontakte, damit sie deinen neuen Code scannen — sowohl die Personen, die Anteile für dich halten, als auch die, deren Anteile du hältst. Bis dahin können sie dich nicht erreichen.</string>
+    <string name="keys_lost_button">Neue Schlüssel erzeugen</string>
+
     <!-- Home -->
     <string name="home_action_qr_code">Mein QR-Code</string>
     <string name="home_action_new_secret">Neues Geheimnis</string>
