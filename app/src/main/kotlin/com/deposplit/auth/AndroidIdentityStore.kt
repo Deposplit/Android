@@ -55,11 +55,11 @@ class AndroidIdentityStore(context: Context) : IdentityStore {
 
     override fun pseudonym(): String = requirePref("pseudonym")
 
-    override fun verifyKey(): ByteArray = requirePref("verify_key").decodeBase64()
+    override fun verifyKey(): ByteArray? = prefs.getString("verify_key", null)?.decodeBase64()
 
     override fun signKey(): ByteArray = prefs.getDecrypted(requireMasterKey(), "sign_key")
 
-    override fun encKey(): ByteArray = requirePref("enc_key").decodeBase64()
+    override fun encKey(): ByteArray? = prefs.getString("enc_key", null)?.decodeBase64()
 
     override fun decKey(): ByteArray = prefs.getDecrypted(requireMasterKey(), "dec_key")
 

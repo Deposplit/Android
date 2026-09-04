@@ -47,7 +47,12 @@ interface IdentityStore {
     fun rotate(verifyKey: ByteArray, signKey: ByteArray, encKey: ByteArray, decKey: ByteArray)
 
     fun pseudonym(): String
-    fun verifyKey(): ByteArray
+
+    /* This device's own public keys, or null when they are gone or cannot be read. Optional rather
+     * than throwing, for the same reason as previousDecKey() below: absence is an ordinary state on
+     * a restored device, not an exception. Contrast signKey()/decKey(), where a caller who wants to
+     * sign has no fallback to fall back on. */
+    fun verifyKey(): ByteArray?
 
     /* signKey() and decKey() must distinguish key material that is *absent or unusable* from key
      * material that merely cannot be read at this moment — a locked device, a keystore not yet
@@ -56,7 +61,7 @@ interface IdentityStore {
      * an adapter can tell them apart, and IdentityIntegrity depends on the answer: it is what
      * decides whether the app offers to mint a replacement identity over the top. */
     fun signKey(): ByteArray
-    fun encKey(): ByteArray
+    fun encKey(): ByteArray?
     fun decKey(): ByteArray
 
     /* The decKey displaced by the most recent rotate(), or null on an identity that has never rotated. Does not throw:

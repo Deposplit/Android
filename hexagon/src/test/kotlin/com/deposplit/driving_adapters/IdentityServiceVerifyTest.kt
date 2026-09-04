@@ -40,9 +40,9 @@ private class InMemoryIdentityStore : IdentityStore {
     }
 
     override fun pseudonym() = _pseudonym
-    override fun verifyKey() = _verifyKey
+    override fun verifyKey(): ByteArray? = _verifyKey
     override fun signKey() = _signKey
-    override fun encKey() = _encKey
+    override fun encKey(): ByteArray? = _encKey
     override fun decKey() = _decKey
     override fun previousDecKey() = _previousDecKey
 }
@@ -66,7 +66,7 @@ class IdentityServiceVerifyTest {
         val alice = newIdentity()
         val message = "hello deposplit".encodeToByteArray()
         val sig = alice.sign(message)
-        assertTrue(alice.verify(message, sig, alice.verifyKey()))
+        assertTrue(alice.verify(message, sig, alice.verifyKey()!!))
     }
 
     @Test
@@ -75,7 +75,7 @@ class IdentityServiceVerifyTest {
         val message = "hello deposplit".encodeToByteArray()
         val sig = alice.sign(message)
         val tampered = "hello depospliz".encodeToByteArray()
-        assertFalse(alice.verify(tampered, sig, alice.verifyKey()))
+        assertFalse(alice.verify(tampered, sig, alice.verifyKey()!!))
     }
 
     @Test
@@ -84,7 +84,7 @@ class IdentityServiceVerifyTest {
         val bob = newIdentity()
         val message = "hello deposplit".encodeToByteArray()
         val sig = alice.sign(message)
-        assertFalse(bob.verify(message, sig, bob.verifyKey()))
+        assertFalse(bob.verify(message, sig, bob.verifyKey()!!))
     }
 
     // -------------------------------------------------------------------------
@@ -94,14 +94,14 @@ class IdentityServiceVerifyTest {
     @Test
     fun `generateNewKeyPair does not touch storage`() {
         val alice = newIdentity()
-        val originalVerifyKey = alice.verifyKey()
-        val originalEncKey = alice.encKey()
+        val originalVerifyKey = alice.verifyKey()!!
+        val originalEncKey = alice.encKey()!!
         val candidate = alice.generateNewKeyPair()
         assertTrue(!candidate.verifyKey.contentEquals(originalVerifyKey))
         assertTrue(!candidate.encKey.contentEquals(originalEncKey))
         // Unpersisted — the live identity hasn't moved.
-        assertTrue(alice.verifyKey().contentEquals(originalVerifyKey))
-        assertTrue(alice.encKey().contentEquals(originalEncKey))
+        assertTrue(alice.verifyKey()!!.contentEquals(originalVerifyKey))
+        assertTrue(alice.encKey()!!.contentEquals(originalEncKey))
     }
 
     @Test
@@ -109,8 +109,8 @@ class IdentityServiceVerifyTest {
         val alice = newIdentity()
         val candidate = alice.generateNewKeyPair()
         alice.activateKeyPair(candidate)
-        assertTrue(alice.verifyKey().contentEquals(candidate.verifyKey))
-        assertTrue(alice.encKey().contentEquals(candidate.encKey))
+        assertTrue(alice.verifyKey()!!.contentEquals(candidate.verifyKey))
+        assertTrue(alice.encKey()!!.contentEquals(candidate.encKey))
         assertTrue(alice.pseudonym() == "test")
     }
 
@@ -124,37 +124,37 @@ class IdentityServiceVerifyTest {
         val alice = newIdentity()
         val bob = newIdentity()
         val share = "one share".encodeToByteArray()
-        val sealedToAlicesOldKey = bob.encrypt(share, alice.encKey())
+        val sealedToAlicesOldKey = bob.encrypt(share, alice.encKey()!!)
 
         alice.activateKeyPair(alice.generateNewKeyPair())
 
-        assertTrue(alice.decrypt(sealedToAlicesOldKey, bob.encKey()).contentEquals(share))
+        assertTrue(alice.decrypt(sealedToAlicesOldKey, bob.encKey()!!).contentEquals(share))
     }
 
     @Test
     fun `decrypt does not reach back past one generation`() {
         val alice = newIdentity()
         val bob = newIdentity()
-        val sealedToAlicesOldestKey = bob.encrypt("one share".encodeToByteArray(), alice.encKey())
+        val sealedToAlicesOldestKey = bob.encrypt("one share".encodeToByteArray(), alice.encKey()!!)
 
         alice.activateKeyPair(alice.generateNewKeyPair())
         alice.activateKeyPair(alice.generateNewKeyPair())
 
         // Deliberate: one generation covers the deposit-to-pickup window, and no more key material
         // than that lingers at rest.
-        assertFailsWith<Exception> { alice.decrypt(sealedToAlicesOldestKey, bob.encKey()) }
+        assertFailsWith<Exception> { alice.decrypt(sealedToAlicesOldestKey, bob.encKey()!!) }
     }
 
     @Test
     fun `encrypt never seals under the displaced key`() {
         val alice = newIdentity()
         val bob = newIdentity()
-        val alicesOldEncKey = alice.encKey()
+        val alicesOldEncKey = alice.encKey()!!
         alice.activateKeyPair(alice.generateNewKeyPair())
 
-        val sealed = alice.encrypt("outgoing".encodeToByteArray(), bob.encKey())
+        val sealed = alice.encrypt("outgoing".encodeToByteArray(), bob.encKey()!!)
 
-        assertTrue(bob.decrypt(sealed, alice.encKey()).contentEquals("outgoing".encodeToByteArray()))
+        assertTrue(bob.decrypt(sealed, alice.encKey()!!).contentEquals("outgoing".encodeToByteArray()))
         assertFailsWith<Exception> { bob.decrypt(sealed, alicesOldEncKey) }
     }
 
@@ -164,19 +164,19 @@ class IdentityServiceVerifyTest {
         val alice = IdentityService(store)
         alice.register("test")
         val bob = newIdentity()
-        val sealedToAlicesOldKey = bob.encrypt("one share".encodeToByteArray(), alice.encKey())
+        val sealedToAlicesOldKey = bob.encrypt("one share".encodeToByteArray(), alice.encKey()!!)
         alice.activateKeyPair(alice.generateNewKeyPair())
 
         // Registration is a new identity, not a continuation of the old one, so nothing carries over.
         alice.register("test")
 
-        assertFailsWith<Exception> { alice.decrypt(sealedToAlicesOldKey, bob.encKey()) }
+        assertFailsWith<Exception> { alice.decrypt(sealedToAlicesOldKey, bob.encKey()!!) }
     }
 
     @Test
     fun `sign after activateKeyPair verifies against the new key not the old`() {
         val alice = newIdentity()
-        val oldVerifyKey = alice.verifyKey()
+        val oldVerifyKey = alice.verifyKey()!!
         val candidate = alice.generateNewKeyPair()
         alice.activateKeyPair(candidate)
         val message = "post-rotation message".encodeToByteArray()
@@ -197,10 +197,10 @@ class IdentityServiceVerifyTest {
 
         // Alice (sender) encrypts to Bob's public enc key; Bob (recipient) decrypts with his own
         // private key + Alice's public enc key — the same static-static DH shape ShareService uses.
-        val ciphertext = alice.encrypt(plaintext, bob.encKey())
+        val ciphertext = alice.encrypt(plaintext, bob.encKey()!!)
 
         assertEquals(TransportSuite.current.tag, ciphertext[0])
-        val decrypted = bob.decrypt(ciphertext, alice.encKey())
+        val decrypted = bob.decrypt(ciphertext, alice.encKey()!!)
         assertTrue(decrypted.contentEquals(plaintext))
     }
 
@@ -208,11 +208,11 @@ class IdentityServiceVerifyTest {
     fun `decrypt throws UnsupportedTransportSuiteException for an unrecognized suite tag`() {
         val alice = newIdentity()
         val bob = newIdentity()
-        val ciphertext = alice.encrypt("hi".encodeToByteArray(), bob.encKey())
+        val ciphertext = alice.encrypt("hi".encodeToByteArray(), bob.encKey()!!)
         val tampered = byteArrayOf(0x7f) + ciphertext.copyOfRange(1, ciphertext.size)
 
         assertFailsWith<UnsupportedTransportSuiteException> {
-            bob.decrypt(tampered, alice.encKey())
+            bob.decrypt(tampered, alice.encKey()!!)
         }
     }
 
@@ -222,7 +222,7 @@ class IdentityServiceVerifyTest {
         val bob = newIdentity()
 
         assertFailsWith<UnsupportedTransportSuiteException> {
-            bob.decrypt(ByteArray(0), alice.encKey())
+            bob.decrypt(ByteArray(0), alice.encKey()!!)
         }
     }
 }

@@ -100,9 +100,9 @@ private class InMemoryIdentityStoreForShareServiceTest : IdentityStore {
         this._decKey = decKey
     }
     override fun pseudonym() = _pseudonym
-    override fun verifyKey() = _verifyKey
+    override fun verifyKey(): ByteArray? = _verifyKey
     override fun signKey() = _signKey
-    override fun encKey() = _encKey
+    override fun encKey(): ByteArray? = _encKey
     override fun decKey() = _decKey
     override fun previousDecKey() = _previousDecKey
 }
@@ -395,7 +395,7 @@ class ShareServiceTest {
         val relay = FakeShareRelay()
         val (svc, bob, shareRepo, _, _, _, _) = newService(relay)
         val id = UUID.randomUUID()
-        val unsigned = depositRow(id, aliceKeys.publicKey, bob.verifyKey(), ByteArray(0))
+        val unsigned = depositRow(id, aliceKeys.publicKey, bob.verifyKey()!!, ByteArray(0))
         val row = unsigned.copy(senderSignature = signOpenAs(aliceKeys, unsigned))
         relay.pending = listOf(row)
         relay.byId[id] = row
@@ -411,7 +411,7 @@ class ShareServiceTest {
         val relay = FakeShareRelay()
         val (svc, bob, shareRepo, _, _, _, _) = newService(relay, encryption = FailingShareEncryption)
         val id = UUID.randomUUID()
-        val unsigned = depositRow(id, aliceKeys.publicKey, bob.verifyKey(), ByteArray(0))
+        val unsigned = depositRow(id, aliceKeys.publicKey, bob.verifyKey()!!, ByteArray(0))
         val row = unsigned.copy(senderSignature = signOpenAs(aliceKeys, unsigned))
         relay.pending = listOf(row)
         relay.byId[id] = row
@@ -431,7 +431,7 @@ class ShareServiceTest {
         val relay = FakeShareRelay()
         val (svc, bob, shareRepo, _, _, _, _) = newService(relay)
         val id = UUID.randomUUID()
-        val unsigned = depositRow(id, aliceKeys.publicKey, bob.verifyKey(), ByteArray(0))
+        val unsigned = depositRow(id, aliceKeys.publicKey, bob.verifyKey()!!, ByteArray(0))
         // Signed by a stranger, not by alice — claims to be from alice but doesn't verify against her key.
         val forged = unsigned.copy(senderSignature = signOpenAs(strangerKeys, unsigned))
         relay.pending = listOf(forged)
@@ -448,7 +448,7 @@ class ShareServiceTest {
         val relay = FakeShareRelay()
         val (svc, bob, shareRepo, _, _, _, _) = newService(relay)
         val id = UUID.randomUUID()
-        val unsigned = depositRow(id, strangerKeys.publicKey, bob.verifyKey(), ByteArray(0))
+        val unsigned = depositRow(id, strangerKeys.publicKey, bob.verifyKey()!!, ByteArray(0))
         val row = unsigned.copy(senderSignature = signOpenAs(strangerKeys, unsigned))
         relay.pending = listOf(row)
         relay.byId[id] = row
@@ -464,7 +464,7 @@ class ShareServiceTest {
         val relay = FakeShareRelay()
         val (svc, bob, _, _, _, _, _) = newService(relay)
         val id = UUID.randomUUID()
-        val unsigned = depositRow(id, aliceKeys.publicKey, bob.verifyKey(), ByteArray(0)).copy(transactionType = ShareTransactionType.REMOVAL)
+        val unsigned = depositRow(id, aliceKeys.publicKey, bob.verifyKey()!!, ByteArray(0)).copy(transactionType = ShareTransactionType.REMOVAL)
         val forged = unsigned.copy(senderSignature = signOpenAs(strangerKeys, unsigned))
         relay.pending = listOf(forged)
 
@@ -476,7 +476,7 @@ class ShareServiceTest {
         val relay = FakeShareRelay()
         val (svc, bob, _, _, _, _, _) = newService(relay)
         val id = UUID.randomUUID()
-        val unsigned = depositRow(id, aliceKeys.publicKey, bob.verifyKey(), ByteArray(0)).copy(transactionType = ShareTransactionType.REMOVAL)
+        val unsigned = depositRow(id, aliceKeys.publicKey, bob.verifyKey()!!, ByteArray(0)).copy(transactionType = ShareTransactionType.REMOVAL)
         val forged = unsigned.copy(senderSignature = signOpenAs(strangerKeys, unsigned))
         relay.byId[id] = forged
 
@@ -526,10 +526,10 @@ class ShareServiceTest {
         )
 
         val fromAliceId = UUID.randomUUID()
-        val unsignedFromAlice = depositRow(fromAliceId, aliceKeys.publicKey, bobIdentity.verifyKey(), ByteArray(0))
+        val unsignedFromAlice = depositRow(fromAliceId, aliceKeys.publicKey, bobIdentity.verifyKey()!!, ByteArray(0))
         val fromAlice = unsignedFromAlice.copy(senderSignature = signOpenAs(aliceKeys, unsignedFromAlice))
         val fromCharlieId = UUID.randomUUID()
-        val unsignedFromCharlie = depositRow(fromCharlieId, charlieKeys.publicKey, bobIdentity.verifyKey(), ByteArray(0))
+        val unsignedFromCharlie = depositRow(fromCharlieId, charlieKeys.publicKey, bobIdentity.verifyKey()!!, ByteArray(0))
         val fromCharlie = unsignedFromCharlie.copy(senderSignature = signOpenAs(charlieKeys, unsignedFromCharlie))
         defaultRelay.pending = listOf(fromAlice)
         defaultRelay.byId[fromAliceId] = fromAlice
@@ -570,7 +570,7 @@ class ShareServiceTest {
         )
 
         val fromAliceId = UUID.randomUUID()
-        val unsignedFromAlice = depositRow(fromAliceId, aliceKeys.publicKey, bobIdentity.verifyKey(), ByteArray(0))
+        val unsignedFromAlice = depositRow(fromAliceId, aliceKeys.publicKey, bobIdentity.verifyKey()!!, ByteArray(0))
         val fromAlice = unsignedFromAlice.copy(senderSignature = signOpenAs(aliceKeys, unsignedFromAlice))
         defaultRelay.pending = listOf(fromAlice)
         defaultRelay.byId[fromAliceId] = fromAlice
@@ -673,7 +673,7 @@ class ShareServiceTest {
         val relay = FakeShareRelay()
         val (svc, bob, _, secretRepo, metaRepo) = newServiceForRecoveryTest(relay)
         val secretId = UUID.randomUUID()
-        val pushRow = approvedRecoveryMetadataRow(secretId, aliceKeys.publicKey, bob.verifyKey(), aliceKeys)
+        val pushRow = approvedRecoveryMetadataRow(secretId, aliceKeys.publicKey, bob.verifyKey()!!, aliceKeys)
         relay.pending = listOf(pushRow)
 
         svc.syncInbox()
@@ -696,7 +696,7 @@ class ShareServiceTest {
         val (svc, bob, _, secretRepo, metaRepo) = newServiceForRecoveryTest(relay)
         val secretId = UUID.randomUUID()
         // Claims to be from alice but signed by a stranger.
-        val pushRow = approvedRecoveryMetadataRow(secretId, aliceKeys.publicKey, bob.verifyKey(), strangerKeys)
+        val pushRow = approvedRecoveryMetadataRow(secretId, aliceKeys.publicKey, bob.verifyKey()!!, strangerKeys)
         relay.pending = listOf(pushRow)
 
         svc.syncInbox()
@@ -739,7 +739,7 @@ class ShareServiceTest {
         assertTrue(pushed.newEncKey.contentEquals(newX))
         assertEquals(CipherSuite.current, pushed.newCipherSuite)
         val canon = PayloadCanonical.forRotation(aliceContact.verifyKey, newEd, newX, CipherSuite.current)
-        assertTrue(bob.verify(canon, pushed.signature, bob.verifyKey()))
+        assertTrue(bob.verify(canon, pushed.signature, bob.verifyKey()!!))
     }
 
     @Test
@@ -759,7 +759,7 @@ class ShareServiceTest {
         val (svc, bob, _, contactRepo, _, _, _) = newService(relay)
         val newEd = ByteArray(32) { 0x0c }
         val newX = ByteArray(32) { 0x0d }
-        val notice = signedRotation(aliceKeys.publicKey, bob.verifyKey(), aliceKeys, newEd, newX)
+        val notice = signedRotation(aliceKeys.publicKey, bob.verifyKey()!!, aliceKeys, newEd, newX)
         relay.rotationsToReturn = listOf(notice)
 
         svc.syncInbox()
@@ -783,7 +783,7 @@ class ShareServiceTest {
             verificationLevel = VerificationLevel.VERY_LOW,
         )
         val (svc, bob, _, contactRepo, _, _, _) = newService(relay, contacts = listOf(daveContact))
-        val notice = signedRotation(daveKeys.publicKey, bob.verifyKey(), daveKeys)
+        val notice = signedRotation(daveKeys.publicKey, bob.verifyKey()!!, daveKeys)
         relay.rotationsToReturn = listOf(notice)
 
         svc.syncInbox()
@@ -798,7 +798,7 @@ class ShareServiceTest {
         val relay = FakeShareRelay()
         val (svc, bob, _, contactRepo, _, _, _) = newService(relay)
         // Claims to be from alice (oldVerifyKey = aliceKeys.publicKey) but signed by a stranger.
-        val notice = signedRotation(aliceKeys.publicKey, bob.verifyKey(), strangerKeys)
+        val notice = signedRotation(aliceKeys.publicKey, bob.verifyKey()!!, strangerKeys)
         relay.rotationsToReturn = listOf(notice)
 
         svc.syncInbox()
@@ -811,7 +811,7 @@ class ShareServiceTest {
     fun `syncInbox ignores a rotation notice from an unknown old key`() {
         val relay = FakeShareRelay()
         val (svc, bob, _, contactRepo, _, _, _) = newService(relay)
-        val notice = signedRotation(strangerKeys.publicKey, bob.verifyKey(), strangerKeys)
+        val notice = signedRotation(strangerKeys.publicKey, bob.verifyKey()!!, strangerKeys)
         relay.rotationsToReturn = listOf(notice)
 
         svc.syncInbox()
@@ -937,7 +937,7 @@ class ShareServiceTest {
         val (svc, bob, _, contactRepo, _, conflictRepo, _) = newService(relay, contacts = listOf(revokedAliceContact))
         val newEd = ByteArray(32) { 0x0e }
         val newX = ByteArray(32) { 0x0f }
-        val notice = signedRotation(aliceKeys.publicKey, bob.verifyKey(), aliceKeys, newEd, newX)
+        val notice = signedRotation(aliceKeys.publicKey, bob.verifyKey()!!, aliceKeys, newEd, newX)
         relay.rotationsToReturn = listOf(notice)
 
         svc.syncInbox()
@@ -964,7 +964,7 @@ class ShareServiceTest {
         val contactWithUnrelatedRevocation = aliceContact.copy(revokedVerifyKeys = listOf(ByteArray(32) { 0x99.toByte() }))
         val (svc, bob, _, contactRepo, _, conflictRepo, _) = newService(relay, contacts = listOf(contactWithUnrelatedRevocation))
         val newEd = ByteArray(32) { 0x10 }
-        val notice = signedRotation(aliceKeys.publicKey, bob.verifyKey(), aliceKeys, newEd)
+        val notice = signedRotation(aliceKeys.publicKey, bob.verifyKey()!!, aliceKeys, newEd)
         relay.rotationsToReturn = listOf(notice)
 
         svc.syncInbox()
@@ -1076,7 +1076,7 @@ class ShareServiceTest {
         assertEquals(listOf(secretId), pushed.secretIds)
         assertEquals(false, pushed.optedOut)
         val canon = PayloadCanonical.forHeartbeat(aliceContact.verifyKey, listOf(secretId), false)
-        assertTrue(bob.verify(canon, pushed.signature, bob.verifyKey()))
+        assertTrue(bob.verify(canon, pushed.signature, bob.verifyKey()!!))
     }
 
     @Test
@@ -1134,7 +1134,7 @@ class ShareServiceTest {
         val secretId = UUID.randomUUID()
         metaRepo.save(ShareMetadata(depositId, secretId, aliceContact.id))
         retainedRepo.save(RetainedDepositBlob(depositId, secretId, aliceContact.id, "s", Instant.now(), byteArrayOf(1), 2, 3, MimeType.DEFAULT))
-        relay.heartbeatsToReturn = listOf(signedHeartbeat(aliceKeys.publicKey, bob.verifyKey(), aliceKeys, secretIds = listOf(secretId)))
+        relay.heartbeatsToReturn = listOf(signedHeartbeat(aliceKeys.publicKey, bob.verifyKey()!!, aliceKeys, secretIds = listOf(secretId)))
 
         svc.syncDistributed()
 
@@ -1151,7 +1151,7 @@ class ShareServiceTest {
         val secretId = UUID.randomUUID()
         metaRepo.save(ShareMetadata(depositId, secretId, aliceContact.id))
         // Claims to be from alice but signed by a stranger.
-        relay.heartbeatsToReturn = listOf(signedHeartbeat(aliceKeys.publicKey, bob.verifyKey(), strangerKeys, secretIds = listOf(secretId)))
+        relay.heartbeatsToReturn = listOf(signedHeartbeat(aliceKeys.publicKey, bob.verifyKey()!!, strangerKeys, secretIds = listOf(secretId)))
 
         svc.syncDistributed()
 
@@ -1162,14 +1162,14 @@ class ShareServiceTest {
     fun `syncDistributed sets and clears heartbeatOptedOutAt`() {
         val relay = FakeShareRelay()
         val (svc, bob, _, contactRepo, _, _, _) = newService(relay)
-        relay.heartbeatsToReturn = listOf(signedHeartbeat(aliceKeys.publicKey, bob.verifyKey(), aliceKeys, optedOut = true))
+        relay.heartbeatsToReturn = listOf(signedHeartbeat(aliceKeys.publicKey, bob.verifyKey()!!, aliceKeys, optedOut = true))
 
         svc.syncDistributed()
 
         assertTrue(contactRepo.getById(aliceContact.id)?.heartbeatOptedOutAt != null)
 
         // A subsequent non-opted-out heartbeat clears it again.
-        relay.heartbeatsToReturn = listOf(signedHeartbeat(aliceKeys.publicKey, bob.verifyKey(), aliceKeys, optedOut = false))
+        relay.heartbeatsToReturn = listOf(signedHeartbeat(aliceKeys.publicKey, bob.verifyKey()!!, aliceKeys, optedOut = false))
 
         svc.syncDistributed()
 
@@ -1413,8 +1413,8 @@ class ShareServiceTest {
             verifiedAt = null, addedAt = Instant.now(),
         )
         val (svc, bob, _, _, _, _, _) = newService(relay, listOf(aliceContact, charlieContact))
-        val oldVerifyKey = bob.verifyKey()
-        val oldEncKey = bob.encKey()
+        val oldVerifyKey = bob.verifyKey()!!
+        val oldEncKey = bob.encKey()!!
 
         val result = svc.regenerateIdentity()
 
@@ -1430,17 +1430,17 @@ class ShareServiceTest {
             assertFalse(bob.verify(canon, pushed.signature, pushed.newVerifyKey))
         }
         // The new identity is now live.
-        assertTrue(!bob.verifyKey().contentEquals(oldVerifyKey))
-        assertTrue(!bob.encKey().contentEquals(oldEncKey))
+        assertTrue(!bob.verifyKey()!!.contentEquals(oldVerifyKey))
+        assertTrue(!bob.encKey()!!.contentEquals(oldEncKey))
     }
 
     @Test
     fun `regenerateIdentity drains the pending inbox under the old identity before rotating`() {
         val relay = FakeShareRelay()
         val (svc, bob, shareRepo, _, _, _, _) = newService(relay)
-        val oldVerifyKey = bob.verifyKey()
+        val oldVerifyKey = bob.verifyKey()!!
         val depositId = UUID.randomUUID()
-        val unsigned = depositRow(depositId, aliceKeys.publicKey, bob.verifyKey(), ByteArray(0))
+        val unsigned = depositRow(depositId, aliceKeys.publicKey, bob.verifyKey()!!, ByteArray(0))
         val row = unsigned.copy(senderSignature = signOpenAs(aliceKeys, unsigned))
         relay.pending = listOf(row)
         relay.byId[depositId] = row
@@ -1470,7 +1470,7 @@ class ShareServiceTest {
         bobIdentity.register("bob")
         // Alice signs with the fixture keypair but agrees with her real X25519 key — the two
         // keypairs are independent, exactly as they are in production.
-        val alice = aliceContact.copy(encKey = aliceIdentity.encKey())
+        val alice = aliceContact.copy(encKey = aliceIdentity.encKey()!!)
         val relay = FakeShareRelay()
         val contactRepo = FakeContactRepository(listOf(alice))
         val shareRepo = FakeShareRepository()
@@ -1491,8 +1491,8 @@ class ShareServiceTest {
 
         val id = UUID.randomUUID()
         val share = "bob's share".encodeToByteArray()
-        val sealedToBobsOldKey = aliceIdentity.encrypt(share, bobIdentity.encKey())
-        val unsigned = depositRow(id, aliceKeys.publicKey, bobIdentity.verifyKey(), ByteArray(0), sealedToBobsOldKey)
+        val sealedToBobsOldKey = aliceIdentity.encrypt(share, bobIdentity.encKey()!!)
+        val unsigned = depositRow(id, aliceKeys.publicKey, bobIdentity.verifyKey()!!, ByteArray(0), sealedToBobsOldKey)
         val row = unsigned.copy(senderSignature = signOpenAs(aliceKeys, unsigned))
 
         bobIdentity.activateKeyPair(bobIdentity.generateNewKeyPair())
@@ -1510,7 +1510,7 @@ class ShareServiceTest {
     fun `regenerateIdentity reports a drain that could not reach every relay`() {
         val relay = FakeShareRelay()
         val (svc, bob, _, _, _, _, _) = newService(relay)
-        val oldVerifyKey = bob.verifyKey()
+        val oldVerifyKey = bob.verifyKey()!!
         relay.unreachable = true
 
         val result = svc.regenerateIdentity()
@@ -1519,7 +1519,7 @@ class ShareServiceTest {
         // be able to block someone rotating precisely because they think the old key is
         // compromised.
         assertFalse(result.drainSucceeded)
-        assertFalse(bob.verifyKey().contentEquals(oldVerifyKey))
+        assertFalse(bob.verifyKey()!!.contentEquals(oldVerifyKey))
     }
 
     @Test
@@ -1561,7 +1561,7 @@ class ShareServiceTest {
             identity = bobIdentity,
             purchases = purchases,
         )
-        val oldVerifyKey = bobIdentity.verifyKey()
+        val oldVerifyKey = bobIdentity.verifyKey()!!
 
         val result = svc.regenerateIdentity()
 
@@ -1570,7 +1570,7 @@ class ShareServiceTest {
         assertEquals(1, defaultRelay.pushedRotations.size)
         assertTrue(byorRelay.pushedRotations.isEmpty())
         // The swap still completes even though one contact couldn't be notified.
-        assertTrue(!bobIdentity.verifyKey().contentEquals(oldVerifyKey))
+        assertTrue(!bobIdentity.verifyKey()!!.contentEquals(oldVerifyKey))
     }
 
     // ── mimeType ────────────────────────────────────────────────────────────────────────────────
@@ -1640,7 +1640,7 @@ class ShareServiceTest {
         val relay = FakeShareRelay()
         val (svc, bob, shareRepo, _, _, _, _) = newService(relay)
         val id = UUID.randomUUID()
-        val unsigned = depositRow(id, aliceKeys.publicKey, bob.verifyKey(), ByteArray(0), mimeType = MimeType("image/png"))
+        val unsigned = depositRow(id, aliceKeys.publicKey, bob.verifyKey()!!, ByteArray(0), mimeType = MimeType("image/png"))
         val row = unsigned.copy(senderSignature = signOpenAs(aliceKeys, unsigned))
         relay.pending = listOf(row)
         relay.byId = mutableMapOf(id to row)
@@ -1660,7 +1660,7 @@ class ShareServiceTest {
         val relay = FakeShareRelay()
         val (svc, bob, shareRepo, _, _, _, _) = newService(relay)
         val id = UUID.randomUUID()
-        val unsigned = depositRow(id, aliceKeys.publicKey, bob.verifyKey(), ByteArray(0)).copy(mimeType = null)
+        val unsigned = depositRow(id, aliceKeys.publicKey, bob.verifyKey()!!, ByteArray(0)).copy(mimeType = null)
         val row = unsigned.copy(senderSignature = signOpenAs(aliceKeys, unsigned))
         relay.pending = listOf(row)
         relay.byId = mutableMapOf(id to row)
@@ -1694,7 +1694,7 @@ class ShareServiceTest {
         val (svc, bob, _, secretRepo, _) = newServiceForRecoveryTest(relay)
         val secretId = UUID.randomUUID()
         relay.pending = listOf(
-            approvedRecoveryMetadataRow(secretId, aliceKeys.publicKey, bob.verifyKey(), aliceKeys, mimeType = MimeType("image/png")),
+            approvedRecoveryMetadataRow(secretId, aliceKeys.publicKey, bob.verifyKey()!!, aliceKeys, mimeType = MimeType("image/png")),
         )
 
         svc.syncInbox()
@@ -1729,7 +1729,7 @@ class ShareServiceTest {
         val relay = FakeShareRelay()
         val (svc, bob, shareRepo, _, _, _, _) = newService(relay)
         val id = UUID.randomUUID()
-        val unsigned = depositRow(id, aliceKeys.publicKey, bob.verifyKey(), ByteArray(0))
+        val unsigned = depositRow(id, aliceKeys.publicKey, bob.verifyKey()!!, ByteArray(0))
         val signed = unsigned.copy(senderSignature = signOpenAs(aliceKeys, unsigned))
         val tampered = signed.copy(mimeType = MimeType("image/png"))
         relay.pending = listOf(tampered)

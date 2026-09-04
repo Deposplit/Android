@@ -40,8 +40,16 @@ interface Identity {
 
     fun register(pseudonym: String)
     fun pseudonym(): String
-    fun verifyKey(): ByteArray
-    fun encKey(): ByteArray
+
+    /**
+     * This device's own public keys, or null when they are gone or cannot be read — an ordinary
+     * state on a phone restored from a backup, whose files came across without the keys. Optional
+     * rather than throwing, for the same reason as [com.deposplit.driven_ports.IdentityStore.previousDecKey]:
+     * absence is a state to handle, not an exception. Callers wanting the fuller answer — gone
+     * versus merely locked — ask [integrity].
+     */
+    fun verifyKey(): ByteArray?
+    fun encKey(): ByteArray?
     fun sign(message: ByteArray): ByteArray
 
     /**

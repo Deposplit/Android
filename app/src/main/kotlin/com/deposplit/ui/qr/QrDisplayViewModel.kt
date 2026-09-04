@@ -39,7 +39,9 @@ class QrDisplayViewModel(private val auth: Identity, private val relaySettings: 
                 // a code encoded here would scan cleanly and name an identity nobody can use.
                 // The launch gate should have caught that already; this is the second lock.
                 require(auth.integrity() == IdentityIntegrity.INTACT) { "identity is not usable" }
-                val payload = encodeQrPayload(auth.pseudonym(), auth.verifyKey(), auth.encKey(), relaySettings.getDefaultRelayBaseUrl())
+                val verifyKey = requireNotNull(auth.verifyKey()) { "no verify key" }
+                val encKey = requireNotNull(auth.encKey()) { "no enc key" }
+                val payload = encodeQrPayload(auth.pseudonym(), verifyKey, encKey, relaySettings.getDefaultRelayBaseUrl())
                 val bitMatrix = QRCodeWriter().encode(payload, BarcodeFormat.QR_CODE, 512, 512)
                 val w = bitMatrix.width
                 val h = bitMatrix.height

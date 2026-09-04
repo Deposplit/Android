@@ -61,10 +61,16 @@ class IdentityService(private val identityStore: IdentityStore) : Identity, Shar
     override fun integrity(): IdentityIntegrity {
         if (!identityStore.isRegistered()) return IdentityIntegrity.INTACT
         return try {
+            // The private keys are read first on purpose. They are the half that can distinguish
+            // locked from empty, so reading the optional public keys ahead of them would report a
+            // merely locked device as KEYS_LOST — and KEYS_LOST is what offers to mint a
+            // replacement identity over a working one.
             val derivedVerifyKey = Ed25519PrivateKeyParameters(identityStore.signKey()).generatePublicKey().encoded
             val derivedEncKey = X25519PrivateKeyParameters(identityStore.decKey()).generatePublicKey().encoded
-            val matches = derivedVerifyKey.contentEquals(identityStore.verifyKey()) &&
-                derivedEncKey.contentEquals(identityStore.encKey())
+            val storedVerifyKey = identityStore.verifyKey()
+            val storedEncKey = identityStore.encKey()
+            val matches = storedVerifyKey != null && storedEncKey != null &&
+                derivedVerifyKey.contentEquals(storedVerifyKey) && derivedEncKey.contentEquals(storedEncKey)
             if (matches) IdentityIntegrity.INTACT else IdentityIntegrity.KEYS_LOST
         } catch (e: IdentityStorageUnavailableException) {
             IdentityIntegrity.UNREADABLE
@@ -104,9 +110,9 @@ class IdentityService(private val identityStore: IdentityStore) : Identity, Shar
 
     override fun pseudonym(): String = identityStore.pseudonym()
 
-    override fun verifyKey(): ByteArray = identityStore.verifyKey()
+    override fun verifyKey(): ByteArray? = identityStore.verifyKey()
 
-    override fun encKey(): ByteArray = identityStore.encKey()
+    override fun encKey(): ByteArray? = identityStore.encKey()
 
     override fun sign(message: ByteArray): ByteArray {
         val sk = Ed25519PrivateKeyParameters(identityStore.signKey())

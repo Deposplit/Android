@@ -23,6 +23,9 @@ private class RestorableIdentityStore : IdentityStore {
     /** Thrown by every private-key read, standing in for a keystore that no longer decrypts. */
     var privateKeyFailure: Exception? = null
 
+    /** Key storage that is locked hides the public keys as well, not only the private ones. */
+    var publicKeysReadable = true
+
     override fun isRegistered() = registered
 
     override fun save(pseudonym: String, verifyKey: ByteArray, signKey: ByteArray, encKey: ByteArray, decKey: ByteArray) {
@@ -50,9 +53,9 @@ private class RestorableIdentityStore : IdentityStore {
     }
 
     override fun pseudonym() = _pseudonym
-    override fun verifyKey() = _verifyKey
+    override fun verifyKey(): ByteArray? = if (publicKeysReadable) _verifyKey else null
     override fun signKey() = privateKeyFailure?.let { throw it } ?: _signKey
-    override fun encKey() = _encKey
+    override fun encKey(): ByteArray? = if (publicKeysReadable) _encKey else null
     override fun decKey() = privateKeyFailure?.let { throw it } ?: _decKey
     override fun previousDecKey() = _previousDecKey
 }
@@ -111,5 +114,23 @@ class IdentityServiceIntegrityTest {
         val (svc, store) = registered()
         store.privateKeyFailure = IdentityStorageUnavailableException("device is locked")
         assertEquals(IdentityIntegrity.UNREADABLE, svc.integrity())
+    }
+
+    // Locked storage hides the public keys too, and they are optional — so the probe has to read
+    // the private halves first. Reading the public ones first would call this device emptied and
+    // offer it a replacement identity over a working one.
+    @Test
+    fun `locked storage is unreadable even when the public keys are hidden as well`() {
+        val (svc, store) = registered()
+        store.privateKeyFailure = IdentityStorageUnavailableException("device is locked")
+        store.publicKeysReadable = false
+        assertEquals(IdentityIntegrity.UNREADABLE, svc.integrity())
+    }
+
+    @Test
+    fun `public keys that are simply gone are keys lost`() {
+        val (svc, store) = registered()
+        store.publicKeysReadable = false
+        assertEquals(IdentityIntegrity.KEYS_LOST, svc.integrity())
     }
 }

@@ -162,6 +162,7 @@ class DeposplitApiAdapter(
     // ── HTTP ─────────────────────────────────────────────────────────────────
 
     private fun execute(method: String, path: String, body: String? = null): String {
+        val verifyKey = auth.verifyKey() ?: error("This device has no usable identity")
         val nonce = generateNonce()
         val bodyBytes = body?.toByteArray(Charsets.UTF_8) ?: ByteArray(0)
         val canonical = buildCanonical(nonce, method, path, bodyBytes)
@@ -173,7 +174,7 @@ class DeposplitApiAdapter(
             conn.connectTimeout = 10_000
             conn.readTimeout = 30_000
             conn.setRequestProperty("Accept", "application/json")
-            conn.setRequestProperty("X-Deposplit-Verify-Key", auth.verifyKey().encodeBase64Url())
+            conn.setRequestProperty("X-Deposplit-Verify-Key", verifyKey.encodeBase64Url())
             conn.setRequestProperty("X-Deposplit-Nonce", nonce)
             conn.setRequestProperty("X-Deposplit-Signature", sig.encodeBase64Url())
             if (body != null) {

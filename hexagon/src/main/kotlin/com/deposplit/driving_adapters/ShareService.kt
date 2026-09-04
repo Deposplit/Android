@@ -453,7 +453,9 @@ class ShareService(
     // one-shot delivery. Unknown senders and forged signatures are silently skipped, same
     // posture as processRotations().
     private fun processHeartbeats() {
-        val myKey = identity.verifyKey()
+        // Nothing here can be verified without our own key, so a device whose key storage is
+        // locked does nothing and picks this up on a later pass rather than failing every notice.
+        val myKey = identity.verifyKey() ?: return
         val existingMetadata = shareMetadataRepository.getAll()
         allRelays().forEach { relay ->
             val notices = runCatching { relay.listHeartbeats() }.getOrDefault(emptyList())
