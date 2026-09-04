@@ -370,6 +370,7 @@ class ShareService(
             // Unknown sender or unverified senderSignature: skip silently, do not auto-approve.
             for (req in pending.filter(::verifyOpen)) {
                 val senderContact = contactRepository.getByVerifyKey(req.senderKey) ?: continue
+                noteRelinked(senderContact)
                 // A deposit without valid k/n/mimeType can't happen against a conforming relay
                 // (all three required by ShareRequestsService) — skip defensively rather than store
                 // a share we can't later report thresholds for during recovery.
@@ -452,6 +453,15 @@ class ShareService(
     // deletes a heartbeat row — see CustodyHeartbeat for why it's a standing status, not a
     // one-shot delivery. Unknown senders and forged signatures are silently skipped, same
     // posture as processRotations().
+    // Anything arriving from a contact proves they hold this device's current key, because the
+    // relay only ever returns rows addressed to the caller — so every inbound path notes it, and a
+    // contact who has relinked drops off the awaiting-relink list without anyone tapping anything.
+    // Rows this device created itself, which syncDistributed reads back, prove nothing about the
+    // contact and are deliberately not counted. Never allowed to break a sync pass.
+    private fun noteRelinked(contact: Contact) {
+        runCatching { contactManagement.markRelinked(contact.id) }
+    }
+
     private fun processHeartbeats() {
         // Nothing here can be verified without our own key, so a device whose key storage is
         // locked does nothing and picks this up on a later pass rather than failing every notice.
@@ -461,6 +471,7 @@ class ShareService(
             val notices = runCatching { relay.listHeartbeats() }.getOrDefault(emptyList())
             for (notice in notices) {
                 val contact = contactRepository.getByVerifyKey(notice.holderKey) ?: continue
+                noteRelinked(contact)
                 val canon = PayloadCanonical.forHeartbeat(myKey, notice.secretIds, notice.optedOut)
                 if (!identity.verify(canon, notice.signature, notice.holderKey)) continue
                 if (notice.optedOut) {
@@ -499,6 +510,7 @@ class ShareService(
             val notices = runCatching { relay.listRotations() }.getOrDefault(emptyList())
             for (notice in notices) {
                 val contact = contactRepository.getByVerifyKey(notice.oldVerifyKey) ?: continue
+                noteRelinked(contact)
                 val canon = PayloadCanonical.forRotation(notice.recipientKey, notice.newVerifyKey, notice.newEncKey, notice.newCipherSuite)
                 if (!identity.verify(canon, notice.signature, notice.oldVerifyKey)) continue
                 // A rotation claiming continuity from a key the user has flagged
@@ -591,6 +603,7 @@ class ShareService(
             }.getOrDefault(emptyList())
             for (req in pushes.filter(::verifyOpen)) {
                 val holderContact = contactRepository.getByVerifyKey(req.senderKey) ?: continue
+                noteRelinked(holderContact)
                 val k = req.k ?: continue
                 val n = req.n ?: continue
                 val mimeType = req.mimeType ?: continue

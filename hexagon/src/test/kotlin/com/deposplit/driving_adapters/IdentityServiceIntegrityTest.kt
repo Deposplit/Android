@@ -19,6 +19,7 @@ private class RestorableIdentityStore : IdentityStore {
     private var _encKey = ByteArray(0)
     private var _decKey = ByteArray(0)
     private var _previousDecKey: ByteArray? = null
+    private var _identityCreatedAt: java.time.Instant? = null
 
     /** Thrown by every private-key read, standing in for a keystore that no longer decrypts. */
     var privateKeyFailure: Exception? = null
@@ -35,6 +36,8 @@ private class RestorableIdentityStore : IdentityStore {
         this._encKey = encKey
         this._decKey = decKey
         this._previousDecKey = null
+        // Mirrors the real adapters: registration starts a new identity, rotation continues one.
+        this._identityCreatedAt = java.time.Instant.now()
         registered = true
     }
 
@@ -58,6 +61,7 @@ private class RestorableIdentityStore : IdentityStore {
     override fun encKey(): ByteArray? = if (publicKeysReadable) _encKey else null
     override fun decKey() = privateKeyFailure?.let { throw it } ?: _decKey
     override fun previousDecKey() = _previousDecKey
+    override fun identityCreatedAt(): java.time.Instant? = _identityCreatedAt
 }
 
 class IdentityServiceIntegrityTest {

@@ -80,6 +80,7 @@ private class InMemoryIdentityStoreForShareServiceTest : IdentityStore {
     private var _encKey = ByteArray(0)
     private var _decKey = ByteArray(0)
     private var _previousDecKey: ByteArray? = null
+    private var _identityCreatedAt: java.time.Instant? = null
     private var registered = false
 
     override fun isRegistered() = registered
@@ -90,6 +91,8 @@ private class InMemoryIdentityStoreForShareServiceTest : IdentityStore {
         this._encKey = encKey
         this._decKey = decKey
         this._previousDecKey = null
+        // Mirrors the real adapters: registration starts a new identity, rotation continues one.
+        this._identityCreatedAt = java.time.Instant.now()
         registered = true
     }
     override fun rotate(verifyKey: ByteArray, signKey: ByteArray, encKey: ByteArray, decKey: ByteArray) {
@@ -105,11 +108,22 @@ private class InMemoryIdentityStoreForShareServiceTest : IdentityStore {
     override fun encKey(): ByteArray? = _encKey
     override fun decKey() = _decKey
     override fun previousDecKey() = _previousDecKey
+    override fun identityCreatedAt(): java.time.Instant? = _identityCreatedAt
 }
 
 /** A genuinely mutable in-memory store (not no-ops) — the rotation-processing tests need to
  * observe the effect of ContactService.updateContact on the same contacts ShareService reads.
  */
+private class InMemoryContactRelinkRepositoryForShareServiceTest : com.deposplit.driven_ports.ContactRelinkRepository {
+    private val relinks = mutableListOf<com.deposplit.value_objects.ContactRelink>()
+    override fun getAll() = relinks.toList()
+    override fun get(contactId: UUID) = relinks.find { it.contactId == contactId }
+    override fun save(relink: com.deposplit.value_objects.ContactRelink) {
+        relinks.removeAll { it.contactId == relink.contactId }
+        relinks.add(relink)
+    }
+}
+
 private class FakeContactRepository(initial: List<Contact>) : ContactRepository {
     private val contacts = initial.toMutableList()
     override fun getAll() = contacts.toList()
@@ -331,7 +345,8 @@ class ShareServiceTest {
         contacts: List<Contact> = listOf(aliceContact),
         encryption: ShareEncryption = NoOpShareEncryption,
     ): ShareServiceFixture {
-        val bobIdentity = IdentityService(InMemoryIdentityStoreForShareServiceTest())
+        val identityStore = InMemoryIdentityStoreForShareServiceTest()
+        val bobIdentity = IdentityService(identityStore)
         bobIdentity.register("bob")
         val shareRepo = FakeShareRepository()
         val contactRepo = FakeContactRepository(contacts)
@@ -346,7 +361,7 @@ class ShareServiceTest {
             shareMetadataRepository = metaRepo,
             secretRepository = FakeSecretRepository(),
             contactRepository = contactRepo,
-            contactManagement = ContactService(contactRepo, purchases),
+            contactManagement = ContactService(contactRepo, purchases, identityStore, InMemoryContactRelinkRepositoryForShareServiceTest()),
             keyConflictRepository = conflictRepo,
             retainedDepositRepository = retainedRepo,
             identity = bobIdentity,
@@ -506,7 +521,8 @@ class ShareServiceTest {
         val charlieContact = aliceContact.copy(id = UUID.randomUUID(), pseudonym = "charlie", verifyKey = charlieKeys.publicKey, relayBaseUrl = byorUrl)
         val defaultRelay = FakeShareRelay()
         val byorRelay = FakeShareRelay()
-        val bobIdentity = IdentityService(InMemoryIdentityStoreForShareServiceTest())
+        val identityStore = InMemoryIdentityStoreForShareServiceTest()
+        val bobIdentity = IdentityService(identityStore)
         bobIdentity.register("bob")
         val shareRepo = FakeShareRepository()
         val contactRepo = FakeContactRepository(listOf(aliceContact, charlieContact))
@@ -518,7 +534,7 @@ class ShareServiceTest {
             shareMetadataRepository = FakeShareMetadataRepository(),
             secretRepository = FakeSecretRepository(),
             contactRepository = contactRepo,
-            contactManagement = ContactService(contactRepo, purchases),
+            contactManagement = ContactService(contactRepo, purchases, identityStore, InMemoryContactRelinkRepositoryForShareServiceTest()),
             keyConflictRepository = FakeKeyConflictRepository(),
             retainedDepositRepository = FakeRetainedDepositRepository(),
             identity = bobIdentity,
@@ -550,7 +566,8 @@ class ShareServiceTest {
         val charlieContact = aliceContact.copy(id = UUID.randomUUID(), pseudonym = "charlie", verifyKey = charlieKeys.publicKey, relayBaseUrl = byorUrl)
         val defaultRelay = FakeShareRelay()
         val byorRelay = FakeShareRelay(unreachable = true)
-        val bobIdentity = IdentityService(InMemoryIdentityStoreForShareServiceTest())
+        val identityStore = InMemoryIdentityStoreForShareServiceTest()
+        val bobIdentity = IdentityService(identityStore)
         bobIdentity.register("bob")
         val shareRepo = FakeShareRepository()
         val contactRepo = FakeContactRepository(listOf(aliceContact, charlieContact))
@@ -562,7 +579,7 @@ class ShareServiceTest {
             shareMetadataRepository = FakeShareMetadataRepository(),
             secretRepository = FakeSecretRepository(),
             contactRepository = contactRepo,
-            contactManagement = ContactService(contactRepo, purchases),
+            contactManagement = ContactService(contactRepo, purchases, identityStore, InMemoryContactRelinkRepositoryForShareServiceTest()),
             keyConflictRepository = FakeKeyConflictRepository(),
             retainedDepositRepository = FakeRetainedDepositRepository(),
             identity = bobIdentity,
@@ -592,7 +609,8 @@ class ShareServiceTest {
     )
 
     private fun newServiceForRecoveryTest(relay: FakeShareRelay, contacts: List<Contact> = listOf(aliceContact)): RecoveryFixture {
-        val bobIdentity = IdentityService(InMemoryIdentityStoreForShareServiceTest())
+        val identityStore = InMemoryIdentityStoreForShareServiceTest()
+        val bobIdentity = IdentityService(identityStore)
         bobIdentity.register("bob")
         val shareRepo = FakeShareRepository()
         val secretRepo = FakeSecretRepository()
@@ -606,7 +624,7 @@ class ShareServiceTest {
             shareMetadataRepository = metaRepo,
             secretRepository = secretRepo,
             contactRepository = contactRepo,
-            contactManagement = ContactService(contactRepo, purchases),
+            contactManagement = ContactService(contactRepo, purchases, identityStore, InMemoryContactRelinkRepositoryForShareServiceTest()),
             keyConflictRepository = FakeKeyConflictRepository(),
             retainedDepositRepository = FakeRetainedDepositRepository(),
             identity = bobIdentity,
@@ -1466,7 +1484,8 @@ class ShareServiceTest {
     fun `syncInbox still picks up a deposit sealed to the encKey rotated away from`() {
         val aliceIdentity = IdentityService(InMemoryIdentityStoreForShareServiceTest())
         aliceIdentity.register("alice")
-        val bobIdentity = IdentityService(InMemoryIdentityStoreForShareServiceTest())
+        val identityStore = InMemoryIdentityStoreForShareServiceTest()
+        val bobIdentity = IdentityService(identityStore)
         bobIdentity.register("bob")
         // Alice signs with the fixture keypair but agrees with her real X25519 key — the two
         // keypairs are independent, exactly as they are in production.
@@ -1482,7 +1501,7 @@ class ShareServiceTest {
             shareMetadataRepository = FakeShareMetadataRepository(),
             secretRepository = FakeSecretRepository(),
             contactRepository = contactRepo,
-            contactManagement = ContactService(contactRepo, purchases),
+            contactManagement = ContactService(contactRepo, purchases, identityStore, InMemoryContactRelinkRepositoryForShareServiceTest()),
             keyConflictRepository = FakeKeyConflictRepository(),
             retainedDepositRepository = FakeRetainedDepositRepository(),
             identity = bobIdentity,
@@ -1544,7 +1563,8 @@ class ShareServiceTest {
         val defaultRelay = FakeShareRelay()
         val byorRelay = FakeShareRelay()
         byorRelay.throwOnPushRotation = true
-        val bobIdentity = IdentityService(InMemoryIdentityStoreForShareServiceTest())
+        val identityStore = InMemoryIdentityStoreForShareServiceTest()
+        val bobIdentity = IdentityService(identityStore)
         bobIdentity.register("bob")
         val contactRepo = FakeContactRepository(listOf(aliceContact, charlieContact))
         val purchases = FakePurchaseRepository()
@@ -1555,7 +1575,7 @@ class ShareServiceTest {
             shareMetadataRepository = FakeShareMetadataRepository(),
             secretRepository = FakeSecretRepository(),
             contactRepository = contactRepo,
-            contactManagement = ContactService(contactRepo, purchases),
+            contactManagement = ContactService(contactRepo, purchases, identityStore, InMemoryContactRelinkRepositoryForShareServiceTest()),
             keyConflictRepository = FakeKeyConflictRepository(),
             retainedDepositRepository = FakeRetainedDepositRepository(),
             identity = bobIdentity,

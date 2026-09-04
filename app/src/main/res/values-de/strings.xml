@@ -279,6 +279,13 @@
     <string name="add_contact_relay_premium_required">Das Relay eines Kontakts von Hand einzutragen gehört zu Premium. Ein Relay aus einem gescannten QR-Code ist immer kostenlos.</string>
     <string name="deposit_free_tier_full">%1$d von %2$d kostenlosen Geheimnissen sind belegt. Verwirf eines oder schalte Premium frei.</string>
 
+    <string name="contacts_awaiting_relink_description">%1$s hat dich noch nicht erneut verifiziert</string>
+    <string name="contacts_mark_relinked_description">%1$s als erneut verifiziert markieren</string>
+    <plurals name="home_awaiting_relink">
+        <item quantity="one">%1$d Kontakt hat noch deinen alten Schlüssel — triff die Person und lass sie deinen Code erneut scannen</item>
+        <item quantity="other">%1$d Kontakte haben noch deinen alten Schlüssel — triff sie und lass sie deinen Code erneut scannen</item>
+    </plurals>
+
     <plurals name="share_detail_approved_shares">
         <item quantity="one">%d angenommener Teil verfügbar</item>
         <item quantity="other">%d angenommene Teile verfügbar</item>

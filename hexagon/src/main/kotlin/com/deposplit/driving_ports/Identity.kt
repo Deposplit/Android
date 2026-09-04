@@ -26,6 +26,7 @@ package com.deposplit.driving_ports
 
 import com.deposplit.value_objects.IdentityIntegrity
 import com.deposplit.value_objects.KeyPairMaterial
+import java.time.Instant
 
 interface Identity {
     fun isRegistered(): Boolean
@@ -40,6 +41,13 @@ interface Identity {
 
     fun register(pseudonym: String)
     fun pseudonym(): String
+
+    /**
+     * When the identity this device holds today was established. Moves on registration and stays
+     * put across a rotation — see [com.deposplit.driven_ports.IdentityStore.identityCreatedAt].
+     * Null on a device registered before this was recorded.
+     */
+    fun identityCreatedAt(): Instant?
 
     /**
      * This device's own public keys, or null when they are gone or cannot be read — an ordinary

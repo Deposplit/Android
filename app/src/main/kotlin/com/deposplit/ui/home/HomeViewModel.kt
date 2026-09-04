@@ -105,6 +105,7 @@ private data class Phase1Result(
     val secrets: List<Secret>,
     val distributed: List<ShareMetadata>,
     val held: List<HeldShare>,
+    val awaitingRelink: Int,
 )
 
 private data class Phase2Result(
@@ -112,6 +113,7 @@ private data class Phase2Result(
     val secrets: List<Secret>,
     val distributed: List<ShareMetadata>,
     val held: List<HeldShare>,
+    val awaitingRelink: Int,
 )
 
 class HomeViewModel(
@@ -125,6 +127,10 @@ class HomeViewModel(
         val heldSortOrder: HeldSortOrder = HeldSortOrder.DATE,
         val isLoading: Boolean = false,
         val syncWarning: Boolean = false,
+        // How many contacts still hold a key this device no longer signs with. A standing
+        // advisory rather than an alarm: it is expected work after a phone switch, and it clears
+        // itself as each contact gets back in touch.
+        val awaitingRelinkCount: Int = 0,
         @StringRes val error: Int? = null,
         val expandedSecretId: UUID? = null,
         val requestingAllIds: Set<UUID> = emptySet(),
@@ -150,6 +156,7 @@ class HomeViewModel(
                         secrets = shareManagement.listSecrets(),
                         distributed = shareManagement.listDistributed(),
                         held = shareManagement.listHeld(),
+                        awaitingRelink = contactManagement.contactsAwaitingRelink().size,
                     )
                 }
             }
@@ -157,10 +164,12 @@ class HomeViewModel(
                 _uiState.update { it.copy(isLoading = false, error = R.string.home_error_fallback) }
                 return@launch
             }
-            val (contacts, secrets, distributed, held) = phase1.getOrThrow()
+            val phase1Result = phase1.getOrThrow()
+            val (contacts, secrets, distributed, held) = phase1Result
             _uiState.update {
                 it.copy(
                     isLoading = false,
+                    awaitingRelinkCount = phase1Result.awaitingRelink,
                     groupedSecrets = buildGroups(secrets, distributed, emptyList(), contacts),
                     heldShares = toDisplayList(held, contacts, sortOrder),
                 )
@@ -176,14 +185,18 @@ class HomeViewModel(
                         secrets = shareManagement.listSecrets(),
                         distributed = shareManagement.listDistributed(),
                         held = shareManagement.listHeld(),
+                        awaitingRelink = contactManagement.contactsAwaitingRelink().size,
                     )
                 }
-            }.onSuccess { (allRequests, freshSecrets, freshDistributed, freshHeld) ->
+            }.onSuccess { phase2 ->
+                val (allRequests, freshSecrets, freshDistributed, freshHeld) = phase2
                 val currentSortOrder = _uiState.value.heldSortOrder
                 _uiState.update {
                     it.copy(
                         groupedSecrets = buildGroups(freshSecrets, freshDistributed, allRequests, contacts),
                         heldShares = toDisplayList(freshHeld, contacts, currentSortOrder),
+                        // The sync may itself be the evidence that clears someone.
+                        awaitingRelinkCount = phase2.awaitingRelink,
                     )
                 }
             }.onFailure {

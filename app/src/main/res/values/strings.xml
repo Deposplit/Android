@@ -279,6 +279,13 @@
     <string name="add_contact_relay_premium_required">Naming a contact\'s relay by hand is part of Premium. A relay carried in a scanned QR code is always free.</string>
     <string name="deposit_free_tier_full">%1$d of %2$d free secrets are in use. Discard one, or unlock Premium.</string>
 
+    <string name="contacts_awaiting_relink_description">%1$s has not re-verified you yet</string>
+    <string name="contacts_mark_relinked_description">Mark %1$s as having re-verified you</string>
+    <plurals name="home_awaiting_relink">
+        <item quantity="one">%1$d contact still has your old key — meet them and let them re-scan your code</item>
+        <item quantity="other">%1$d contacts still have your old key — meet them and let them re-scan your code</item>
+    </plurals>
+
     <plurals name="share_detail_approved_shares">
         <item quantity="one">%d approved share available</item>
         <item quantity="other">%d approved shares available</item>

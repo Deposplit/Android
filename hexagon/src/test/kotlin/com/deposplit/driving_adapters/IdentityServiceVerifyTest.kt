@@ -18,6 +18,7 @@ private class InMemoryIdentityStore : IdentityStore {
     private var _encKey = ByteArray(0)
     private var _decKey = ByteArray(0)
     private var _previousDecKey: ByteArray? = null
+    private var _identityCreatedAt: java.time.Instant? = null
 
     override fun isRegistered() = registered
 
@@ -28,6 +29,8 @@ private class InMemoryIdentityStore : IdentityStore {
         this._encKey = encKey
         this._decKey = decKey
         this._previousDecKey = null
+        // Mirrors the real adapters: registration starts a new identity, rotation continues one.
+        this._identityCreatedAt = java.time.Instant.now()
         registered = true
     }
 
@@ -45,6 +48,7 @@ private class InMemoryIdentityStore : IdentityStore {
     override fun encKey(): ByteArray? = _encKey
     override fun decKey() = _decKey
     override fun previousDecKey() = _previousDecKey
+    override fun identityCreatedAt(): java.time.Instant? = _identityCreatedAt
 }
 
 /**

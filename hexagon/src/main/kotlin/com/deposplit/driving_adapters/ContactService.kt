@@ -1,10 +1,13 @@
 package com.deposplit.driving_adapters
 
+import com.deposplit.driven_ports.ContactRelinkRepository
 import com.deposplit.driven_ports.ContactRepository
+import com.deposplit.driven_ports.IdentityStore
 import com.deposplit.driven_ports.PurchaseRepository
 import com.deposplit.driving_ports.ContactManagement
 import com.deposplit.value_objects.CipherSuite
 import com.deposplit.value_objects.Contact
+import com.deposplit.value_objects.ContactRelink
 import com.deposplit.value_objects.PremiumRequiredException
 import com.deposplit.value_objects.VerificationLevel
 import java.time.Instant
@@ -13,9 +16,31 @@ import java.util.UUID
 class ContactService(
     private val contactRepository: ContactRepository,
     private val purchases: PurchaseRepository,
+    private val identityStore: IdentityStore,
+    private val relinkRepository: ContactRelinkRepository,
 ) : ContactManagement {
 
     override fun listContacts(): List<Contact> = contactRepository.getAll()
+
+    override fun contactsAwaitingRelink(): List<Contact> {
+        // No recorded start means no basis to judge, and flagging every contact on a guess would be
+        // a false alarm on a device that never lost anything.
+        val identityCreatedAt = identityStore.identityCreatedAt() ?: return emptyList()
+        return contactRepository.getAll().filter { contact ->
+            if (!contact.addedAt.isBefore(identityCreatedAt)) return@filter false
+            val relinkedAt = relinkRepository.get(contact.id)?.observedAt
+            relinkedAt == null || relinkedAt.isBefore(identityCreatedAt)
+        }
+    }
+
+    override fun markRelinked(contactId: UUID) {
+        // Called once per inbound row as well as by the user, so it skips the write when the answer
+        // would not change — otherwise a single poll would rewrite the store for every row it reads.
+        val identityCreatedAt = identityStore.identityCreatedAt()
+        val alreadyRecorded = relinkRepository.get(contactId)?.observedAt
+        if (identityCreatedAt != null && alreadyRecorded != null && !alreadyRecorded.isBefore(identityCreatedAt)) return
+        relinkRepository.save(ContactRelink(contactId, Instant.now()))
+    }
 
     // No cipherSuite parameter: manual entry has no wire payload to read one from, and only one
     // suite exists to assume — see ContactManagement.addManually.

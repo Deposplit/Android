@@ -21,7 +21,9 @@ import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.NotificationsOff
+import androidx.compose.material.icons.filled.PersonOff
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Shield
@@ -148,6 +150,8 @@ fun ContactsScreen(
                 items(uiState.contacts, key = { it.id }) { contact ->
                     ContactItem(
                         contact = contact,
+                        awaitingRelink = contact.id in uiState.awaitingRelink,
+                        onMarkRelinked = { viewModel.markRelinked(contact.id) },
                         onDelete = { viewModel.delete(contact.id) },
                         onRelink = { onNavigateToRelinkContact(contact) },
                         onMarkCompromised = { viewModel.markKeyCompromised(contact.id) },
@@ -163,6 +167,8 @@ fun ContactsScreen(
 @Composable
 private fun ContactItem(
     contact: Contact,
+    awaitingRelink: Boolean,
+    onMarkRelinked: () -> Unit,
     onDelete: () -> Unit,
     onRelink: () -> Unit,
     onMarkCompromised: () -> Unit,
@@ -186,6 +192,18 @@ private fun ContactItem(
                             Icons.Default.Warning,
                             contentDescription = stringResource(R.string.contacts_revoked_badge_description),
                             tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                    if (awaitingRelink) {
+                        Spacer(Modifier.width(6.dp))
+                        Icon(
+                            Icons.Default.PersonOff,
+                            contentDescription = stringResource(
+                                R.string.contacts_awaiting_relink_description,
+                                contact.displayName,
+                            ),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(16.dp),
                         )
                     }
@@ -214,6 +232,17 @@ private fun ContactItem(
                         text = contact.verificationLevel.displayName(),
                         style = MaterialTheme.typography.bodySmall,
                         color = contact.verificationLevel.badgeColor(),
+                    )
+                }
+            }
+            if (awaitingRelink) {
+                IconButton(onClick = onMarkRelinked) {
+                    Icon(
+                        Icons.Default.Check,
+                        contentDescription = stringResource(
+                            R.string.contacts_mark_relinked_description,
+                            contact.displayName,
+                        ),
                     )
                 }
             }

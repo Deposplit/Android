@@ -23,6 +23,11 @@ class ContactsViewModel(
 
     data class UiState(
         val contacts: List<Contact> = emptyList(),
+        // Contacts who still hold a key this device no longer signs with, so they cannot address
+        // it any more. Only ever non-empty after an identity was re-established without the old
+        // key to sign a rotation notice with — a phone switch, or a catalogue restored onto a
+        // fresh install.
+        val awaitingRelink: Set<UUID> = emptySet(),
         val isLoading: Boolean = false,
         @StringRes val error: Int? = null,
     )
@@ -37,9 +42,26 @@ class ContactsViewModel(
     fun load() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
-            runCatching { withContext(Dispatchers.IO) { contactManagement.listContacts() } }
-                .onSuccess { contacts -> _uiState.update { it.copy(isLoading = false, contacts = contacts) } }
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    contactManagement.listContacts() to contactManagement.contactsAwaitingRelink().map { it.id }.toSet()
+                }
+            }
+                .onSuccess { (contacts, awaiting) ->
+                    _uiState.update { it.copy(isLoading = false, contacts = contacts, awaitingRelink = awaiting) }
+                }
                 .onFailure { _uiState.update { it.copy(isLoading = false, error = R.string.contacts_error_load) } }
+        }
+    }
+
+    // The manual fallback. Anything arriving from a contact clears them automatically, but a
+    // contact who holds no share and sends nothing never produces evidence, so the list would
+    // otherwise never empty.
+    fun markRelinked(contactId: UUID) {
+        viewModelScope.launch {
+            runCatching { withContext(Dispatchers.IO) { contactManagement.markRelinked(contactId) } }
+                .onSuccess { load() }
+                .onFailure { _uiState.update { it.copy(error = R.string.contacts_error_load) } }
         }
     }
 

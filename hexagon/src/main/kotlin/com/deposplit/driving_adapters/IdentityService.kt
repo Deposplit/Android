@@ -48,6 +48,7 @@ import org.bouncycastle.crypto.params.X25519PrivateKeyParameters
 import org.bouncycastle.crypto.params.X25519PublicKeyParameters
 import org.bouncycastle.crypto.signers.Ed25519Signer
 import java.security.SecureRandom
+import java.time.Instant
 
 class IdentityService(private val identityStore: IdentityStore) : Identity, ShareEncryption {
 
@@ -109,6 +110,8 @@ class IdentityService(private val identityStore: IdentityStore) : Identity, Shar
     }
 
     override fun pseudonym(): String = identityStore.pseudonym()
+
+    override fun identityCreatedAt(): Instant? = identityStore.identityCreatedAt()
 
     override fun verifyKey(): ByteArray? = identityStore.verifyKey()
 

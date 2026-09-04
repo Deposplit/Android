@@ -6,6 +6,7 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import com.deposplit.driven_ports.IdentityStore
 import java.security.KeyStore
+import java.time.Instant
 import java.util.Base64
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -28,6 +29,7 @@ class AndroidIdentityStore(context: Context) : IdentityStore {
             .putEncrypted(masterKey, "dec_key", decKey)
             .remove("previous_dec_key")
             .remove("previous_dec_key_iv")
+            .putLong("identity_created_at", Instant.now().toEpochMilli())
             .putBoolean("registered", true)
             .apply()
     }
@@ -49,6 +51,11 @@ class AndroidIdentityStore(context: Context) : IdentityStore {
         }
         editor.apply()
     }
+
+    // Deliberately not touched by rotate() above: a rotation is continuous with what came before
+    // and tells every contact itself, so it must not put them on the awaiting-relink list.
+    override fun identityCreatedAt(): Instant? =
+        prefs.getLong("identity_created_at", 0L).takeIf { it > 0L }?.let(Instant::ofEpochMilli)
 
     override fun previousDecKey(): ByteArray? =
         runCatching { prefs.getDecrypted(requireMasterKey(), "previous_dec_key") }.getOrNull()
