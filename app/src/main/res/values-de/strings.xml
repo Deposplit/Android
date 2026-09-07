@@ -11,16 +11,16 @@
 
     <!-- Sign in -->
     <string name="signin_subtitle">Ein Pseudonym wählen</string>
-    <string name="signin_name_label">Dein Pseudonym</string>
+    <string name="signin_name_label">Ihr Pseudonym</string>
     <string name="signin_name_placeholder">z. B. Alice</string>
     <string name="signin_button">Loslegen</string>
     <string name="signin_error_empty_name">Bitte gib ein Pseudonym ein.</string>
     <string name="signin_error_fallback">Einrichtung fehlgeschlagen</string>
 
-    <string name="keys_lost_title">Deine Schlüssel sind nicht mitgekommen</string>
-    <string name="keys_lost_what_happened">Dieses Telefon hat alles wiederhergestellt außer deinen Schlüsseln. Dein altes Telefon hat sie so verwahrt, dass sie sich nicht kopieren lassen — dieses Gerät kann daher weder als du signieren noch entschlüsseln.</string>
-    <string name="keys_lost_nothing_else_lost">Sonst ist nichts verloren. Deine aufgeteilten Geheimnisse sind weiterhin wiederherstellbar, und die Anteile, die du für andere verwahrst, sind noch da.</string>
-    <string name="keys_lost_what_to_do">Erzeuge neue Schlüssel und triff dann deine Kontakte, damit sie deinen neuen Code scannen — sowohl die Personen, die Anteile für dich halten, als auch die, deren Anteile du hältst. Bis dahin können sie dich nicht erreichen.</string>
+    <string name="keys_lost_title">Ihre Schlüssel sind nicht mitgekommen</string>
+    <string name="keys_lost_what_happened">Dieses Telefon hat alles wiederhergestellt außer Ihren Schlüsseln. Ihr altes Telefon hat sie so verwahrt, dass sie sich nicht kopieren lassen — dieses Gerät kann daher weder als Sie signieren noch entschlüsseln.</string>
+    <string name="keys_lost_nothing_else_lost">Sonst ist nichts verloren. Ihre aufgeteilten Geheimnisse sind weiterhin wiederherstellbar, und die Anteile, die Sie für andere verwahren, sind noch da.</string>
+    <string name="keys_lost_what_to_do">Erzeugen Sie neue Schlüssel und treffen Sie dann Ihre Kontakte, damit sie Ihren neuen Code scannen — sowohl die Personen, die Anteile für Sie halten, als auch die, deren Anteile Sie halten. Bis dahin können sie Sie nicht erreichen.</string>
     <string name="keys_lost_button">Neue Schlüssel erzeugen</string>
 
     <!-- Home -->
@@ -37,11 +37,11 @@
     <string name="home_sort_label">Bezeichnung</string>
     <string name="home_sort_sender">Von</string>
     <string name="home_held_delete_title">Anteil löschen?</string>
-    <string name="home_held_delete_body">Damit wird dieser Anteil dauerhaft von deinem Gerät entfernt.</string>
+    <string name="home_held_delete_body">Damit wird dieser Anteil dauerhaft von Ihrem Gerät entfernt.</string>
     <string name="home_held_delete_all_from">Alle Anteile von %1$s löschen</string>
     <string name="home_held_delete_confirm">Löschen</string>
     <string name="home_error_fallback">Laden fehlgeschlagen</string>
-    <string name="home_sync_warning">Relay nicht erreichbar</string>
+    <string name="home_sync_warning">Relais nicht erreichbar</string>
 
     <!-- Lebenszyklus des Geheimnisses -->
     <string name="home_health_caution">Nur ein Puffer von eins — bald neu aufteilen</string>
@@ -55,7 +55,7 @@
     <string name="home_freshness_silent">Still — möglicher Verlust</string>
     <string name="home_discard_button">Verwerfen</string>
     <string name="home_discard_title">Dieses Geheimnis verwerfen?</string>
-    <string name="home_discard_body">Fordert die Löschung von allen %1$d Verwahrer(n) an. Jeder muss zustimmen — dies entfernt es erst dann von der Geräteliste, wenn alle bestätigt haben (oder du es zwangsweise vergisst).</string>
+    <string name="home_discard_body">Fordert die Löschung von allen %1$d Verwahrer(n) an. Jeder muss zustimmen — dies entfernt es erst dann von der Geräteliste, wenn alle bestätigt haben (oder Sie es zwangsweise vergessen).</string>
     <string name="home_discard_confirm">Verwerfen</string>
     <string name="home_discarding_label">Wird verworfen …</string>
     <string name="home_force_forget_button">Zwangsweise vergessen</string>
@@ -105,7 +105,7 @@
     <string name="verification_level_very_low_guidance">Nicht vertrauenswürdiger Kanal, kein Live-Nachweis — z. B. E-Mail, LinkedIn, eine Visitenkarte.</string>
     <string name="verification_level_low_guidance">Eine Bestätigung, nicht beide — z. B. eine Signal-Nachricht von einem bekannten Kontakt oder ein Videoanruf, bei dem der QR-Code gezeigt wird.</string>
     <string name="verification_level_high_guidance">Beide Bestätigungen — z. B. ein Videoanruf mit verifizierter Sicherheitsnummer, bei dem der QR-Code gezeigt wird.</string>
-    <string name="verification_level_very_high_guidance">Physische Anwesenheit — du hast den QR-Code persönlich gescannt.</string>
+    <string name="verification_level_very_high_guidance">Physische Anwesenheit — Sie haben den QR-Code persönlich gescannt.</string>
 
     <!-- Add contact -->
     <string name="add_contact_title">Kontakt hinzufügen</string>
@@ -117,15 +117,15 @@
     <string name="add_contact_error_verify_key_length">Muss 32 Bytes lang sein (Verifizierungsschlüssel)</string>
     <string name="add_contact_error_enc_key_length">Muss 32 Bytes lang sein (Verschlüsselungsschlüssel)</string>
     <string name="add_contact_error_save">Speichern fehlgeschlagen</string>
-    <string name="add_contact_relay_label">Abweichendes Relay (optional, BYOR)</string>
+    <string name="add_contact_relay_label">Abweichendes Relais (optional, BYOR)</string>
     <string name="add_contact_nickname_label">Spitzname (optional)</string>
     <string name="add_contact_verification_label">Verifizierungsstufe</string>
-    <string name="add_contact_verification_footer">Wie sicher bist du, dass es wirklich diese Person ist? Zähle deine unabhängigen Bestätigungen: ein vertrauenswürdiger Kanal und/oder ein Live-Nachweis, dass du sie gesehen hast.</string>
+    <string name="add_contact_verification_footer">Wie sicher sind Sie, dass es wirklich diese Person ist? Zählen Sie Ihre unabhängigen Bestätigungen: ein vertrauenswürdiger Kanal und/oder ein Live-Nachweis, dass Sie sie gesehen haben.</string>
 
     <!-- Settings -->
     <string name="settings_title">Einstellungen</string>
-    <string name="settings_relay_description">Standard-Relay für Kontakte ohne eigenes BYOR-Relay; wird auch in deinem QR-Code mitgeteilt.</string>
-    <string name="settings_relay_label">Standard-Relay-URL</string>
+    <string name="settings_relay_description">Standard-Relais für Kontakte ohne eigenes BYOR-Relais; wird auch in Ihrem QR-Code mitgeteilt.</string>
+    <string name="settings_relay_label">Standard-Relais-URL</string>
     <string name="settings_relay_reset">Auf Standard zurücksetzen</string>
     <string name="settings_catalog_title">Katalog-Sicherung</string>
     <string name="settings_catalog_description">Nur Kontakte, Verifizierungsstufen und Metadaten der Geheimnisse — niemals Anteile oder private Schlüssel.</string>
@@ -134,17 +134,17 @@
     <string name="settings_catalog_imported">%1$s neue(n) Kontakt(e) importiert.</string>
     <string name="settings_catalog_import_error">Katalog konnte nicht importiert werden</string>
     <string name="settings_backup_title">Gerätesicherung</string>
-    <string name="settings_backup_description">Die Daten von Deposplit auf diesem Telefon — deine Kontakte, die Angaben zu deinen Geheimnissen und die Anteile, die du für andere verwahrst — sind in der Gerätesicherung enthalten und überstehen so einen Telefonwechsel. Deine privaten Schlüssel nicht: Sie können dieses Telefon nicht verlassen.</string>
-    <string name="settings_backup_exclusion">Android verschlüsselt diese Sicherung mit deiner Bildschirmsperre, und du kannst Deposplit in den Sicherungseinstellungen deines Telefons ausschließen. Dann startet ein neues Telefon leer — die Menschen, deren Anteile du verwahrst, verlieren diese Redundanz, und dein neues Telefon weiß nichts davon, um es ihnen zu sagen.</string>
+    <string name="settings_backup_description">Die Daten von Deposplit auf diesem Telefon — Ihre Kontakte, die Angaben zu Ihren Geheimnissen und die Anteile, die Sie für andere verwahren — sind in der Gerätesicherung enthalten und überstehen so einen Telefonwechsel. Ihre privaten Schlüssel nicht: Diese können das Telefon nicht verlassen.</string>
+    <string name="settings_backup_exclusion">Android verschlüsselt diese Sicherung mit Ihrer Bildschirmsperre, und Sie können Deposplit in den Sicherungseinstellungen Ihres Telefons ausschließen. Dann startet ein neues Telefon leer — die Menschen, deren Anteile Sie verwahren, verlieren diese Redundanz, und Ihr neues Telefon weiß nichts davon, um es ihnen zu sagen.</string>
     <string name="settings_identity_title">Identität</string>
-    <string name="settings_regenerate_description">Erzeugt ein brandneues Schlüsselpaar für dieses Gerät und benachrichtigt automatisch alle deine Kontakte. Ein bereits an dich unterwegs befindlicher Anteil kann danach weiterhin abgeholt werden, ein jetzt nicht erreichbarer Kontakt erfährt aber nichts vom neuen Schlüssel. Das lässt sich nicht rückgängig machen.</string>
+    <string name="settings_regenerate_description">Erzeugt ein brandneues Schlüsselpaar für dieses Gerät und benachrichtigt automatisch alle Ihre Kontakte. Ein bereits an Sie unterwegs befindlicher Anteil kann danach weiterhin abgeholt werden, ein jetzt nicht erreichbarer Kontakt erfährt aber nichts vom neuen Schlüssel. Das lässt sich nicht rückgängig machen.</string>
     <string name="settings_regenerate_button">Meine Identität neu erzeugen</string>
     <string name="settings_regenerate_confirm_title">Identität neu erzeugen?</string>
-    <string name="settings_regenerate_confirm_body">Damit wird ein neues Schlüsselpaar erzeugt und %1$d Kontakt(e) benachrichtigt. Ein bereits an dich unterwegs befindlicher Anteil kann danach weiterhin abgeholt werden; ein jetzt nicht erreichbarer Kontakt erfährt nichts vom neuen Schlüssel.</string>
+    <string name="settings_regenerate_confirm_body">Damit wird ein neues Schlüsselpaar erzeugt und %1$d Kontakt(e) benachrichtigt. Ein bereits an Sie unterwegs befindlicher Anteil kann danach weiterhin abgeholt werden; ein jetzt nicht erreichbarer Kontakt erfährt nichts vom neuen Schlüssel.</string>
     <string name="settings_regenerate_confirm_action">Neu erzeugen</string>
     <string name="settings_regenerate_result">%1$d von %2$d Kontakt(en) benachrichtigt.</string>
     <string name="settings_regenerate_error">Identität konnte nicht neu erzeugt werden</string>
-    <string name="settings_regenerate_drain_warning">Einige Relays waren nicht erreichbar, daher wurden noch offene Übertragungen nicht vorab eingesammelt — sie kommen bei einer späteren Synchronisierung an.</string>
+    <string name="settings_regenerate_drain_warning">Einige Relais waren nicht erreichbar, daher wurden noch offene Übertragungen nicht vorab eingesammelt — sie kommen bei einer späteren Synchronisierung an.</string>
 
     <!-- Deposit -->
     <string name="deposit_title">Geheimnis aufteilen &amp; verteilen</string>
@@ -168,11 +168,11 @@
     <string name="deposit_error_fallback">Hinterlegen fehlgeschlagen</string>
     <string name="deposit_error_unsupported_type">Nur PNG- und JPEG-Bilder können aufgeteilt werden.</string>
     <string name="deposit_error_too_large">Dieses Bild ist %1$s gross. Das grösste Geheimnis, das Deposplit aufteilen kann, ist %2$s.</string>
-    <string name="deposit_warning_title">Bist du sicher?</string>
+    <string name="deposit_warning_title">Sind Sie sicher?</string>
     <string name="deposit_warning_deposit_anyway">Trotzdem hinterlegen</string>
-    <string name="deposit_warning_operational_large">%1$d Personen zu beteiligen ist viel Aufwand — du musst Schlüssel austauschen, jede Abholung bestätigen und den Überblick über alle behalten.</string>
+    <string name="deposit_warning_operational_large">%1$d Personen zu beteiligen ist viel Aufwand — Sie müssen Schlüssel austauschen, jede Abholung bestätigen und den Überblick über alle behalten.</string>
     <string name="deposit_warning_operational_medium">%1$d Personen zu beteiligen bedeutet mehr Verwahrer als üblich im Blick zu behalten.</string>
-    <string name="deposit_warning_confidentiality_low">Nur %1$d von %2$d Verwahrern müssen zusammenarbeiten, um dieses Geheimnis zu rekonstruieren — eine kleine Gruppe könnte dies ohne dein Wissen tun.</string>
+    <string name="deposit_warning_confidentiality_low">Nur %1$d von %2$d Verwahrern müssen zusammenarbeiten, um dieses Geheimnis zu rekonstruieren — eine kleine Gruppe könnte dies ohne Ihr Wissen tun.</string>
     <string name="deposit_warning_confidentiality_medium">%1$d von %2$d ist ein relativ niedriger Schwellenwert — eine Minderheit der Verwahrer könnte dieses Geheimnis gemeinsam rekonstruieren.</string>
     <string name="deposit_warning_availability_none">Jeder einzelne Verwahrer muss verfügbar sein — verliert auch nur einer seinen Anteil, ist dieses Geheimnis nicht wiederherstellbar.</string>
     <string name="deposit_warning_availability_one">Dies verkraftet den Verlust von nur einem Verwahrer, bevor das Geheimnis nicht wiederherstellbar wird.</string>
@@ -213,11 +213,11 @@
     <string name="share_detail_retrieval_button">Abruf anfragen</string>
     <string name="share_detail_removal_button">Entfernung anfragen</string>
     <string name="share_detail_reconstruct_title">Geheimnis rekonstruieren</string>
-    <string name="share_detail_biometric_none_enrolled">Hinterlege eine biometrische Methode (Fingerabdruck oder Gesicht) in den Geräteeinstellungen, um das Geheimnis zu rekonstruieren.</string>
+    <string name="share_detail_biometric_none_enrolled">Hinterlegen Sie eine biometrische Methode (Fingerabdruck oder Gesicht) in den Geräteeinstellungen, um das Geheimnis zu rekonstruieren.</string>
     <string name="share_detail_biometric_no_hardware">Dieses Gerät hat keinen biometrischen Sensor — Rekonstruktion nicht möglich.</string>
     <string name="share_detail_biometric_unavailable">Biometrische Authentifizierung derzeit nicht verfügbar.</string>
     <string name="share_detail_biometric_prompt_title">Zum Rekonstruieren entsperren</string>
-    <string name="share_detail_biometric_prompt_subtitle">Bestätige, dass du es bist, bevor das Geheimnis angezeigt wird.</string>
+    <string name="share_detail_biometric_prompt_subtitle">Bestätigen Sie, dass Sie es sind, bevor das Geheimnis angezeigt wird.</string>
     <string name="share_detail_reconstruct_button">Rekonstruieren</string>
     <string name="share_detail_no_request">Keine Anfrage</string>
     <string name="share_detail_error_load">Laden fehlgeschlagen</string>
@@ -232,7 +232,7 @@
 
     <!-- Darstellung des rekonstruierten Geheimnisses -->
     <string name="reconstructed_image_description">Rekonstruiertes Bild</string>
-    <string name="reconstructed_binary_explanation">Dieses Geheimnis ist kein Text und kann hier nicht angezeigt werden. Exportiere es, um es woanders zu öffnen.</string>
+    <string name="reconstructed_binary_explanation">Dieses Geheimnis ist kein Text und kann hier nicht angezeigt werden. Exportieren Sie es, um es woanders zu öffnen.</string>
     <string name="reconstructed_export_button">Exportieren\u2026</string>
     <string name="deposit_secret_carried_through">Unverändert übernommen — dieses Geheimnis ist kein Text und kann hier nicht bearbeitet werden.</string>
 
@@ -271,23 +271,23 @@
     <string name="paywall_intro">Einmal kaufen, fertig. Kein Abo, keine Werbung.</string>
     <string name="paywall_benefit_secrets_title">Beliebig viele Geheimnisse</string>
     <string name="paywall_benefit_secrets_body">Kostenlos sind %1$d Geheimnisse gleichzeitig. Ein verworfenes gibt seinen Platz sofort frei.</string>
-    <string name="paywall_benefit_byor_title">Dein eigenes Relay</string>
-    <string name="paywall_benefit_byor_body">Richte dieses Gerät auf ein Relay aus, das du selbst betreibst. Das Relay anderer zu erreichen ist ohnehin kostenlos — gescannt oder von Hand eingetragen.</string>
+    <string name="paywall_benefit_byor_title">Ihr eigenes Relais</string>
+    <string name="paywall_benefit_byor_body">Richten Sie dieses Gerät auf ein Relais aus, das Sie selbst betreiben. Das Relais anderer zu erreichen ist ohnehin kostenlos — gescannt oder von Hand eingetragen.</string>
     <string name="paywall_active">Premium ist auf diesem Gerät freigeschaltet.</string>
     <string name="paywall_purchase_button">Premium freischalten</string>
     <string name="paywall_purchase_unavailable">Der Kauf ist noch nicht angebunden — Deposplit braucht zuerst einen Eintrag in der Play Console.</string>
     <string name="paywall_restore_button">Kauf wiederherstellen</string>
-    <string name="paywall_honesty">Ob Premium freigeschaltet ist, entscheidet dieses Gerät. Das Relay erfährt davon nichts.</string>
-    <string name="settings_premium_inactive">Nicht freigeschaltet: %1$d Geheimnisse gleichzeitig und deposplit.com als Relay.</string>
+    <string name="paywall_honesty">Ob Premium freigeschaltet ist, entscheidet dieses Gerät. Das Relais erfährt davon nichts.</string>
+    <string name="settings_premium_inactive">Nicht freigeschaltet: %1$d Geheimnisse gleichzeitig und deposplit.com als Relais.</string>
     <string name="settings_premium_button">Premium ansehen</string>
-    <string name="settings_relay_premium_required">Ein eigenes Standard-Relay zu wählen gehört zu Premium.</string>
-    <string name="deposit_free_tier_full">%1$d von %2$d kostenlosen Geheimnissen sind belegt. Verwirf eines oder schalte Premium frei.</string>
+    <string name="settings_relay_premium_required">Ein eigenes Standard-Relais zu wählen gehört zu Premium.</string>
+    <string name="deposit_free_tier_full">%1$d von %2$d kostenlosen Geheimnissen sind belegt. Verwerfen Sie eines oder schalten Sie Premium frei.</string>
 
-    <string name="contacts_awaiting_relink_description">%1$s hat dich noch nicht erneut verifiziert</string>
+    <string name="contacts_awaiting_relink_description">%1$s hat Sie noch nicht erneut verifiziert</string>
     <string name="contacts_mark_relinked_description">%1$s als erneut verifiziert markieren</string>
     <plurals name="home_awaiting_relink">
-        <item quantity="one">%1$d Kontakt hat noch deinen alten Schlüssel — triff die Person und lass sie deinen Code erneut scannen</item>
-        <item quantity="other">%1$d Kontakte haben noch deinen alten Schlüssel — triff sie und lass sie deinen Code erneut scannen</item>
+        <item quantity="one">%1$d Kontakt hat noch Ihren alten Schlüssel — treffen Sie die Person und lassen Sie sie Ihren Code erneut scannen</item>
+        <item quantity="other">%1$d Kontakte haben noch Ihren alten Schlüssel — treffen Sie sie und lassen Sie sie Ihren Code erneut scannen</item>
     </plurals>
 
     <plurals name="share_detail_approved_shares">
