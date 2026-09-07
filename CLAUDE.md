@@ -20,7 +20,8 @@ Read before changing anything non-trivial:
 [architecture](https://github.com/Deposplit/deposplit.com/blob/main/docs/architecture.md) ·
 [protocol](https://github.com/Deposplit/deposplit.com/blob/main/docs/protocol.md) ·
 [security](https://github.com/Deposplit/deposplit.com/blob/main/docs/security.md) ·
-[trust model](https://github.com/Deposplit/deposplit.com/blob/main/docs/trust-model.md).
+[trust model](https://github.com/Deposplit/deposplit.com/blob/main/docs/trust-model.md) ·
+[interaction](https://github.com/Deposplit/deposplit.com/blob/main/docs/interaction.md).
 Open work is tracked in the hub's
 [TODO.md](https://github.com/Deposplit/deposplit.com/blob/main/TODO.md).
 
