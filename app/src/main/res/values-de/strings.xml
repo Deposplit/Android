@@ -151,8 +151,10 @@
     <string name="deposit_label_label">Bezeichnung</string>
     <string name="deposit_label_placeholder">z. B. BitLocker-Schlüssel</string>
     <string name="deposit_secret_label">Geheimnis</string>
-    <string name="deposit_secret_choose_photo">Foto auswählen…</string>
-    <string name="deposit_secret_choose_file">Datei auswählen…</string>
+    <string name="deposit_secret_text_label">Geheimen Text eingeben oder …</string>
+    <string name="deposit_secret_choose_photo">… geheimes Foto auswählen</string>
+    <string name="deposit_secret_from_photo_library">aus der Fotomediathek …</string>
+    <string name="deposit_secret_from_downloads">aus den Downloads …</string>
     <string name="deposit_secret_remove">Entfernen</string>
     <string name="deposit_selected_image_description">Ausgewähltes Bild</string>
     <string name="deposit_recipients_title">Empfänger</string>

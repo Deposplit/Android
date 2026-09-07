@@ -151,8 +151,10 @@
     <string name="deposit_label_label">Label</string>
     <string name="deposit_label_placeholder">e.g. BitLocker key</string>
     <string name="deposit_secret_label">Secret</string>
-    <string name="deposit_secret_choose_photo">Choose photo…</string>
-    <string name="deposit_secret_choose_file">Choose file…</string>
+    <string name="deposit_secret_text_label">Enter secret text or …</string>
+    <string name="deposit_secret_choose_photo">… choose secret photo</string>
+    <string name="deposit_secret_from_photo_library">from photo library …</string>
+    <string name="deposit_secret_from_downloads">from downloads …</string>
     <string name="deposit_secret_remove">Remove</string>
     <string name="deposit_selected_image_description">Selected image</string>
     <string name="deposit_recipients_title">Recipients</string>

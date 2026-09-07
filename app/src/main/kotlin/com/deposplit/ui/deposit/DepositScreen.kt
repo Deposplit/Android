@@ -132,8 +132,10 @@ fun DepositForm(
         if (bytes != null) viewModel.onFilePicked(bytes)
     }
 
-    // The photo picker needs no storage permission of any kind; the document picker reaches images
-    // that live in Files or Drive rather than the gallery.
+    // Two sources, one kind of thing. Both are filtered to PNG and JPEG, so neither offers an
+    // arbitrary file: the photo picker reaches the gallery and needs no storage permission of any
+    // kind, and the document picker reaches pictures kept in Downloads or Drive, which the gallery
+    // cannot see. Naming both in the UI is what keeps the second from reading as "any file".
     val photoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) readPicked(uri)
     }
@@ -228,21 +230,29 @@ fun DepositForm(
             OutlinedTextField(
                 value = uiState.secret,
                 onValueChange = viewModel::onSecretChange,
-                label = { Text(stringResource(R.string.deposit_secret_label)) },
+                label = { Text(stringResource(R.string.deposit_secret_text_label)) },
                 isError = uiState.secretError != null,
                 supportingText = uiState.secretError?.let { resId -> { Text(stringResource(resId)) } },
                 minLines = 3,
                 maxLines = 6,
                 modifier = Modifier.fillMaxWidth(),
             )
+            Spacer(Modifier.height(8.dp))
+            // A label, not a link: what is clickable is the source, and the field label above, this
+            // line and the two links below read as one sentence.
+            Text(
+                text = stringResource(R.string.deposit_secret_choose_photo),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Row {
                 TextButton(onClick = {
                     photoLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                 }) {
-                    Text(stringResource(R.string.deposit_secret_choose_photo))
+                    Text(stringResource(R.string.deposit_secret_from_photo_library))
                 }
                 TextButton(onClick = { fileLauncher.launch(arrayOf("image/png", "image/jpeg")) }) {
-                    Text(stringResource(R.string.deposit_secret_choose_file))
+                    Text(stringResource(R.string.deposit_secret_from_downloads))
                 }
             }
         }
