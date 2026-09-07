@@ -156,7 +156,7 @@
     <string name="deposit_secret_remove">Remove</string>
     <string name="deposit_selected_image_description">Selected image</string>
     <string name="deposit_recipients_title">Recipients</string>
-    <string name="deposit_no_contacts">No contacts yet — add contacts first</string>
+    <string name="deposit_not_enough_contacts">At least two contacts are needed first — a secret is split among at least two people</string>
     <string name="deposit_threshold_title">Required to reconstruct</string>
     <string name="deposit_threshold_format">%1$d of %2$d</string>
     <string name="deposit_button">Split &amp; share</string>

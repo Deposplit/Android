@@ -151,6 +151,25 @@ fun DepositForm(
         return
     }
 
+    // Splitting needs k of n with k at least 2, so fewer than two contacts makes the whole form moot.
+    // Offering it anyway and refusing the submission afterwards is a refusal nothing on screen predicted.
+    if (uiState.contacts.size < 2) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(contentPadding)
+                .padding(horizontal = 16.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = stringResource(R.string.deposit_not_enough_contacts),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        return
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -248,21 +267,12 @@ fun DepositForm(
 
         Text(stringResource(R.string.deposit_recipients_title), style = MaterialTheme.typography.titleSmall)
 
-        if (uiState.contacts.isEmpty()) {
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = stringResource(R.string.deposit_no_contacts),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+        uiState.contacts.forEach { contact ->
+            ContactRow(
+                contact = contact,
+                selected = contact.id in uiState.selectedContactIds,
+                onToggle = { viewModel.onToggleContact(contact.id) },
             )
-        } else {
-            uiState.contacts.forEach { contact ->
-                ContactRow(
-                    contact = contact,
-                    selected = contact.id in uiState.selectedContactIds,
-                    onToggle = { viewModel.onToggleContact(contact.id) },
-                )
-            }
         }
 
         if (uiState.selectionError != null) {

@@ -156,7 +156,7 @@
     <string name="deposit_secret_remove">Entfernen</string>
     <string name="deposit_selected_image_description">Ausgewähltes Bild</string>
     <string name="deposit_recipients_title">Empfänger</string>
-    <string name="deposit_no_contacts">Noch keine Kontakte — zuerst Kontakte hinzufügen</string>
+    <string name="deposit_not_enough_contacts">Zuerst braucht es mindestens zwei Kontakte — ein Geheimnis wird unter mindestens zwei Personen aufgeteilt</string>
     <string name="deposit_threshold_title">Zum Rekonstruieren benötigt</string>
     <string name="deposit_threshold_format">%1$d von %2$d</string>
     <string name="deposit_button">Aufteilen &amp; verteilen</string>
