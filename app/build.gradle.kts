@@ -72,6 +72,11 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.biometric)
+    // Declared because MainActivity extends FragmentActivity, which BiometricPrompt requires.
+    // Naming it also raises it above the 1.2.5 that biometric 1.1.0 asks for: that FragmentActivity
+    // rejects any request code outside the low 16 bits, while androidx.activity's result registry
+    // allocates them above 0xffff by design, so every file picker and export crashed on launch.
+    implementation(libs.androidx.fragment)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
