@@ -4,7 +4,6 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deposplit.R
-import com.deposplit.driven_ports.PurchaseRepository
 import com.deposplit.driving_ports.ContactManagement
 import com.deposplit.value_objects.VerificationLevel
 import kotlinx.coroutines.Dispatchers
@@ -20,7 +19,6 @@ import java.util.Base64
 
 class AddContactViewModel(
     private val contactManagement: ContactManagement,
-    purchases: PurchaseRepository,
 ) : ViewModel() {
 
     data class UiState(
@@ -28,9 +26,6 @@ class AddContactViewModel(
         val verifyKey: String = "",
         val encKey: String = "",
         val relayBaseUrl: String = "",
-        // Typing a relay by hand is the paid half of BYOR; a relay scanned from a contact's QR
-        // code is free, and reaches ContactService by a different route (addFromQr).
-        val isPremium: Boolean = false,
         // Purely local, optional; set at add-time or later via the Contacts screen's
         // Rename action.
         val nickname: String = "",
@@ -50,7 +45,7 @@ class AddContactViewModel(
         data object NavigateBack : Effect
     }
 
-    private val _uiState = MutableStateFlow(UiState(isPremium = purchases.isPremium()))
+    private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
     private val _effects = Channel<Effect>(Channel.BUFFERED)

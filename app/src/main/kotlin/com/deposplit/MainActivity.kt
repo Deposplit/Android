@@ -111,10 +111,7 @@ class MainActivity : FragmentActivity() {
                         )
                     }
                     composable(ROUTE_ADD_CONTACT) {
-                        AddContactScreen(
-                            onNavigateBack = { navController.popBackStack() },
-                            onNavigateToPaywall = { navController.navigate(ROUTE_PAYWALL) },
-                        )
+                        AddContactScreen(onNavigateBack = { navController.popBackStack() })
                     }
                     composable(ROUTE_RELINK_CONTACT) { backStackEntry ->
                         val contactId = UUID.fromString(

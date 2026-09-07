@@ -1,7 +1,6 @@
 package com.deposplit.ui.contacts
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -45,11 +44,11 @@ import com.deposplit.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddContactScreen(onNavigateBack: () -> Unit, onNavigateToPaywall: () -> Unit) {
+fun AddContactScreen(onNavigateBack: () -> Unit) {
     val app = LocalContext.current.applicationContext as DeposplitApp
     val viewModel: AddContactViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { AddContactViewModel(app.contactManagement, app.purchases) }
+            initializer { AddContactViewModel(app.contactManagement) }
         }
     )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -113,25 +112,16 @@ fun AddContactScreen(onNavigateBack: () -> Unit, onNavigateToPaywall: () -> Unit
                 modifier = Modifier.fillMaxWidth(),
             )
             Spacer(Modifier.height(12.dp))
-            if (uiState.isPremium) {
-                OutlinedTextField(
-                    value = uiState.relayBaseUrl,
-                    onValueChange = viewModel::onRelayBaseUrlChange,
-                    label = { Text(stringResource(R.string.add_contact_relay_label)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            } else {
-                Text(
-                    stringResource(R.string.add_contact_relay_premium_required),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(4.dp))
-                TextButton(onClick = onNavigateToPaywall, contentPadding = PaddingValues(0.dp)) {
-                    Text(stringResource(R.string.settings_premium_button))
-                }
-            }
+            // Free, like the same relay arriving in a scanned QR code. A contact's relay names
+            // where their mailbox is, so it buys the person typing it nothing: what makes this
+            // device reachable on its own relay is the default in Settings, which is the paid one.
+            OutlinedTextField(
+                value = uiState.relayBaseUrl,
+                onValueChange = viewModel::onRelayBaseUrlChange,
+                label = { Text(stringResource(R.string.add_contact_relay_label)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
                 value = uiState.nickname,
