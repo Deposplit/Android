@@ -61,10 +61,16 @@ class ShareService(
     // Every distinct relay referenced across the contact list, plus the default — used by
     // fan-out methods (syncInbox, listPendingRequests, syncDistributed, listSentRequests) since a
     // device has no other way to know in advance which relay a given contact's pending item lives
-    // on. Deduped by URL, not per-contact; each relay call is independently soft-failed so one
-    // unreachable BYOR relay doesn't blank out results from the default relay or others.
+    // on. Each relay call is independently soft-failed so one unreachable BYOR relay doesn't blank
+    // out results from the default relay or others.
+    //
+    // Resolve first, then dedupe: null and a contact pinned to this device's own default relay are
+    // two names for one relay, and only the resolver knows that. Deduping the overrides instead
+    // leaves the same relay in the list twice, so every row is seen twice — which reconstruct
+    // cannot survive, since it then combines each share twice and fails on duplicate
+    // x-coordinates.
     private fun allRelays(): List<ShareRelay> =
-        (contactRepository.getAll().map { it.relayBaseUrl } + null).distinct().map(relayResolver::resolve)
+        (contactRepository.getAll().map { it.relayBaseUrl } + null).map(relayResolver::resolve).distinct()
 
     private fun relayForContact(contact: Contact): ShareRelay = relayResolver.resolve(contact.relayBaseUrl)
 

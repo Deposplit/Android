@@ -318,6 +318,7 @@ class ShareServiceTest {
 
     private val aliceKeys = TestKeyPair.generate()
     private val strangerKeys = TestKeyPair.generate()
+    private val defaultRelayUrl = "http://default.example:9000"
 
     private val aliceContact = Contact(
         id = UUID.randomUUID(),
@@ -504,14 +505,65 @@ class ShareServiceTest {
 
     private class TwoRelayResolver(
         private val default: ShareRelay,
+        private val defaultUrl: String,
         private val byorUrl: String,
         private val byor: ShareRelay,
     ) : ShareRelayResolver {
+        // Memoized per resolved URL, as the port requires and as the real resolver does: naming
+        // this device's own default relay explicitly must hand back the very instance null hands
+        // back, or the caller's dedupe cannot see the two as one.
         override fun resolve(relayBaseUrl: String?): ShareRelay = when (relayBaseUrl) {
             null -> default
+            defaultUrl -> default
             byorUrl -> byor
             else -> throw IllegalArgumentException("no fixture relay for $relayBaseUrl")
         }
+    }
+
+    /**
+     * A contact may pin the very relay this device already uses by default — the common case,
+     * since a QR code advertises the sender's relay verbatim and two people usually share one.
+     * The override and null then name one relay, and it must be polled once: polling it twice
+     * returns every row twice, which shows up as duplicated requests on screen and, in
+     * reconstruct, as the same share counted twice.
+     */
+    @Test
+    fun `a contact pinned to this device's own default relay is polled once, not twice`() {
+        val byorUrl = "http://byor.example:9000"
+        val defaultRelay = FakeShareRelay()
+        val byorRelay = FakeShareRelay()
+        val identityStore = InMemoryIdentityStoreForShareServiceTest()
+        val bobIdentity = IdentityService(identityStore)
+        bobIdentity.register("bob")
+        val contactRepo = FakeContactRepository(listOf(aliceContact.copy(relayBaseUrl = defaultRelayUrl)))
+        val purchases = FakePurchaseRepository()
+        val svc = ShareService(
+            relayResolver = TwoRelayResolver(defaultRelay, defaultRelayUrl, byorUrl, byorRelay),
+            encryption = NoOpShareEncryption,
+            shareRepository = FakeShareRepository(),
+            shareMetadataRepository = FakeShareMetadataRepository(),
+            secretRepository = FakeSecretRepository(),
+            contactRepository = contactRepo,
+            contactManagement = ContactService(contactRepo, purchases, identityStore, InMemoryContactRelinkRepositoryForShareServiceTest()),
+            keyConflictRepository = FakeKeyConflictRepository(),
+            retainedDepositRepository = FakeRetainedDepositRepository(),
+            identity = bobIdentity,
+            purchases = purchases,
+        )
+
+        val id = UUID.randomUUID()
+        val unsigned = depositRow(id, aliceKeys.publicKey, bobIdentity.verifyKey()!!, ByteArray(0)).copy(
+            transactionType = ShareTransactionType.RETRIEVAL,
+            ciphertext = null,
+            k = null,
+            n = null,
+            mimeType = null,
+        )
+        val askedOfBob = unsigned.copy(senderSignature = signOpenAs(aliceKeys, unsigned))
+        defaultRelay.pending = listOf(askedOfBob)
+
+        assertEquals(listOf(id), svc.listPendingRequests().map { it.id })
+        assertEquals(listOf(id), svc.listSentRequests().map { it.id })
     }
 
     @Test
@@ -528,7 +580,7 @@ class ShareServiceTest {
         val contactRepo = FakeContactRepository(listOf(aliceContact, charlieContact))
         val purchases = FakePurchaseRepository()
         val svc = ShareService(
-            relayResolver = TwoRelayResolver(defaultRelay, byorUrl, byorRelay),
+            relayResolver = TwoRelayResolver(defaultRelay, defaultRelayUrl, byorUrl, byorRelay),
             encryption = NoOpShareEncryption,
             shareRepository = shareRepo,
             shareMetadataRepository = FakeShareMetadataRepository(),
@@ -573,7 +625,7 @@ class ShareServiceTest {
         val contactRepo = FakeContactRepository(listOf(aliceContact, charlieContact))
         val purchases = FakePurchaseRepository()
         val svc = ShareService(
-            relayResolver = TwoRelayResolver(defaultRelay, byorUrl, byorRelay),
+            relayResolver = TwoRelayResolver(defaultRelay, defaultRelayUrl, byorUrl, byorRelay),
             encryption = NoOpShareEncryption,
             shareRepository = shareRepo,
             shareMetadataRepository = FakeShareMetadataRepository(),
@@ -1569,7 +1621,7 @@ class ShareServiceTest {
         val contactRepo = FakeContactRepository(listOf(aliceContact, charlieContact))
         val purchases = FakePurchaseRepository()
         val svc = ShareService(
-            relayResolver = TwoRelayResolver(defaultRelay, byorUrl, byorRelay),
+            relayResolver = TwoRelayResolver(defaultRelay, defaultRelayUrl, byorUrl, byorRelay),
             encryption = NoOpShareEncryption,
             shareRepository = FakeShareRepository(),
             shareMetadataRepository = FakeShareMetadataRepository(),
