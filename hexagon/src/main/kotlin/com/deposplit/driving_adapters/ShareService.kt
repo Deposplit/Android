@@ -74,6 +74,30 @@ class ShareService(
 
     private fun relayForContact(contact: Contact): ShareRelay = relayResolver.resolve(contact.relayBaseUrl)
 
+    // Every row this device is a party to, from every relay it knows, listed once — each paired
+    // with the relay it was found on, so a caller can act on it through that same one.
+    //
+    // Deduplicated by request id, because allRelays can only deduplicate by *name* and one relay
+    // answers to several: a contact pinned to http://127.0.0.1:9000 while this device's own
+    // default says http://localhost:9000 is one host under two names, and nothing short of asking
+    // the relay could tell. The rows settle it instead — a request id is minted by the relay that
+    // holds the row, so two rows sharing one are one row seen twice.
+    //
+    // This is not only about a list showing an entry twice. Reconstruct would collect each
+    // approved share twice, decrypt both copies, and hand the combiner duplicate x-coordinates,
+    // which it rightly refuses.
+    private fun rowsAcrossRelays(
+        role: Role,
+        transactionType: ShareTransactionType? = null,
+        state: ShareRequestState? = null,
+    ): List<Pair<ShareRelay, ShareRequest>> =
+        allRelays()
+            .flatMap { relay ->
+                runCatching { relay.listShareRequests(role, transactionType, state) }.getOrDefault(emptyList())
+                    .map { relay to it }
+            }
+            .distinctBy { it.second.id }
+
     // Finds a row by id across every known relay — the caller (UI) has no relay context for a
     // bare requestId, only the fan-out list already used to discover it. Returns the relay it was
     // found on too, so the caller can act on it through the *same* relay rather than re-resolving
@@ -214,11 +238,8 @@ class ShareService(
         if (discarding.isEmpty()) return
         val discardingIds = discarding.map { it.id }.toSet()
 
-        val removalRequests: List<Pair<ShareRelay, ShareRequest>> = allRelays().flatMap { relay ->
-            runCatching { relay.listShareRequests(Role.SENDER, ShareTransactionType.REMOVAL) }.getOrDefault(emptyList())
-                .filter { it.secretId in discardingIds }
-                .map { relay to it }
-        }
+        val removalRequests = rowsAcrossRelays(Role.SENDER, ShareTransactionType.REMOVAL)
+            .filter { (_, request) -> request.secretId in discardingIds }
 
         for (secret in discarding) {
             val metasForSecret = shareMetadataRepository.getAll().filter { it.secretId == secret.id }
@@ -241,8 +262,8 @@ class ShareService(
     override fun listDistributed(): List<ShareMetadata> = shareMetadataRepository.getAll()
 
     override fun listSentRequests(): List<ShareRequest> =
-        allRelays()
-            .flatMap { relay -> runCatching { relay.listShareRequests(Role.SENDER) }.getOrDefault(emptyList()) }
+        rowsAcrossRelays(Role.SENDER)
+            .map { it.second }
             .filterNot { it.transactionType == ShareTransactionType.DEPOSIT }
 
     // A holder is worth prioritizing for a fresh retrieval ask when the custody-freshness rule
@@ -260,9 +281,7 @@ class ShareService(
     override fun requestAll(secretId: UUID) {
         val secret = secretRepository.getAll().find { it.id == secretId } ?: return
         val deposited = shareMetadataRepository.getAll().filter { it.secretId == secretId }
-        val existing = allRelays().flatMap { relay ->
-            runCatching { relay.listShareRequests(Role.SENDER, ShareTransactionType.RETRIEVAL) }.getOrDefault(emptyList())
-        }
+        val existing = rowsAcrossRelays(Role.SENDER, ShareTransactionType.RETRIEVAL).map { it.second }
         // Fan out to the health-informed fresh set first; widen to everyone only when
         // there aren't enough confirmed holders to reach k. A retrieval request exists solely to
         // feed an eventual reconstruct(), so this targeting applies here rather than as a
@@ -312,10 +331,7 @@ class ShareService(
     override fun reconstruct(secretId: UUID): ReconstructionResult {
         val secret = secretRepository.getAll().find { it.id == secretId }
             ?: error("No local record for secret $secretId")
-        val allRequests: List<Pair<ShareRelay, ShareRequest>> = allRelays().flatMap { relay ->
-            runCatching { relay.listShareRequests(Role.SENDER, ShareTransactionType.RETRIEVAL) }.getOrDefault(emptyList())
-                .map { relay to it }
-        }
+        val allRequests = rowsAcrossRelays(Role.SENDER, ShareTransactionType.RETRIEVAL)
         // An unverified recipientSignature is treated as "not yet approved" rather than a hard
         // error — a forged approval simply doesn't count toward the threshold.
         val approved = allRequests.filter { (_, r) ->
@@ -644,10 +660,8 @@ class ShareService(
     override fun listHeld(): List<HeldShare> = shareRepository.getAll()
 
     override fun listPendingRequests(): List<ShareRequest> =
-        allRelays()
-            .flatMap { relay ->
-                runCatching { relay.listShareRequests(Role.RECIPIENT, state = ShareRequestState.PENDING) }.getOrDefault(emptyList())
-            }
+        rowsAcrossRelays(Role.RECIPIENT, state = ShareRequestState.PENDING)
+            .map { it.second }
             .filterNot { it.transactionType == ShareTransactionType.DEPOSIT }
             // A forged removal/retrieval request has no AEAD backstop — must never reach the UI.
             .filter(::verifyOpen)

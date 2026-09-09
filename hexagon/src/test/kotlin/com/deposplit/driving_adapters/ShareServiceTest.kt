@@ -566,6 +566,52 @@ class ShareServiceTest {
         assertEquals(listOf(id), svc.listSentRequests().map { it.id })
     }
 
+    /**
+     * One relay under two names, which is what the world actually hands you: a contact's QR code
+     * advertises the relay as http://127.0.0.1:9000 while this device spells its own default
+     * http://localhost:9000. A resolver keys on the string and nothing else, so it hands back a
+     * separate instance per name — and both answer for the same relay, with the same rows.
+     */
+    private class AliasingRelayResolver(
+        private val defaultUrl: String,
+        private val rows: List<ShareRequest>,
+    ) : ShareRelayResolver {
+        private val instances = mutableMapOf<String, FakeShareRelay>()
+
+        override fun resolve(relayBaseUrl: String?): ShareRelay =
+            instances.getOrPut(relayBaseUrl ?: defaultUrl) { FakeShareRelay().apply { pending = rows } }
+    }
+
+    /**
+     * allRelays can only tell two relays apart by name, and one relay answers to several. When it
+     * does, the fan-out asks the same relay twice and gets every row back twice — so the rows have
+     * to settle it, on the id the relay minted for each.
+     *
+     * Reconstruct is where this stops being cosmetic: two copies of one share are two identical
+     * x-coordinates, which the combiner refuses outright, so the secret cannot be recovered at all.
+     */
+    @Test
+    fun `one relay under two names still collects each share once`() {
+        val holders = (0 until 2).map { makeHolderFixture("holder$it") }
+        val pinned = listOf(
+            holders[0].contact.copy(relayBaseUrl = "http://127.0.0.1:9000"),
+            holders[1].contact.copy(relayBaseUrl = "http://localhost:9000"),
+        )
+        val secretBytes = "one relay, two names".encodeToByteArray()
+        val shares = split(secretBytes, 2, 2)
+        val secretId = UUID.randomUUID()
+        val rows = holders.zip(shares).map { (holder, share) -> makeApprovedRetrievalRow(secretId, holder, share) }
+        val (svc, _, _, secretRepo, _) = newServiceForRecoveryTest(
+            FakeShareRelay(), pinned, AliasingRelayResolver("http://localhost:9000", rows),
+        )
+        secretRepo.save(Secret(secretId, "s", MimeType.DEFAULT, 2, 2, Instant.now(), SecretState.ACTIVE))
+
+        val result = svc.reconstruct(secretId)
+
+        assertTrue(result.secret.contentEquals(secretBytes))
+        assertEquals(rows.map { it.id }.sortedBy { it.toString() }, svc.listSentRequests().map { it.id }.sortedBy { it.toString() })
+    }
+
     @Test
     fun `syncInbox polls both the default relay and a contact's BYOR relay, merging results`() {
         val byorUrl = "http://byor.example:9000"
@@ -660,7 +706,11 @@ class ShareServiceTest {
         val metaRepo: FakeShareMetadataRepository,
     )
 
-    private fun newServiceForRecoveryTest(relay: FakeShareRelay, contacts: List<Contact> = listOf(aliceContact)): RecoveryFixture {
+    private fun newServiceForRecoveryTest(
+        relay: FakeShareRelay,
+        contacts: List<Contact> = listOf(aliceContact),
+        resolver: ShareRelayResolver? = null,
+    ): RecoveryFixture {
         val identityStore = InMemoryIdentityStoreForShareServiceTest()
         val bobIdentity = IdentityService(identityStore)
         bobIdentity.register("bob")
@@ -670,7 +720,7 @@ class ShareServiceTest {
         val contactRepo = FakeContactRepository(contacts)
         val purchases = FakePurchaseRepository()
         val svc = ShareService(
-            relayResolver = FixedShareRelayResolver(relay),
+            relayResolver = resolver ?: FixedShareRelayResolver(relay),
             encryption = NoOpShareEncryption,
             shareRepository = shareRepo,
             shareMetadataRepository = metaRepo,
