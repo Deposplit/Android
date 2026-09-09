@@ -30,7 +30,7 @@
     <string name="home_tab_held">Verwahrt</string>
     <string name="home_tab_requests">Anfragen</string>
     <string name="home_empty_distributed">Noch keine Geheimnisse aufgeteilt &amp; verteilt</string>
-    <string name="home_empty_held">Noch keine Geheimnisse verwahrt</string>
+    <string name="home_empty_held">Noch keine Anteile zu verwahren</string>
     <string name="home_request_all">Abruf anfragen</string>
     <string name="home_held_from">Von: %1$s</string>
     <string name="home_sort_date">Datum</string>
@@ -178,7 +178,7 @@
     <string name="deposit_warning_availability_one">Dies verkraftet den Verlust von nur einem Verwahrer, bevor das Geheimnis nicht wiederherstellbar wird.</string>
 
     <!-- Requests -->
-    <string name="requests_empty">Keine offenen Anfragen</string>
+    <string name="requests_empty">Keine ausstehenden Anfragen</string>
     <string name="requests_from">Von: %1$s</string>
     <string name="requests_action_deny">Ablehnen</string>
     <string name="requests_action_approve">Annehmen</string>
