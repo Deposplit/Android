@@ -83,6 +83,9 @@
     <string name="contacts_mark_compromised_title">Mark this contact\'s current key as compromised?</string>
     <string name="contacts_mark_compromised_message">Only do this if you have an out-of-band reason to believe %1$s\'s key was stolen. Deposplit will refuse to auto-accept any future key rotation claiming continuity from it — you\'ll need to verify them fresh, in person or over a trusted channel, to reconnect.</string>
     <string name="contacts_mark_compromised_confirm">Mark Compromised</string>
+    <string name="contacts_delete_title">Delete this contact?</string>
+    <string name="contacts_delete_message">Anything they hold for you stays with them — deleting only affects this device. But the shares linked to %1$s lose that link, and adding them again creates a new contact rather than restoring this one.</string>
+    <string name="contacts_delete_confirm">Delete Contact</string>
     <string name="contacts_error_mark_compromised">Failed to flag key as compromised</string>
 
     <!-- Custodial heartbeats -->

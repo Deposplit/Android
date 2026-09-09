@@ -18,7 +18,7 @@
     <string name="signin_error_fallback">Einrichtung fehlgeschlagen</string>
 
     <string name="keys_lost_title">Ihre Schlüssel sind nicht mitgekommen</string>
-    <string name="keys_lost_what_happened">Dieses Telefon hat alles wiederhergestellt außer Ihren Schlüsseln. Ihr altes Telefon hat sie so verwahrt, dass sie sich nicht kopieren lassen — dieses Gerät kann daher weder als Sie signieren noch entschlüsseln.</string>
+    <string name="keys_lost_what_happened">Dieses Telefon hat alles wiederhergestellt ausser Ihren Schlüsseln. Ihr altes Telefon hat sie so verwahrt, dass sie sich nicht kopieren lassen — dieses Gerät kann daher weder als Sie signieren noch entschlüsseln.</string>
     <string name="keys_lost_nothing_else_lost">Sonst ist nichts verloren. Ihre aufgeteilten Geheimnisse sind weiterhin wiederherstellbar, und die Anteile, die Sie für andere verwahren, sind noch da.</string>
     <string name="keys_lost_what_to_do">Erzeugen Sie neue Schlüssel und treffen Sie dann Ihre Kontakte, damit sie Ihren neuen Code scannen — sowohl die Personen, die Anteile für Sie halten, als auch die, deren Anteile Sie halten. Bis dahin können sie Sie nicht erreichen.</string>
     <string name="keys_lost_button">Neue Schlüssel erzeugen</string>
@@ -83,6 +83,9 @@
     <string name="contacts_mark_compromised_title">Den aktuellen Schlüssel dieses Kontakts als kompromittiert markieren?</string>
     <string name="contacts_mark_compromised_message">Tun Sie dies nur, wenn Sie ausserhalb dieses Kanals Grund zur Annahme haben, dass der Schlüssel von %1$s gestohlen wurde. Deposplit lehnt dann jede künftige Schlüsseländerung ab, die Kontinuität zu diesem Schlüssel beansprucht — Sie müssen die Person erneut verifizieren, persönlich oder über einen vertrauenswürdigen Kanal, um die Verbindung wiederherzustellen.</string>
     <string name="contacts_mark_compromised_confirm">Als kompromittiert markieren</string>
+    <string name="contacts_delete_title">Diesen Kontakt löschen?</string>
+    <string name="contacts_delete_message">Was sie für Sie verwahren, bleibt bei ihnen — das Löschen wirkt nur auf diesem Gerät. Anteile, die mit %1$s verknüpft sind, verlieren diese Verknüpfung, und ein erneutes Hinzufügen legt einen neuen Kontakt an, statt diesen wiederherzustellen.</string>
+    <string name="contacts_delete_confirm">Kontakt löschen</string>
     <string name="contacts_error_mark_compromised">Markieren als kompromittiert fehlgeschlagen</string>
 
     <!-- Custodial Heartbeats -->
@@ -135,7 +138,7 @@
     <string name="settings_catalog_import_error">Katalog konnte nicht importiert werden</string>
     <string name="settings_backup_title">Gerätesicherung</string>
     <string name="settings_backup_description">Die Daten von Deposplit auf diesem Telefon — Ihre Kontakte, die Angaben zu Ihren Geheimnissen und die Anteile, die Sie für andere verwahren — sind in der Gerätesicherung enthalten und überstehen so einen Telefonwechsel. Ihre privaten Schlüssel nicht: Diese können das Telefon nicht verlassen.</string>
-    <string name="settings_backup_exclusion">Android verschlüsselt diese Sicherung mit Ihrer Bildschirmsperre, und Sie können Deposplit in den Sicherungseinstellungen Ihres Telefons ausschließen. Dann startet ein neues Telefon leer — die Menschen, deren Anteile Sie verwahren, verlieren diese Redundanz, und Ihr neues Telefon weiß nichts davon, um es ihnen zu sagen.</string>
+    <string name="settings_backup_exclusion">Android verschlüsselt diese Sicherung mit Ihrer Bildschirmsperre, und Sie können Deposplit in den Sicherungseinstellungen Ihres Telefons ausschliessen. Dann startet ein neues Telefon leer — die Menschen, deren Anteile Sie verwahren, verlieren diese Redundanz, und Ihr neues Telefon weiss nichts davon, um es ihnen zu sagen.</string>
     <string name="settings_identity_title">Identität</string>
     <string name="settings_regenerate_description">Erzeugt ein brandneues Schlüsselpaar für dieses Gerät und benachrichtigt automatisch alle Ihre Kontakte. Ein bereits an Sie unterwegs befindlicher Anteil kann danach weiterhin abgeholt werden, ein jetzt nicht erreichbarer Kontakt erfährt aber nichts vom neuen Schlüssel. Das lässt sich nicht rückgängig machen.</string>
     <string name="settings_regenerate_button">Meine Identität neu erzeugen</string>

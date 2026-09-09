@@ -176,6 +176,7 @@ private fun ContactItem(
     onRename: (String?) -> Unit,
 ) {
     var showCompromiseConfirm by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
 
     Card(modifier = Modifier.fillMaxWidth()) {
@@ -278,7 +279,7 @@ private fun ContactItem(
                     tint = MaterialTheme.colorScheme.error,
                 )
             }
-            IconButton(onClick = onDelete) {
+            IconButton(onClick = { showDeleteConfirm = true }) {
                 Icon(
                     Icons.Default.Delete,
                     contentDescription = stringResource(R.string.contacts_delete_description, contact.displayName),
@@ -301,6 +302,26 @@ private fun ContactItem(
             },
             dismissButton = {
                 TextButton(onClick = { showCompromiseConfirm = false }) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
+    }
+
+    // A contact is never re-added, only updated: adding the same person again mints a fresh
+    // contactId and orphans every share anchored to the old one. So deleting asks first, the way
+    // iOS and phon already do.
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text(stringResource(R.string.contacts_delete_title)) },
+            text = { Text(stringResource(R.string.contacts_delete_message, contact.displayName)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    onDelete()
+                }) { Text(stringResource(R.string.contacts_delete_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) { Text(stringResource(R.string.action_cancel)) }
             },
         )
     }
