@@ -215,18 +215,33 @@
     <string name="share_detail_deposited_label">Hinterlegt</string>
     <string name="share_detail_retrieval_button">Abruf anfragen</string>
     <string name="share_detail_removal_button">Entfernung anfragen</string>
-    <string name="share_detail_reconstruct_title">Geheimnis rekonstruieren</string>
-    <string name="share_detail_biometric_none_enrolled">Hinterlegen Sie eine biometrische Methode (Fingerabdruck oder Gesicht) in den Geräteeinstellungen, um das Geheimnis zu rekonstruieren.</string>
-    <string name="share_detail_biometric_no_hardware">Dieses Gerät hat keinen biometrischen Sensor — Rekonstruktion nicht möglich.</string>
-    <string name="share_detail_biometric_unavailable">Biometrische Authentifizierung derzeit nicht verfügbar.</string>
-    <string name="share_detail_biometric_prompt_title">Zum Rekonstruieren entsperren</string>
-    <string name="share_detail_biometric_prompt_subtitle">Bestätigen Sie, dass Sie es sind, bevor das Geheimnis angezeigt wird.</string>
-    <string name="share_detail_reconstruct_button">Rekonstruieren</string>
     <string name="share_detail_no_request">Keine Anfrage</string>
     <string name="share_detail_error_load">Laden fehlgeschlagen</string>
     <string name="share_detail_error_open_request">Anfrage konnte nicht geöffnet werden</string>
-    <string name="share_detail_error_reconstruct">Rekonstruktion fehlgeschlagen</string>
-    <string name="share_detail_error_integrity">Integritätsprüfung der Rekonstruktion fehlgeschlagen — zu viele inkonsistente Anteile, um das Geheimnis sicher zu bestimmen</string>
+
+    <!-- Secret detail: the three actions that operate on a whole secret, and why each is unavailable -->
+    <string name="secret_detail_title_fallback">Geheimnis</string>
+    <string name="secret_detail_unknown_contact">Unbekannter Kontakt</string>
+    <string name="secret_detail_threshold">%1$d von %2$d nötig</string>
+    <string name="secret_detail_holders">Inhaber</string>
+    <string name="secret_detail_approved_count">%1$d von %2$d nötigen haben ihren Teil zurückgegeben</string>
+    <string name="secret_detail_retrieve_disabled_all_asked">Alle Inhaber wurden bereits gefragt.</string>
+    <string name="secret_detail_retrieve_disabled_discarding">Dieses Geheimnis wird gerade verworfen.</string>
+    <string name="secret_detail_reconstruct_button">Rekonstruieren</string>
+    <string name="secret_detail_clear_button">Gesammelte Kopien freigeben</string>
+    <string name="secret_detail_clear_title">Gesammelte Kopien freigeben?</string>
+    <string name="secret_detail_clear_confirm_unread">Das Geheimnis wurde hier noch nicht angezeigt. Werden die gesammelten Kopien freigegeben, müssen die Inhaber erneut gefragt werden, bevor es wieder zusammengesetzt werden kann.</string>
+    <string name="secret_detail_clear_confirm_after_reading">Die Inhaber behalten ihre Teile — Kopien lassen sich jederzeit erneut anfragen.</string>
+    <string name="secret_detail_clear_disabled">Bisher wurde nichts zurückgegeben.</string>
+    <string name="secret_detail_clear_reminder">Die gesammelten Kopien nach Gebrauch freigeben — die Inhaber behalten ihre Teile in jedem Fall.</string>
+    <string name="secret_detail_biometric_none_enrolled">Hinterlegen Sie eine biometrische Methode (Fingerabdruck oder Gesicht) in den Geräteeinstellungen, um das Geheimnis zu rekonstruieren.</string>
+    <string name="secret_detail_biometric_no_hardware">Dieses Gerät hat keinen biometrischen Sensor — Rekonstruktion nicht möglich.</string>
+    <string name="secret_detail_biometric_unavailable">Biometrische Authentifizierung derzeit nicht verfügbar.</string>
+    <string name="secret_detail_biometric_prompt_title">Zum Rekonstruieren entsperren</string>
+    <string name="secret_detail_biometric_prompt_subtitle">Bestätigen Sie, dass Sie es sind, bevor das Geheimnis angezeigt wird.</string>
+    <string name="secret_detail_error_load">Laden fehlgeschlagen</string>
+    <string name="secret_detail_error_reconstruct">Rekonstruktion fehlgeschlagen</string>
+    <string name="secret_detail_error_integrity">Integritätsprüfung der Rekonstruktion fehlgeschlagen — zu viele inkonsistente Anteile, um das Geheimnis sicher zu bestimmen</string>
 
     <!-- Integritätshinweis bei der Rekonstruktion -->
     <string name="reconstruction_advisory_no_margin">Aus genau den erforderlichen Anteilen rekonstruiert — eine Integritätsprüfung war nicht möglich.</string>
@@ -293,8 +308,13 @@
         <item quantity="other">%1$d Kontakte haben noch Ihren alten Schlüssel — treffen Sie sie und lassen Sie sie Ihren Code erneut scannen</item>
     </plurals>
 
-    <plurals name="share_detail_approved_shares">
-        <item quantity="one">%d angenommener Teil verfügbar</item>
-        <item quantity="other">%d angenommene Teile verfügbar</item>
+    <plurals name="home_holder_count">
+        <item quantity="one">%d Inhaber</item>
+        <item quantity="other">%d Inhaber</item>
+    </plurals>
+
+    <plurals name="secret_detail_reconstruct_disabled">
+        <item quantity="one">Ein weiterer Inhaber muss den Teil noch zurückgeben.</item>
+        <item quantity="other">%d weitere Inhaber müssen ihren Teil noch zurückgeben.</item>
     </plurals>
 </resources>

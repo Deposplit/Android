@@ -16,6 +16,7 @@ import com.deposplit.ui.paywall.PaywallScreen
 import com.deposplit.ui.qr.QrDisplayScreen
 import com.deposplit.ui.qr.QrScanScreen
 import com.deposplit.ui.repair.RepairScreen
+import com.deposplit.ui.secretdetail.SecretDetailScreen
 import com.deposplit.ui.settings.SettingsScreen
 import com.deposplit.ui.sharedetail.ShareDetailScreen
 import com.deposplit.ui.signin.KeysLostScreen
@@ -31,6 +32,7 @@ private const val ROUTE_CONTACTS = "contacts"
 private const val ROUTE_ADD_CONTACT = "add_contact"
 private const val ROUTE_RELINK_CONTACT = "relink_contact/{contactId}"
 private const val ROUTE_DEPOSIT = "deposit"
+private const val ROUTE_SECRET_DETAIL = "secret_detail/{secretId}"
 private const val ROUTE_SHARE_DETAIL = "share_detail/{shareId}"
 private const val ROUTE_REPAIR = "repair/{secretId}"
 private const val ROUTE_QR_DISPLAY = "qr_display"
@@ -79,12 +81,11 @@ class MainActivity : FragmentActivity() {
                         HomeScreen(
                             onNavigateToContacts = { navController.navigate(ROUTE_CONTACTS) },
                             onNavigateToDeposit = { navController.navigate(ROUTE_DEPOSIT) },
-                            onNavigateToShareDetail = { shareId ->
-                                navController.navigate("share_detail/$shareId")
+                            onNavigateToSecretDetail = { secretId ->
+                                navController.navigate("secret_detail/$secretId")
                             },
                             onNavigateToQrDisplay = { navController.navigate(ROUTE_QR_DISPLAY) },
                             onNavigateToSettings = { navController.navigate(ROUTE_SETTINGS) },
-                            onNavigateToRepair = { secretId -> navController.navigate("repair/$secretId") },
                         )
                     }
                     composable(ROUTE_SETTINGS) {
@@ -127,6 +128,19 @@ class MainActivity : FragmentActivity() {
                     }
                     composable(ROUTE_QR_SCAN) {
                         QrScanScreen(onNavigateBack = { navController.popBackStack() })
+                    }
+                    composable(ROUTE_SECRET_DETAIL) { backStackEntry ->
+                        val secretId = UUID.fromString(
+                            backStackEntry.arguments?.getString("secretId")
+                        )
+                        SecretDetailScreen(
+                            secretId = secretId,
+                            onNavigateBack = { navController.popBackStack() },
+                            onNavigateToShareDetail = { shareId ->
+                                navController.navigate("share_detail/$shareId")
+                            },
+                            onNavigateToRepair = { id -> navController.navigate("repair/$id") },
+                        )
                     }
                     composable(ROUTE_SHARE_DETAIL) { backStackEntry ->
                         val shareId = UUID.fromString(

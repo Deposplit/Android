@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
@@ -87,10 +88,9 @@ import java.util.UUID
 fun HomeScreen(
     onNavigateToContacts: () -> Unit,
     onNavigateToDeposit: () -> Unit,
-    onNavigateToShareDetail: (UUID) -> Unit,
+    onNavigateToSecretDetail: (UUID) -> Unit,
     onNavigateToQrDisplay: () -> Unit,
     onNavigateToSettings: () -> Unit,
-    onNavigateToRepair: (UUID) -> Unit,
 ) {
     val app = LocalContext.current.applicationContext as DeposplitApp
     val viewModel: HomeViewModel = viewModel(
@@ -107,7 +107,6 @@ fun HomeScreen(
     val requestsUiState by requestsViewModel.uiState.collectAsStateWithLifecycle()
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var pendingDelete by remember { mutableStateOf<HeldShareDisplay?>(null) }
-    var pendingDiscard by remember { mutableStateOf<SecretGroup?>(null) }
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.load()
@@ -271,14 +270,7 @@ fun HomeScreen(
                                 items(uiState.groupedSecrets, key = { it.secret.id }) { group ->
                                     SecretGroupCard(
                                         group = group,
-                                        isExpanded = uiState.expandedSecretId == group.secret.id,
-                                        isRequestingAll = group.secret.id in uiState.requestingAllIds,
-                                        onToggle = { viewModel.toggleExpand(group.secret.id) },
-                                        onRequestAll = { viewModel.requestAll(group.secret.id) },
-                                        onHolderClick = onNavigateToShareDetail,
-                                        onDiscard = { pendingDiscard = group },
-                                        onForceForget = { viewModel.forceForgetSecret(group.secret.id) },
-                                        onRepair = { onNavigateToRepair(group.secret.id) },
+                                        onOpen = { onNavigateToSecretDetail(group.secret.id) },
                                     )
                                 }
                             }
@@ -370,132 +362,49 @@ fun HomeScreen(
         )
     }
 
-    pendingDiscard?.let { group ->
-        AlertDialog(
-            onDismissRequest = { pendingDiscard = null },
-            title = { Text(stringResource(R.string.home_discard_title)) },
-            text = { Text(stringResource(R.string.home_discard_body, group.holders.size)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.discardSecret(group.secret.id)
-                    pendingDiscard = null
-                }) {
-                    Text(stringResource(R.string.home_discard_confirm))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingDiscard = null }) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            },
-        )
-    }
 }
 
 @Composable
-private fun SecretGroupCard(
-    group: SecretGroup,
-    isExpanded: Boolean,
-    isRequestingAll: Boolean,
-    onToggle: () -> Unit,
-    onRequestAll: () -> Unit,
-    onHolderClick: (UUID) -> Unit,
-    onDiscard: () -> Unit,
-    onForceForget: () -> Unit,
-    onRepair: () -> Unit,
-) {
-    Card(modifier = Modifier.fillMaxWidth(), onClick = onToggle) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(group.secret.label, style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.height(2.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            text = formatDate(group.secret.secretCreatedAt),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        HealthBadge(group.health)
-                    }
-                }
-                Icon(
-                    imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            if (isExpanded) {
-                Spacer(Modifier.height(12.dp))
-                HorizontalDivider()
-                Spacer(Modifier.height(8.dp))
-                group.holders.forEach { holder ->
-                    HolderRow(holder = holder, onClick = { onHolderClick(holder.shareId) })
-                }
-                Spacer(Modifier.height(12.dp))
-                val isDiscarding = group.secret.state == SecretState.DISCARDING
-                val canRequest = !isDiscarding && group.holders.any {
-                    val state = it.retrievalRequest?.state
-                    state != ShareRequestState.PENDING && state != ShareRequestState.APPROVED
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Button(
-                        onClick = onRequestAll,
-                        enabled = canRequest && !isRequestingAll,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        if (isRequestingAll) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(18.dp),
-                                strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onPrimary,
-                            )
-                        } else {
-                            Text(stringResource(R.string.home_request_all))
-                        }
-                    }
-                    if (group.health == SecretHealth.CAUTION || group.health == SecretHealth.CRITICAL) {
-                        Button(
-                            onClick = onRepair,
-                            colors = if (group.health == SecretHealth.CRITICAL) {
-                                ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                            } else {
-                                ButtonDefaults.buttonColors()
-                            },
-                        ) {
-                            Text(stringResource(R.string.home_repair_button))
-                        }
-                    }
-                }
-                Spacer(Modifier.height(8.dp))
-                if (isDiscarding) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = stringResource(R.string.home_discarding_label),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.tertiary,
-                        )
-                        TextButton(onClick = onForceForget) {
-                            Text(stringResource(R.string.home_force_forget_button))
-                        }
-                    }
-                } else {
-                    TextButton(onClick = onDiscard) {
-                        Text(stringResource(R.string.home_discard_button), color = MaterialTheme.colorScheme.error)
-                    }
+private fun SecretGroupCard(group: SecretGroup, onOpen: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth(), onClick = onOpen) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(group.secret.label, style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(2.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = formatDate(group.secret.secretCreatedAt),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = pluralStringResource(
+                            R.plurals.home_holder_count,
+                            group.holders.size,
+                            group.holders.size,
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    HealthBadge(group.health)
                 }
             }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
 
 @Composable
-private fun HealthBadge(health: SecretHealth) {
+internal fun HealthBadge(health: SecretHealth) {
     val (labelRes, color) = when (health) {
         SecretHealth.HEALTHY -> return
         SecretHealth.DISCARDING -> R.string.home_health_discarding to MaterialTheme.colorScheme.tertiary
@@ -511,7 +420,7 @@ private fun HealthBadge(health: SecretHealth) {
 }
 
 @Composable
-private fun HolderRow(holder: HolderStatus, onClick: () -> Unit) {
+internal fun HolderRow(holder: HolderStatus, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -619,5 +528,5 @@ private fun ShareItem(
 
 private val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
 
-private fun formatDate(instant: Instant): String =
+internal fun formatDate(instant: Instant): String =
     dateFormatter.format(instant.atZone(ZoneId.systemDefault()))

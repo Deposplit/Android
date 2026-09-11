@@ -237,14 +237,14 @@ private fun GatheringContent(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         if (uiState.isActing) CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                        else Text(stringResource(R.string.share_detail_reconstruct_button))
+                        else Text(stringResource(R.string.secret_detail_reconstruct_button))
                     }
                 } else {
                     val unavailableMessage = when (availability) {
                         AuthAvailability.Available -> null
-                        AuthAvailability.NoneEnrolled -> stringResource(R.string.share_detail_biometric_none_enrolled)
-                        AuthAvailability.NoHardware -> stringResource(R.string.share_detail_biometric_no_hardware)
-                        is AuthAvailability.Unavailable -> stringResource(R.string.share_detail_biometric_unavailable)
+                        AuthAvailability.NoneEnrolled -> stringResource(R.string.secret_detail_biometric_none_enrolled)
+                        AuthAvailability.NoHardware -> stringResource(R.string.secret_detail_biometric_no_hardware)
+                        is AuthAvailability.Unavailable -> stringResource(R.string.secret_detail_biometric_unavailable)
                     }
                     if (unavailableMessage != null) {
                         Text(
@@ -253,8 +253,8 @@ private fun GatheringContent(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     } else {
-                        val promptTitle = stringResource(R.string.share_detail_biometric_prompt_title)
-                        val promptSubtitle = stringResource(R.string.share_detail_biometric_prompt_subtitle)
+                        val promptTitle = stringResource(R.string.secret_detail_biometric_prompt_title)
+                        val promptSubtitle = stringResource(R.string.secret_detail_biometric_prompt_subtitle)
                         Button(
                             onClick = {
                                 val act = activity ?: return@Button
@@ -267,7 +267,7 @@ private fun GatheringContent(
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             if (uiState.isActing) CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                            else Text(stringResource(R.string.share_detail_reconstruct_button))
+                            else Text(stringResource(R.string.secret_detail_reconstruct_button))
                         }
                     }
                 }

@@ -13,6 +13,7 @@ import com.deposplit.value_objects.Secret
 import com.deposplit.value_objects.SecretState
 import com.deposplit.value_objects.ShareMetadata
 import com.deposplit.value_objects.ShareRequest
+import com.deposplit.value_objects.ShareRequestState
 import com.deposplit.value_objects.ShareTransactionType
 import com.deposplit.value_objects.displayName
 import kotlinx.coroutines.Dispatchers
@@ -87,6 +88,44 @@ data class SecretGroup(
                 else -> SecretHealth.HEALTHY
             }
         }
+
+    // Mirrors what requestAll actually does — it skips a holder whose retrieval row is PENDING or
+    // APPROVED — so the press is worth offering while any holder still lacks one, and is a no-op
+    // only once nobody is left to ask.
+    //
+    // Deliberately still enabled once k copies are in: a surplus beyond the threshold is what lets
+    // reconstruct cross-check the shares it has, so asking the stragglers is how a "no integrity
+    // margin" outcome becomes a confirmed one.
+    val canRequestRetrieval: Boolean
+        get() = secret.state == SecretState.ACTIVE && holders.any {
+            val state = it.retrievalRequest?.state
+            state != ShareRequestState.PENDING && state != ShareRequestState.APPROVED
+        }
+
+    // Why "Retrieve shares" can't be pressed, or null when it can be. A control that can't work
+    // says so in words rather than disappearing.
+    @get:StringRes
+    val retrievalUnavailableReason: Int?
+        get() = when {
+            secret.state != SecretState.ACTIVE -> R.string.secret_detail_retrieve_disabled_discarding
+            !canRequestRetrieval -> R.string.secret_detail_retrieve_disabled_all_asked
+            else -> null
+        }
+
+    val approvedRetrievals: Int
+        get() = holders.count { it.retrievalRequest?.state == ShareRequestState.APPROVED }
+
+    val canReconstruct: Boolean
+        get() = approvedRetrievals >= secret.k
+
+    // How many more holders have to hand a piece back before the secret can be put together.
+    val reconstructShortfall: Int
+        get() = (secret.k - approvedRetrievals).coerceAtLeast(0)
+
+    // Collected copies are what there is to clear. An ask still waiting for an answer is cleared
+    // along with them, but on its own means nothing has been collected yet.
+    val canClearCollected: Boolean
+        get() = approvedRetrievals > 0
 }
 
 data class HeldShareDisplay(
@@ -99,6 +138,44 @@ data class HeldShareDisplay(
 )
 
 enum class HeldSortOrder { DATE, LABEL, SENDER }
+
+/** One card per secret, holders folded in — shared by the Distributed tab and by a single
+ * secret's own screen, so both read the same rules off the same rows.
+ */
+internal fun buildSecretGroups(
+    secrets: List<Secret>,
+    distributed: List<ShareMetadata>,
+    allRequests: List<ShareRequest>,
+    contacts: List<Contact>,
+): List<SecretGroup> {
+    val byShareSecretId = distributed.groupBy { it.secretId }
+    return secrets
+        .map { secret ->
+            val shares = byShareSecretId[secret.id] ?: emptyList()
+            val holders = shares.map { share ->
+                val contact = contacts.find { it.id == share.contactId }
+                val latestRetrieval = contact?.let { holder ->
+                    allRequests
+                        .filter {
+                            it.secretId == share.secretId && it.recipientKey.contentEquals(holder.verifyKey) &&
+                                it.transactionType == ShareTransactionType.RETRIEVAL
+                        }
+                        .maxByOrNull { it.requestedAt }
+                }
+                HolderStatus(
+                    shareId = share.id,
+                    contactId = share.contactId,
+                    recipientName = contact?.displayName ?: "?",
+                    retrievalRequest = latestRetrieval,
+                    lastConfirmedAt = share.lastConfirmedAt,
+                    heartbeatOptedOutAt = contact?.heartbeatOptedOutAt,
+                    recipientSubtitle = contact?.takeIf { it.nickname != null }?.pseudonym,
+                )
+            }
+            SecretGroup(secret = secret, holders = holders)
+        }
+        .sortedByDescending { it.secret.secretCreatedAt }
+}
 
 private data class Phase1Result(
     val contacts: List<Contact>,
@@ -132,8 +209,6 @@ class HomeViewModel(
         // itself as each contact gets back in touch.
         val awaitingRelinkCount: Int = 0,
         @StringRes val error: Int? = null,
-        val expandedSecretId: UUID? = null,
-        val requestingAllIds: Set<UUID> = emptySet(),
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -170,7 +245,7 @@ class HomeViewModel(
                 it.copy(
                     isLoading = false,
                     awaitingRelinkCount = phase1Result.awaitingRelink,
-                    groupedSecrets = buildGroups(secrets, distributed, emptyList(), contacts),
+                    groupedSecrets = buildSecretGroups(secrets, distributed, emptyList(), contacts),
                     heldShares = toDisplayList(held, contacts, sortOrder),
                 )
             }
@@ -193,7 +268,7 @@ class HomeViewModel(
                 val currentSortOrder = _uiState.value.heldSortOrder
                 _uiState.update {
                     it.copy(
-                        groupedSecrets = buildGroups(freshSecrets, freshDistributed, allRequests, contacts),
+                        groupedSecrets = buildSecretGroups(freshSecrets, freshDistributed, allRequests, contacts),
                         heldShares = toDisplayList(freshHeld, contacts, currentSortOrder),
                         // The sync may itself be the evidence that clears someone.
                         awaitingRelinkCount = phase2.awaitingRelink,
@@ -202,35 +277,6 @@ class HomeViewModel(
             }.onFailure {
                 _uiState.update { it.copy(syncWarning = true) }
             }
-        }
-    }
-
-    fun toggleExpand(secretId: UUID) {
-        _uiState.update {
-            it.copy(expandedSecretId = if (it.expandedSecretId == secretId) null else secretId)
-        }
-    }
-
-    fun requestAll(secretId: UUID) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(requestingAllIds = it.requestingAllIds + secretId) }
-            withContext(Dispatchers.IO) { runCatching { shareManagement.requestAll(secretId) } }
-            _uiState.update { it.copy(requestingAllIds = it.requestingAllIds - secretId) }
-            load()
-        }
-    }
-
-    fun discardSecret(secretId: UUID) {
-        viewModelScope.launch {
-            withContext(Dispatchers.IO) { runCatching { shareManagement.discardSecret(secretId) } }
-            load()
-        }
-    }
-
-    fun forceForgetSecret(secretId: UUID) {
-        viewModelScope.launch {
-            withContext(Dispatchers.IO) { runCatching { shareManagement.forceForgetSecret(secretId) } }
-            load()
         }
     }
 
@@ -255,41 +301,6 @@ class HomeViewModel(
             withContext(Dispatchers.IO) { shareManagement.deleteAllHeldFromSender(contactId) }
             load()
         }
-    }
-
-    private fun buildGroups(
-        secrets: List<Secret>,
-        distributed: List<ShareMetadata>,
-        allRequests: List<ShareRequest>,
-        contacts: List<Contact>,
-    ): List<SecretGroup> {
-        val byShareSecretId = distributed.groupBy { it.secretId }
-        return secrets
-            .map { secret ->
-                val shares = byShareSecretId[secret.id] ?: emptyList()
-                val holders = shares.map { share ->
-                    val contact = contacts.find { it.id == share.contactId }
-                    val latestRetrieval = contact?.let { holder ->
-                        allRequests
-                            .filter {
-                                it.secretId == share.secretId && it.recipientKey.contentEquals(holder.verifyKey) &&
-                                    it.transactionType == ShareTransactionType.RETRIEVAL
-                            }
-                            .maxByOrNull { it.requestedAt }
-                    }
-                    HolderStatus(
-                        shareId = share.id,
-                        contactId = share.contactId,
-                        recipientName = contact?.displayName ?: "?",
-                        retrievalRequest = latestRetrieval,
-                        lastConfirmedAt = share.lastConfirmedAt,
-                        heartbeatOptedOutAt = contact?.heartbeatOptedOutAt,
-                        recipientSubtitle = contact?.takeIf { it.nickname != null }?.pseudonym,
-                    )
-                }
-                SecretGroup(secret = secret, holders = holders)
-            }
-            .sortedByDescending { it.secret.secretCreatedAt }
     }
 
     private fun toDisplayList(

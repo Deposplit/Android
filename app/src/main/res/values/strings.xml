@@ -215,18 +215,33 @@
     <string name="share_detail_deposited_label">Deposited</string>
     <string name="share_detail_retrieval_button">Request Retrieval</string>
     <string name="share_detail_removal_button">Request Removal</string>
-    <string name="share_detail_reconstruct_title">Reconstruct Secret</string>
-    <string name="share_detail_biometric_none_enrolled">Enrol a biometric (fingerprint or face) in device settings to reconstruct the secret.</string>
-    <string name="share_detail_biometric_no_hardware">This device has no biometric sensor — reconstruction is disabled.</string>
-    <string name="share_detail_biometric_unavailable">Biometric authentication is currently unavailable.</string>
-    <string name="share_detail_biometric_prompt_title">Unlock to reconstruct</string>
-    <string name="share_detail_biometric_prompt_subtitle">Confirm it\'s you before the secret is shown.</string>
-    <string name="share_detail_reconstruct_button">Reconstruct</string>
     <string name="share_detail_no_request">No request</string>
     <string name="share_detail_error_load">Failed to load</string>
     <string name="share_detail_error_open_request">Failed to open request</string>
-    <string name="share_detail_error_reconstruct">Reconstruction failed</string>
-    <string name="share_detail_error_integrity">Reconstruction integrity check failed — too many inconsistent shares to safely determine the secret</string>
+
+    <!-- Secret detail: the three actions that operate on a whole secret, and why each is unavailable -->
+    <string name="secret_detail_title_fallback">Secret</string>
+    <string name="secret_detail_unknown_contact">Unknown contact</string>
+    <string name="secret_detail_threshold">%1$d of %2$d needed</string>
+    <string name="secret_detail_holders">Holders</string>
+    <string name="secret_detail_approved_count">%1$d of the %2$d needed have handed their piece back</string>
+    <string name="secret_detail_retrieve_disabled_all_asked">Every holder has been asked already.</string>
+    <string name="secret_detail_retrieve_disabled_discarding">This secret is being discarded.</string>
+    <string name="secret_detail_reconstruct_button">Reconstruct</string>
+    <string name="secret_detail_clear_button">Clear collected copies</string>
+    <string name="secret_detail_clear_title">Clear collected copies?</string>
+    <string name="secret_detail_clear_confirm_unread">The secret has not been shown here. Clearing the collected copies means asking the holders again before it can be put back together.</string>
+    <string name="secret_detail_clear_confirm_after_reading">The holders keep their pieces — copies can be asked for again at any time.</string>
+    <string name="secret_detail_clear_disabled">Nothing has been handed back yet.</string>
+    <string name="secret_detail_clear_reminder">Clear the collected copies once you are done with the secret — the holders keep their pieces either way.</string>
+    <string name="secret_detail_biometric_none_enrolled">Enrol a biometric (fingerprint or face) in device settings to reconstruct the secret.</string>
+    <string name="secret_detail_biometric_no_hardware">This device has no biometric sensor — reconstruction is disabled.</string>
+    <string name="secret_detail_biometric_unavailable">Biometric authentication is currently unavailable.</string>
+    <string name="secret_detail_biometric_prompt_title">Unlock to reconstruct</string>
+    <string name="secret_detail_biometric_prompt_subtitle">Confirm it\'s you before the secret is shown.</string>
+    <string name="secret_detail_error_load">Failed to load</string>
+    <string name="secret_detail_error_reconstruct">Reconstruction failed</string>
+    <string name="secret_detail_error_integrity">Reconstruction integrity check failed — too many inconsistent shares to safely determine the secret</string>
 
     <!-- Reconstruction integrity advisory -->
     <string name="reconstruction_advisory_no_margin">Reconstructed from exactly the required shares — no integrity cross-check was possible.</string>
@@ -293,8 +308,13 @@
         <item quantity="other">%1$d contacts still have your old key — meet them and let them re-scan your code</item>
     </plurals>
 
-    <plurals name="share_detail_approved_shares">
-        <item quantity="one">%d approved share available</item>
-        <item quantity="other">%d approved shares available</item>
+    <plurals name="home_holder_count">
+        <item quantity="one">%d holder</item>
+        <item quantity="other">%d holders</item>
+    </plurals>
+
+    <plurals name="secret_detail_reconstruct_disabled">
+        <item quantity="one">One more holder has to hand a piece back first.</item>
+        <item quantity="other">%d more holders have to hand a piece back first.</item>
     </plurals>
 </resources>

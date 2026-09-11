@@ -6,14 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.deposplit.R
 import com.deposplit.driving_ports.ContactManagement
 import com.deposplit.driving_ports.ShareManagement
-import com.deposplit.shamir.ReconstructionIntegrityException
-import com.deposplit.ui.reconstruction.ReconstructedSecret
 import com.deposplit.value_objects.Contact
-import com.deposplit.value_objects.ReconstructionIntegrity
 import com.deposplit.value_objects.Secret
 import com.deposplit.value_objects.ShareMetadata
 import com.deposplit.value_objects.ShareRequest
-import com.deposplit.value_objects.ShareRequestState
 import com.deposplit.value_objects.ShareTransactionType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,13 +32,9 @@ class ShareDetailViewModel(
         val contacts: List<Contact> = emptyList(),
         val retrievalRequest: ShareRequest? = null,
         val removalRequest: ShareRequest? = null,
-        val approvedRetrievalCount: Int = 0,
         val isLoading: Boolean = false,
         val isOpeningRetrieval: Boolean = false,
         val isOpeningRemoval: Boolean = false,
-        val isReconstructing: Boolean = false,
-        val reconstructedSecret: ReconstructedSecret? = null,
-        val reconstructionIntegrity: ReconstructionIntegrity? = null,
         @StringRes val error: Int? = null,
         @StringRes val actionError: Int? = null,
     )
@@ -87,12 +79,6 @@ class ShareDetailViewModel(
                     val removalReq = forThisShare
                         .filter { it.transactionType == ShareTransactionType.REMOVAL }
                         .maxByOrNull { it.requestedAt }
-                    val approvedCount = allRequests.count {
-                        it.secretId == share.secretId &&
-                            it.transactionType == ShareTransactionType.RETRIEVAL &&
-                            it.state == ShareRequestState.APPROVED &&
-                            it.ciphertext != null
-                    }
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -101,7 +87,6 @@ class ShareDetailViewModel(
                             contacts = contacts,
                             retrievalRequest = retrievalReq,
                             removalRequest = removalReq,
-                            approvedRetrievalCount = approvedCount,
                         )
                     }
                 }
@@ -131,39 +116,6 @@ class ShareDetailViewModel(
                         if (isRetrieval) it.copy(isOpeningRetrieval = false, actionError = R.string.share_detail_error_open_request)
                         else it.copy(isOpeningRemoval = false, actionError = R.string.share_detail_error_open_request)
                     }
-                }
-        }
-    }
-
-    fun reconstruct() {
-        val share = _uiState.value.share ?: return
-        _uiState.update {
-            it.copy(isReconstructing = true, actionError = null, reconstructedSecret = null, reconstructionIntegrity = null)
-        }
-        viewModelScope.launch {
-            runCatching {
-                withContext(Dispatchers.IO) { shareManagement.reconstruct(share.secretId) }
-            }
-                .onSuccess { result ->
-                    _uiState.update {
-                        it.copy(
-                            isReconstructing = false,
-                            // The declared type decides how the bytes are shown, and
-                            // ReconstructedSecret falls back to a binary view whenever the type and
-                            // the bytes disagree — so nothing here force-decodes, and the original
-                            // bytes survive whichever branch runs.
-                            reconstructedSecret = ReconstructedSecret.of(result.secret, result.mimeType),
-                            reconstructionIntegrity = result.integrity,
-                        )
-                    }
-                }
-                .onFailure { e ->
-                    val errorRes = if (e is ReconstructionIntegrityException) {
-                        R.string.share_detail_error_integrity
-                    } else {
-                        R.string.share_detail_error_reconstruct
-                    }
-                    _uiState.update { it.copy(isReconstructing = false, actionError = errorRes) }
                 }
         }
     }
