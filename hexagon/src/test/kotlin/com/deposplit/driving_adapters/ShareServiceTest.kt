@@ -2019,6 +2019,121 @@ class ShareServiceTest {
         assertEquals(SecretLimits.FREE_TIER_MAX_ACTIVE_SECRETS, svc.listSecrets().count { it.state == SecretState.ACTIVE })
     }
 
+    // ── Destroy reconciliation ────────────────────────────────────────────────
+    //
+    // The approved removal row is the only thing that ever says a holder destroyed their piece:
+    // approving one makes the relay sweep the rest of that holder's rows for the secret, so nothing
+    // else survives to read. answerRemoval models that sweep, because a double that kept every row
+    // is what hid this — the client sat waiting for a row the relay had deleted and nothing went red.
+
+    private fun removalRow(secretId: UUID, recipientKey: ByteArray): ShareRequest =
+        ShareRequest(
+            id = UUID.randomUUID(), secretId = secretId, senderKey = ByteArray(0), recipientKey = recipientKey,
+            label = "destroy test", secretCreatedAt = Instant.now(), transactionType = ShareTransactionType.REMOVAL,
+            state = ShareRequestState.PENDING, requestedAt = Instant.now(), respondedAt = null,
+            ciphertext = null, k = null, n = null, mimeType = null,
+            senderSignature = ByteArray(0), recipientSignature = null,
+        )
+
+    private fun FakeShareRelay.answerRemoval(row: ShareRequest, signer: TestKeyPair, approved: Boolean = true) {
+        val signature = signer.sign(PayloadCanonical.forRespond(row.id, approved, null))
+        val answered = row.copy(
+            state = if (approved) ShareRequestState.APPROVED else ShareRequestState.DENIED,
+            respondedAt = Instant.now(),
+            recipientSignature = signature,
+        )
+        pending = listOf(answered) + pending.filterNot {
+            it.id == row.id ||
+                (approved && it.secretId == row.secretId && it.recipientKey.contentEquals(row.recipientKey))
+        }
+    }
+
+    /** A 2-of-2 secret already destroying, with one removal outstanding per holder — what destroySecret leaves. */
+    private fun destroyingSecret(relay: FakeShareRelay, holders: List<Contact>): Pair<ShareServiceFixture, List<ShareRequest>> {
+        val fixture = newService(relay, contacts = holders)
+        fixture.svc.deposit(byteArrayOf(1, 2, 3), "destroy test", holders, 2)
+        val secretId = fixture.svc.listSecrets().first().id
+        fixture.svc.destroySecret(secretId)
+        val removals = holders.map { removalRow(secretId, it.verifyKey) }
+        relay.pending = removals
+        return fixture to removals
+    }
+
+    @Test
+    fun `a holder who approves their removal is dropped, and the secret waits for the other one`() {
+        val relay = FakeShareRelay()
+        val charlieKeys = TestKeyPair.generate()
+        val charlieContact = aliceContact.copy(id = UUID.randomUUID(), pseudonym = "charlie", verifyKey = charlieKeys.publicKey)
+        val (fixture, removals) = destroyingSecret(relay, listOf(aliceContact, charlieContact))
+
+        relay.answerRemoval(removals[0], aliceKeys)
+        fixture.svc.syncDistributed()
+
+        assertEquals(listOf(charlieContact.id), fixture.metaRepo.getAll().map { it.contactId })
+        assertEquals(listOf(SecretState.DESTROYING), fixture.svc.listSecrets().map { it.state })
+    }
+
+    @Test
+    fun `the secret is gone once the last holder has answered`() {
+        val relay = FakeShareRelay()
+        val charlieKeys = TestKeyPair.generate()
+        val charlieContact = aliceContact.copy(id = UUID.randomUUID(), pseudonym = "charlie", verifyKey = charlieKeys.publicKey)
+        val (fixture, removals) = destroyingSecret(relay, listOf(aliceContact, charlieContact))
+
+        relay.answerRemoval(removals[0], aliceKeys)
+        fixture.svc.syncDistributed()
+        relay.answerRemoval(removals[1], charlieKeys)
+        fixture.svc.syncDistributed()
+
+        assertEquals(emptyList<ShareMetadata>(), fixture.metaRepo.getAll())
+        assertEquals(emptyList<Secret>(), fixture.svc.listSecrets())
+    }
+
+    @Test
+    fun `the answer is deleted from the relay once it has been acted on, and not before`() {
+        val relay = FakeShareRelay()
+        val charlieKeys = TestKeyPair.generate()
+        val charlieContact = aliceContact.copy(id = UUID.randomUUID(), pseudonym = "charlie", verifyKey = charlieKeys.publicKey)
+        val (fixture, removals) = destroyingSecret(relay, listOf(aliceContact, charlieContact))
+
+        fixture.svc.syncDistributed()
+        assertFalse(relay.deletedRequestIds.contains(removals[0].id), "a removal nobody answered was deleted")
+
+        relay.answerRemoval(removals[0], aliceKeys)
+        fixture.svc.syncDistributed()
+        assertTrue(relay.deletedRequestIds.contains(removals[0].id), "the answered removal was left on the relay")
+    }
+
+    @Test
+    fun `a denied removal leaves the holder and the secret exactly where they were`() {
+        val relay = FakeShareRelay()
+        val charlieKeys = TestKeyPair.generate()
+        val charlieContact = aliceContact.copy(id = UUID.randomUUID(), pseudonym = "charlie", verifyKey = charlieKeys.publicKey)
+        val (fixture, removals) = destroyingSecret(relay, listOf(aliceContact, charlieContact))
+
+        relay.answerRemoval(removals[0], aliceKeys, approved = false)
+        fixture.svc.syncDistributed()
+
+        assertEquals(2, fixture.metaRepo.getAll().size)
+        assertEquals(listOf(SecretState.DESTROYING), fixture.svc.listSecrets().map { it.state })
+    }
+
+    // A relay that could forge an approval could make this device forget a share that is still out
+    // there — the same reason a retrieval approval is verified before its bytes are trusted.
+    @Test
+    fun `an approval signed by the wrong key is not an answer`() {
+        val relay = FakeShareRelay()
+        val charlieKeys = TestKeyPair.generate()
+        val charlieContact = aliceContact.copy(id = UUID.randomUUID(), pseudonym = "charlie", verifyKey = charlieKeys.publicKey)
+        val (fixture, removals) = destroyingSecret(relay, listOf(aliceContact, charlieContact))
+
+        relay.answerRemoval(removals[0], charlieKeys)
+        fixture.svc.syncDistributed()
+
+        assertEquals(2, fixture.metaRepo.getAll().size)
+        assertEquals(listOf(SecretState.DESTROYING), fixture.svc.listSecrets().map { it.state })
+    }
+
     @Test
     fun `a repair re-split is exempt from the free-tier cap`() {
         val relay = FakeShareRelay()

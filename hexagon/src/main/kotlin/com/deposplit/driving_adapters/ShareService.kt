@@ -230,9 +230,15 @@ class ShareService(
         runCatching { retainedDepositRepository.getAll() }.getOrDefault(emptyList()).any { it.id == depositId }
 
     // For every DESTROYING Secret, checks whether each remaining holder's fanned-out removal
-    // request has been approved; approved ones are cleaned up (relay row deleted, local
-    // ShareMetadata removed). Once a DESTROYING secret has no ShareMetadata rows left, its
-    // Secret record itself is removed — the ACTIVE/DESTROYING two-state lifecycle.
+    // request has been approved; approved ones are cleaned up (local ShareMetadata removed, then
+    // the relay row). Once a DESTROYING secret has no ShareMetadata rows left, its Secret record
+    // itself is removed — the ACTIVE/DESTROYING two-state lifecycle.
+    //
+    // The approved removal row is the only thing that ever says a holder destroyed their piece.
+    // Approving it makes the relay sweep the rest of that holder's rows for this secret, the
+    // deposit included, so there is nothing else left to read and an absence would say nothing.
+    // The signature is checked for the same reason it is checked on a retrieval approval: a relay
+    // that could forge one could make this device forget a share that is still out there.
     private fun reconcileDestroying() {
         val destroying = secretRepository.getAll().filter { it.state == SecretState.DESTROYING }
         if (destroying.isEmpty()) return
@@ -247,10 +253,13 @@ class ShareService(
                 val contact = contactRepository.getById(meta.contactId) ?: continue
                 val approvedRemoval = removalRequests.firstOrNull { (_, r) ->
                     r.secretId == meta.secretId && r.recipientKey.contentEquals(contact.verifyKey) &&
-                        r.state == ShareRequestState.APPROVED
+                        r.state == ShareRequestState.APPROVED && verifyRespond(r)
                 } ?: continue
-                runCatching { approvedRemoval.first.deleteShareRequest(meta.id) }
+                // Local record first, relay row second. The row is the evidence; dropping it before
+                // acting on it would leave a holder that can never be reconciled if this device dies
+                // in between, which is the one failure this whole flow exists to avoid.
                 runCatching { shareMetadataRepository.delete(meta.id) }
+                runCatching { approvedRemoval.first.deleteShareRequest(approvedRemoval.second.id) }
             }
             val remaining = shareMetadataRepository.getAll().filter { it.secretId == secret.id }
             if (remaining.isEmpty()) {
