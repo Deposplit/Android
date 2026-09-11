@@ -152,6 +152,15 @@ private fun KeyConflictItem(conflict: KeyConflict, contactName: String, onDismis
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Spacer(Modifier.height(8.dp))
+            // The alert has already done its informing; the button behind it is a one-way door,
+            // so the card says so rather than letting the mildness of the word stand in for the
+            // consequence.
+            Text(
+                text = stringResource(R.string.requests_key_conflict_permanence),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
             Spacer(Modifier.height(12.dp))
             OutlinedButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.requests_key_conflict_dismiss))

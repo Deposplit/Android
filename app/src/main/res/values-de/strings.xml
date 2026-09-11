@@ -57,7 +57,6 @@
     <string name="home_destroy_title">Dieses Geheimnis vernichten?</string>
     <string name="home_destroy_body">Alle %1$d Verwahrer werden gebeten, ihren Teil zu vernichten. Sobald alle es getan haben, kann dieses Geheimnis nie wieder zusammengesetzt werden. Bis dahin bleibt es in dieser Liste.</string>
     <string name="home_destroy_confirm">Vernichten</string>
-    <string name="home_destroying_label">Wird vernichtet …</string>
     <string name="home_force_forget_button">Zwangsweise vergessen</string>
     <string name="home_repair_button">Reparieren</string>
 
@@ -192,6 +191,7 @@
     <string name="requests_key_conflict_title">Möglicher Identitätsdiebstahl</string>
     <string name="requests_key_conflict_message">Der Schlüssel von %1$s hat sich geändert, aber der vorherige Schlüssel ist als kompromittiert markiert. Dies könnte ein Angreifer mit dem gestohlenen Schlüssel sein, oder ein Fehlalarm. Um die Verbindung wiederherzustellen, verifizieren Sie %1$s erneut — persönlich oder über einen vertrauenswürdigen Kanal — und nutzen Sie dann „Neu verknüpfen“ auf dem Kontakte-Bildschirm. Akzeptieren Sie dies nicht automatisch.</string>
     <string name="requests_key_conflict_detected_at">Erkannt %1$s</string>
+    <string name="requests_key_conflict_permanence">Das Verwerfen hinterlässt keinen Eintrag — dieser hier ist der einzige, und es lässt sich nicht rückgängig machen.</string>
     <string name="requests_key_conflict_dismiss">Verwerfen</string>
     <plurals name="requests_key_changed_warning">
         <item quantity="one">Der Schlüssel von %1$s hat sich vor %2$d Tag geändert — vor der Freigabe erneut verifizieren</item>
@@ -311,6 +311,11 @@
     <plurals name="home_holder_count">
         <item quantity="one">%d Verwahrer</item>
         <item quantity="other">%d Verwahrer</item>
+    </plurals>
+
+    <plurals name="secret_detail_destroying_waiting">
+        <item quantity="one">Ein Verwahrer muss seinen Teil noch vernichten.</item>
+        <item quantity="other">%d Verwahrer müssen ihren Teil noch vernichten.</item>
     </plurals>
 
     <plurals name="secret_detail_reconstruct_disabled">

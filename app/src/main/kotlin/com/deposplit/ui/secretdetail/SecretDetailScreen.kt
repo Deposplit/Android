@@ -235,8 +235,16 @@ fun SecretDetailScreen(
                         ) { Text(stringResource(R.string.home_repair_button)) }
                     }
                     if (group.secret.state == SecretState.DESTROYING) {
+                        // The health badge above already says Destroying, so this says the thing
+                        // the badge cannot: how many holders are still to answer, which is exactly
+                        // the judgement Force Forget beside it asks for. The count shrinks as each
+                        // one confirms, because reconcileDestroying drops their ShareMetadata row.
                         Text(
-                            text = stringResource(R.string.home_destroying_label),
+                            text = pluralStringResource(
+                                R.plurals.secret_detail_destroying_waiting,
+                                group.holders.size,
+                                group.holders.size,
+                            ),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.tertiary,
                         )

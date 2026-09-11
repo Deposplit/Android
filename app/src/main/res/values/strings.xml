@@ -57,7 +57,6 @@
     <string name="home_destroy_title">Destroy this secret?</string>
     <string name="home_destroy_body">All %1$d holders are asked to destroy their piece. Once they all do, this secret can never be reconstructed. Until then it stays in this list.</string>
     <string name="home_destroy_confirm">Destroy</string>
-    <string name="home_destroying_label">Destroying…</string>
     <string name="home_force_forget_button">Force Forget</string>
     <string name="home_repair_button">Repair</string>
 
@@ -192,6 +191,7 @@
     <string name="requests_key_conflict_title">Possible impersonation attempt</string>
     <string name="requests_key_conflict_message">%1$s\'s key changed, but their previous key is flagged compromised. This could be an attacker with the stolen key, or a false alarm. To reconnect, verify %1$s fresh — in person or over a trusted channel — then use Relink from the Contacts screen. Do not accept this automatically.</string>
     <string name="requests_key_conflict_detected_at">Detected %1$s</string>
+    <string name="requests_key_conflict_permanence">Dismissing does not keep a record — this is the only one, and it cannot be undone.</string>
     <string name="requests_key_conflict_dismiss">Dismiss</string>
     <plurals name="requests_key_changed_warning">
         <item quantity="one">%1$s\'s key changed %2$d day ago — verify fresh before approving</item>
@@ -311,6 +311,11 @@
     <plurals name="home_holder_count">
         <item quantity="one">%d holder</item>
         <item quantity="other">%d holders</item>
+    </plurals>
+
+    <plurals name="secret_detail_destroying_waiting">
+        <item quantity="one">Waiting for one holder to destroy their piece.</item>
+        <item quantity="other">Waiting for %d holders to destroy their piece.</item>
     </plurals>
 
     <plurals name="secret_detail_reconstruct_disabled">
