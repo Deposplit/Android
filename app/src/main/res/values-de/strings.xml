@@ -55,7 +55,7 @@
     <string name="home_freshness_silent">Still — möglicher Verlust</string>
     <string name="home_destroy_button">Vernichten</string>
     <string name="home_destroy_title">Dieses Geheimnis vernichten?</string>
-    <string name="home_destroy_body">Alle %1$d Inhaber werden gebeten, ihren Teil zu vernichten. Sobald alle es getan haben, kann dieses Geheimnis nie wieder zusammengesetzt werden. Bis dahin bleibt es in dieser Liste.</string>
+    <string name="home_destroy_body">Alle %1$d Verwahrer werden gebeten, ihren Teil zu vernichten. Sobald alle es getan haben, kann dieses Geheimnis nie wieder zusammengesetzt werden. Bis dahin bleibt es in dieser Liste.</string>
     <string name="home_destroy_confirm">Vernichten</string>
     <string name="home_destroying_label">Wird vernichtet …</string>
     <string name="home_force_forget_button">Zwangsweise vergessen</string>
@@ -223,17 +223,17 @@
     <string name="secret_detail_title_fallback">Geheimnis</string>
     <string name="secret_detail_unknown_contact">Unbekannter Kontakt</string>
     <string name="secret_detail_threshold">%1$d von %2$d nötig</string>
-    <string name="secret_detail_holders">Inhaber</string>
+    <string name="secret_detail_holders">Verwahrer</string>
     <string name="secret_detail_approved_count">%1$d von %2$d nötigen haben ihren Teil zurückgegeben</string>
-    <string name="secret_detail_retrieve_disabled_all_asked">Alle Inhaber wurden bereits gefragt.</string>
+    <string name="secret_detail_retrieve_disabled_all_asked">Alle Verwahrer wurden bereits gefragt.</string>
     <string name="secret_detail_retrieve_disabled_destroying">Dieses Geheimnis wird gerade vernichtet.</string>
     <string name="secret_detail_reconstruct_button">Rekonstruieren</string>
     <string name="secret_detail_clear_button">Gesammelte Kopien freigeben</string>
     <string name="secret_detail_clear_title">Gesammelte Kopien freigeben?</string>
-    <string name="secret_detail_clear_confirm_unread">Das Geheimnis wurde hier noch nicht angezeigt. Werden die gesammelten Kopien freigegeben, müssen die Inhaber erneut gefragt werden, bevor es wieder zusammengesetzt werden kann.</string>
-    <string name="secret_detail_clear_confirm_after_reading">Die Inhaber behalten ihre Teile — Kopien lassen sich jederzeit erneut anfragen.</string>
+    <string name="secret_detail_clear_confirm_unread">Das Geheimnis wurde hier noch nicht angezeigt. Werden die gesammelten Kopien freigegeben, müssen die Verwahrer erneut gefragt werden, bevor es wieder zusammengesetzt werden kann.</string>
+    <string name="secret_detail_clear_confirm_after_reading">Die Verwahrer behalten ihre Teile — Kopien lassen sich jederzeit erneut anfragen.</string>
     <string name="secret_detail_clear_disabled">Bisher wurde nichts zurückgegeben.</string>
-    <string name="secret_detail_clear_reminder">Die gesammelten Kopien nach Gebrauch freigeben — die Inhaber behalten ihre Teile in jedem Fall.</string>
+    <string name="secret_detail_clear_reminder">Die gesammelten Kopien nach Gebrauch freigeben — die Verwahrer behalten ihre Teile in jedem Fall.</string>
     <string name="secret_detail_biometric_none_enrolled">Hinterlegen Sie eine biometrische Methode (Fingerabdruck oder Gesicht) in den Geräteeinstellungen, um das Geheimnis zu rekonstruieren.</string>
     <string name="secret_detail_biometric_no_hardware">Dieses Gerät hat keinen biometrischen Sensor — Rekonstruktion nicht möglich.</string>
     <string name="secret_detail_biometric_unavailable">Biometrische Authentifizierung derzeit nicht verfügbar.</string>
@@ -258,12 +258,12 @@
     <string name="repair_title_format">%1$s reparieren</string>
     <string name="repair_title_fallback">Reparieren</string>
     <string name="repair_need_retrievals">Benötige %1$d genehmigte Abholung(en) zur Rekonstruktion — bisher %2$d.</string>
-    <string name="repair_holders_title">Inhaber</string>
-    <string name="repair_no_holders">Keine Inhaber für dieses Geheimnis bekannt.</string>
+    <string name="repair_holders_title">Verwahrer</string>
+    <string name="repair_no_holders">Keine Verwahrer für dieses Geheimnis bekannt.</string>
     <string name="repair_not_requested">Nicht angefragt</string>
     <string name="repair_request_missing_button">Fehlende Abholungen anfragen</string>
     <string name="repair_complete_title">Reparatur abgeschlossen</string>
-    <string name="repair_complete_body">An %1$d neue(n) Inhaber hinterlegt. Alte Verteilung jetzt vernichten? Jeder ihrer Inhaber wird gebeten, seinen Teil zu vernichten.</string>
+    <string name="repair_complete_body">An %1$d neue(n) Verwahrer hinterlegt. Alte Verteilung jetzt vernichten? Jeder ihrer Verwahrer wird gebeten, seinen Teil zu vernichten.</string>
     <string name="repair_destroy_old_button">Alte Verteilung vernichten</string>
     <string name="repair_not_now_button">Jetzt nicht</string>
     <string name="repair_done_title">Fertig</string>
@@ -309,12 +309,12 @@
     </plurals>
 
     <plurals name="home_holder_count">
-        <item quantity="one">%d Inhaber</item>
-        <item quantity="other">%d Inhaber</item>
+        <item quantity="one">%d Verwahrer</item>
+        <item quantity="other">%d Verwahrer</item>
     </plurals>
 
     <plurals name="secret_detail_reconstruct_disabled">
-        <item quantity="one">Ein weiterer Inhaber muss den Teil noch zurückgeben.</item>
-        <item quantity="other">%d weitere Inhaber müssen ihren Teil noch zurückgeben.</item>
+        <item quantity="one">Ein weiterer Verwahrer muss den Teil noch zurückgeben.</item>
+        <item quantity="other">%d weitere Verwahrer müssen ihren Teil noch zurückgeben.</item>
     </plurals>
 </resources>
