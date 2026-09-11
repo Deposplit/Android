@@ -174,6 +174,10 @@ in the lint gate to keep dead ones from accumulating again.
   self-initialises through `androidx.startup`, so it needs no `Configuration.Provider` and no
   manifest entry — and it is the only scheduled work in the app, so a second one arriving is
   worth questioning.
+- **One notification, and it names nobody.** `background/RequestNotifier` posts a single sentence
+  when a retrieval is waiting: no contact name, no label, no count. A pending removal posts
+  nothing at all. `POST_NOTIFICATIONS` is asked for the first time this device holds a share,
+  never at launch.
 
 > **`CatalogCodec.kt` is a trap, now guarded.** It hand-writes the catalog's wire DTO rather
 > than serialising the domain type, so **every new field on `Contact`, `Secret` or

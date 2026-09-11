@@ -5,6 +5,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <!-- One notice, and only ever this one: a contact is waiting on a share this phone keeps.
+         Deposplit asks for it the first time this device is actually keeping something, because
+         until then there is nothing it could ever say. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- QR scanning is optional: contacts can also be added by typing their keys. -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />

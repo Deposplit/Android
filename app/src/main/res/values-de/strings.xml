@@ -138,6 +138,11 @@
     <string name="settings_backup_title">Gerätesicherung</string>
     <string name="settings_backup_description">Die Daten von Deposplit auf diesem Telefon — Ihre Kontakte, die Angaben zu Ihren Geheimnissen und die Anteile, die Sie für andere verwahren — sind in der Gerätesicherung enthalten und überstehen so einen Telefonwechsel. Ihre privaten Schlüssel nicht: Diese können das Telefon nicht verlassen.</string>
     <string name="settings_backup_exclusion">Android verschlüsselt diese Sicherung mit Ihrer Bildschirmsperre, und Sie können Deposplit in den Sicherungseinstellungen Ihres Telefons ausschliessen. Dann startet ein neues Telefon leer — die Menschen, deren Anteile Sie verwahren, verlieren diese Redundanz, und Ihr neues Telefon weiss nichts davon, um es ihnen zu sagen.</string>
+    <string name="settings_notifications_title">Benachrichtigungen</string>
+    <string name="settings_notifications_description">Deposplit kann melden, wenn ein Kontakt einen Anteil benötigt, den Sie verwahren — auch bei geschlossener App. Die Meldung nennt weder Personen noch Geheimnisse, verrät auf einem gesperrten Bildschirm also nichts.</string>
+    <string name="settings_notifications_enabled">Für diese App eingeschaltet.</string>
+    <string name="settings_notifications_disabled">Ausgeschaltet. Ohne sie erfahren Sie von einer Anfrage erst beim nächsten Öffnen von Deposplit.</string>
+    <string name="settings_notifications_open">Benachrichtigungseinstellungen</string>
     <string name="settings_identity_title">Identität</string>
     <string name="settings_regenerate_description">Erzeugt ein brandneues Schlüsselpaar für dieses Gerät und benachrichtigt automatisch alle Ihre Kontakte. Ein bereits an Sie unterwegs befindlicher Anteil kann danach weiterhin abgeholt werden, ein jetzt nicht erreichbarer Kontakt erfährt aber nichts vom neuen Schlüssel. Das lässt sich nicht rückgängig machen.</string>
     <string name="settings_regenerate_button">Meine Identität neu erzeugen</string>
@@ -178,6 +183,12 @@
     <string name="deposit_warning_confidentiality_medium">%1$d von %2$d ist ein relativ niedriger Schwellenwert — eine Minderheit der Verwahrer könnte dieses Geheimnis gemeinsam rekonstruieren.</string>
     <string name="deposit_warning_availability_none">Jeder einzelne Verwahrer muss verfügbar sein — verliert auch nur einer seinen Anteil, ist dieses Geheimnis nicht wiederherstellbar.</string>
     <string name="deposit_warning_availability_one">Dies verkraftet den Verlust von nur einem Verwahrer, bevor das Geheimnis nicht wiederherstellbar wird.</string>
+
+    <!-- Benachrichtigungen. Ein Satz, und kein zweiter: nennt weder Personen noch Geheimnisse
+         und sagt auch nicht, wie viele warten. -->
+    <string name="notification_channel_retrievals">Abrufanfragen</string>
+    <string name="notification_channel_retrievals_description">Meldet, wenn ein Kontakt einen Anteil benötigt, den Sie verwahren.</string>
+    <string name="notification_retrieval_waiting">Einer Ihrer Kontakte möchte ein Geheimnis mit einem Anteil rekonstruieren, den Sie verwahren.</string>
 
     <!-- Requests -->
     <string name="requests_empty">Keine ausstehenden Anfragen</string>

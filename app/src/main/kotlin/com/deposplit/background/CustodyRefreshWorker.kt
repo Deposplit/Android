@@ -5,6 +5,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.deposplit.DeposplitApp
 import com.deposplit.value_objects.IdentityIntegrity
+import com.deposplit.value_objects.ShareTransactionType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -37,11 +38,21 @@ class CustodyRefreshWorker(
 
         try {
             app.shareManagement.syncInbox()
-            Result.success()
         } catch (_: Exception) {
             // An unreachable relay is the ordinary case, not an error worth surfacing. Backoff
             // retries well inside the day this pass repeats on.
-            Result.retry()
+            return@withContext Result.retry()
         }
+
+        // Best-effort, and last. Failing to announce must never undo a pass that already emitted
+        // its heartbeats: a retry would re-run syncInbox, which is harmless but pointless, and
+        // meanwhile the custody signal this pass exists for has already gone out.
+        runCatching {
+            val waiting = app.shareManagement.listPendingRequests()
+                .filter { it.transactionType == ShareTransactionType.RETRIEVAL }
+            RequestNotifier.announce(applicationContext, waiting)
+        }
+
+        Result.success()
     }
 }

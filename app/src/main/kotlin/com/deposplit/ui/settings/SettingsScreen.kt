@@ -1,6 +1,8 @@
 package com.deposplit.ui.settings
 
 import android.content.Context
+import android.content.Intent
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
@@ -37,12 +39,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.deposplit.DeposplitApp
 import com.deposplit.R
+import com.deposplit.background.RequestNotifier
 import com.deposplit.value_objects.SecretLimits
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,6 +62,14 @@ fun SettingsScreen(onNavigateBack: () -> Unit, onNavigateToPaywall: () -> Unit) 
     )
     var showRegenerateConfirmation by remember { mutableStateOf(false) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // Re-read on resume, because the way to change it is to leave for system settings and
+    // come back — a line that still said "turned off" afterwards would be the screen calling
+    // the user's own action a no-op.
+    var notificationsEnabled by remember { mutableStateOf(RequestNotifier.canNotify(context)) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        notificationsEnabled = RequestNotifier.canNotify(context)
+    }
 
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) writeCatalogExport(context, uri, viewModel.exportCatalogBytes())
@@ -170,6 +183,34 @@ fun SettingsScreen(onNavigateBack: () -> Unit, onNavigateToPaywall: () -> Unit) 
             Spacer(Modifier.height(24.dp))
             HorizontalDivider()
             Spacer(Modifier.height(16.dp))
+            // No switch of our own, for the same reason the backup section has none: the platform
+            // owns this one. What is owed here is the consequence of turning it off, and a way
+            // back for somebody who dismissed the prompt and has no other route to it.
+            Text(stringResource(R.string.settings_notifications_title), style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                stringResource(R.string.settings_notifications_description),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                stringResource(
+                    if (notificationsEnabled) R.string.settings_notifications_enabled
+                    else R.string.settings_notifications_disabled
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (!notificationsEnabled) {
+                Spacer(Modifier.height(12.dp))
+                OutlinedButton(onClick = { context.startActivity(appNotificationSettings(context)) }) {
+                    Text(stringResource(R.string.settings_notifications_open))
+                }
+            }
+            Spacer(Modifier.height(24.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(16.dp))
             Text(stringResource(R.string.settings_identity_title), style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(4.dp))
             Text(
@@ -242,3 +283,9 @@ private fun writeCatalogExport(context: Context, uri: android.net.Uri, bytes: By
 
 private fun readCatalogImport(context: Context, uri: android.net.Uri): ByteArray? =
     runCatching { context.contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
+
+// Lands on this app's own notification page rather than the whole system list, so somebody who
+// dismissed the prompt is one tap from the switch instead of hunting for it.
+private fun appNotificationSettings(context: Context): Intent =
+    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+        .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)

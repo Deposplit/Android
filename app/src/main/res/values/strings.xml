@@ -138,6 +138,11 @@
     <string name="settings_backup_title">Device Backup</string>
     <string name="settings_backup_description">Deposplit\'s data on this phone — your contacts, your secrets\' details, and the shares you hold for other people — is included in your device backup, so it survives a phone switch. Your private keys are not: they cannot leave this phone.</string>
     <string name="settings_backup_exclusion">Android encrypts that backup with your screen lock, and you can exclude Deposplit in your phone\'s backup settings. If you do, a new phone starts empty — the people whose shares you guard lose that redundancy, and your new phone has no record to tell them with.</string>
+    <string name="settings_notifications_title">Notifications</string>
+    <string name="settings_notifications_description">Deposplit can tell you when a contact needs a share you are keeping safe, even while the app is closed. The notice names nobody and no secret, so a locked screen gives nothing away.</string>
+    <string name="settings_notifications_enabled">Turned on for this app.</string>
+    <string name="settings_notifications_disabled">Turned off. Without it you learn of a request only when you next open Deposplit.</string>
+    <string name="settings_notifications_open">Notification settings</string>
     <string name="settings_identity_title">Identity</string>
     <string name="settings_regenerate_description">Generates a brand-new keypair for this device and automatically notifies all your contacts. A share already on its way to you can still be collected afterwards, but a contact you cannot reach now will not learn of the new key. This cannot be undone.</string>
     <string name="settings_regenerate_button">Regenerate My Identity</string>
@@ -178,6 +183,12 @@
     <string name="deposit_warning_confidentiality_medium">%1$d of %2$d is a relatively low threshold — a minority of holders could reconstruct this secret together.</string>
     <string name="deposit_warning_availability_none">Every single holder must be available — if even one loses their share, this secret becomes unrecoverable.</string>
     <string name="deposit_warning_availability_one">This tolerates the loss of only one holder before the secret becomes unrecoverable.</string>
+
+    <!-- Notifications. One sentence, and no second one: it names nobody, names no secret, and
+         does not say how many are waiting. -->
+    <string name="notification_channel_retrievals">Retrieval requests</string>
+    <string name="notification_channel_retrievals_description">Tells you when a contact needs a share you are keeping safe.</string>
+    <string name="notification_retrieval_waiting">One of your contacts wants to reconstruct a secret with a share that you are keeping safe.</string>
 
     <!-- Requests -->
     <string name="requests_empty">No pending requests</string>

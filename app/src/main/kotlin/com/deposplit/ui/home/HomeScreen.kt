@@ -1,5 +1,8 @@
 package com.deposplit.ui.home
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -51,6 +54,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -73,6 +77,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.deposplit.DeposplitApp
 import com.deposplit.R
+import com.deposplit.background.RequestNotifier
 import com.deposplit.value_objects.SecretState
 import com.deposplit.value_objects.ShareRequestState
 import com.deposplit.ui.requests.RecipientRequestsTab
@@ -111,6 +116,18 @@ fun HomeScreen(
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.load()
         requestsViewModel.load()
+    }
+
+    // Asked at the first moment it could ever mean anything: this phone is now keeping something
+    // for somebody, so a request for it can arrive. Asking at first launch would be a dialog
+    // about a notice that cannot exist yet, and this app has exactly one to offer.
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    val isKeepingSomething = uiState.heldShares.isNotEmpty()
+    LaunchedEffect(isKeepingSomething) {
+        if (isKeepingSomething && RequestNotifier.shouldAskForPermission(app)) {
+            RequestNotifier.markPermissionAsked(app)
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
 
     Scaffold(
