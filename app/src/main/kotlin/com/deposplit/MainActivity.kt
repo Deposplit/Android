@@ -7,6 +7,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.deposplit.background.CustodyRefresh
 import com.deposplit.ui.contacts.AddContactScreen
 import com.deposplit.ui.contacts.ContactsScreen
 import com.deposplit.ui.contacts.RelinkContactScreen
@@ -62,6 +63,10 @@ class MainActivity : FragmentActivity() {
                     composable(ROUTE_SIGN_IN) {
                         SignInScreen(
                             onNavigateToHome = {
+                                // This launch created the identity, so DeposplitApp.onCreate had
+                                // nothing to schedule for. Doing it here means a phone starts
+                                // keeping its side of the bargain from its very first session.
+                                CustodyRefresh.schedule(app)
                                 navController.navigate(ROUTE_HOME) {
                                     popUpTo(ROUTE_SIGN_IN) { inclusive = true }
                                 }

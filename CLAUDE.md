@@ -169,6 +169,11 @@ in the lint gate to keep dead ones from accumulating again.
 - **Catalog backup uses the Storage Access Framework** — `CreateDocument` to export,
   `OpenDocument` to import.
 - **All UI is Jetpack Compose.** No XML layouts.
+- **One WorkManager job, `custody-refresh`**, defined in `background/`. It runs `syncInbox()`
+  daily so that heartbeats and pickups do not wait for somebody to open the app. WorkManager
+  self-initialises through `androidx.startup`, so it needs no `Configuration.Provider` and no
+  manifest entry — and it is the only scheduled work in the app, so a second one arriving is
+  worth questioning.
 
 > **`CatalogCodec.kt` is a trap, now guarded.** It hand-writes the catalog's wire DTO rather
 > than serialising the domain type, so **every new field on `Contact`, `Secret` or

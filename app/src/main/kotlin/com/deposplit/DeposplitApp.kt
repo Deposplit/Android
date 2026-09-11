@@ -3,6 +3,7 @@ package com.deposplit
 import android.app.Application
 import com.deposplit.api.DeposplitRelayResolver
 import com.deposplit.auth.AndroidIdentityStore
+import com.deposplit.background.CustodyRefresh
 import com.deposplit.contacts.LocalContactRelinkRepository
 import com.deposplit.contacts.LocalContactRepository
 import com.deposplit.contacts.LocalKeyConflictRepository
@@ -76,5 +77,8 @@ class DeposplitApp : Application() {
             secretRepository = secretRepository,
             shareMetadataRepository = shareMetadataRepository,
         )
+        // A phone with no identity has nothing to emit; MainActivity schedules the moment
+        // registration completes, so a fresh install does not wait for its second launch.
+        if (authAdapter.isRegistered()) CustodyRefresh.schedule(this)
     }
 }

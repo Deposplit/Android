@@ -92,6 +92,10 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
     implementation(libs.androidx.compose.material.icons.extended)
+    // Runs the daily custody refresh. WorkManager rather than a JobService of our own because it
+    // survives reboots without a boot receiver, and it self-initialises through androidx.startup,
+    // so there is no Configuration.Provider and no manifest entry anywhere in this app.
+    implementation(libs.androidx.work.runtime)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
