@@ -12,6 +12,7 @@ on the device; the relay only stores and forwards bytes it cannot read.
 - [Protocol](https://github.com/Deposplit/deposplit.com/blob/main/docs/protocol.md)
 - [Security](https://github.com/Deposplit/deposplit.com/blob/main/docs/security.md)
 - [Trust model](https://github.com/Deposplit/deposplit.com/blob/main/docs/trust-model.md)
+- [Lifecycles](https://github.com/Deposplit/deposplit.com/blob/main/docs/lifecycles.md)
 - [Manual testing](https://github.com/Deposplit/deposplit.com/blob/main/docs/testing.md)
 
 This README covers only what is specific to building and running the Android app.
