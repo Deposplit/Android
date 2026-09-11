@@ -27,7 +27,7 @@ object SecretLimits {
      * How many secrets may be active at once without the Premium unlock.
      *
      * A business rule, not a protocol constraint — nothing breaks at four, and the relay neither
-     * knows nor could enforce this. It counts secrets that are *active*, so discarding one frees a
+     * knows nor could enforce this. It counts secrets that are *active*, so destroying one frees a
      * slot the moment the removal requests go out rather than when the last holder confirms. A
      * repair's re-split is exempt: it replaces an active secret rather than adding one.
      */

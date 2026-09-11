@@ -192,7 +192,7 @@ class CatalogCodecTest {
         k = 2,
         n = 3,
         secretCreatedAt = Instant.parse("2026-05-06T07:08:09Z"),
-        state = SecretState.DISCARDING,
+        state = SecretState.DESTROYING,
     )
 
     private fun fullyPopulatedShareMetadata() = ShareMetadata(

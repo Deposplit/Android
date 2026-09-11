@@ -47,17 +47,17 @@
     <string name="home_health_caution">Nur ein Puffer von eins — bald neu aufteilen</string>
     <string name="home_health_critical">Jetzt rekonstruieren + neu aufteilen</string>
     <string name="home_health_lost">Nicht wiederherstellbar</string>
-    <string name="home_health_discarding">Wird verworfen</string>
+    <string name="home_health_destroying">Wird vernichtet</string>
 
     <!-- Frische-Status pro Halter -->
     <string name="home_freshness_stale">Wird veraltet</string>
     <string name="home_freshness_unmonitored">Bewusst nicht überwacht</string>
     <string name="home_freshness_silent">Still — möglicher Verlust</string>
-    <string name="home_discard_button">Verwerfen</string>
-    <string name="home_discard_title">Dieses Geheimnis verwerfen?</string>
-    <string name="home_discard_body">Fordert die Löschung von allen %1$d Verwahrer(n) an. Jeder muss zustimmen — dies entfernt es erst dann von der Geräteliste, wenn alle bestätigt haben (oder Sie es zwangsweise vergessen).</string>
-    <string name="home_discard_confirm">Verwerfen</string>
-    <string name="home_discarding_label">Wird verworfen …</string>
+    <string name="home_destroy_button">Vernichten</string>
+    <string name="home_destroy_title">Dieses Geheimnis vernichten?</string>
+    <string name="home_destroy_body">Alle %1$d Inhaber werden gebeten, ihren Teil zu vernichten. Sobald alle es getan haben, kann dieses Geheimnis nie wieder zusammengesetzt werden. Bis dahin bleibt es in dieser Liste.</string>
+    <string name="home_destroy_confirm">Vernichten</string>
+    <string name="home_destroying_label">Wird vernichtet …</string>
     <string name="home_force_forget_button">Zwangsweise vergessen</string>
     <string name="home_repair_button">Reparieren</string>
 
@@ -226,7 +226,7 @@
     <string name="secret_detail_holders">Inhaber</string>
     <string name="secret_detail_approved_count">%1$d von %2$d nötigen haben ihren Teil zurückgegeben</string>
     <string name="secret_detail_retrieve_disabled_all_asked">Alle Inhaber wurden bereits gefragt.</string>
-    <string name="secret_detail_retrieve_disabled_discarding">Dieses Geheimnis wird gerade verworfen.</string>
+    <string name="secret_detail_retrieve_disabled_destroying">Dieses Geheimnis wird gerade vernichtet.</string>
     <string name="secret_detail_reconstruct_button">Rekonstruieren</string>
     <string name="secret_detail_clear_button">Gesammelte Kopien freigeben</string>
     <string name="secret_detail_clear_title">Gesammelte Kopien freigeben?</string>
@@ -263,8 +263,8 @@
     <string name="repair_not_requested">Nicht angefragt</string>
     <string name="repair_request_missing_button">Fehlende Abholungen anfragen</string>
     <string name="repair_complete_title">Reparatur abgeschlossen</string>
-    <string name="repair_complete_body">An %1$d neue(n) Inhaber hinterlegt. Alte Verteilung jetzt verwerfen? Jeder ihrer Inhaber wird gebeten, seine Kopie zu löschen.</string>
-    <string name="repair_discard_old_button">Alte Verteilung verwerfen</string>
+    <string name="repair_complete_body">An %1$d neue(n) Inhaber hinterlegt. Alte Verteilung jetzt vernichten? Jeder ihrer Inhaber wird gebeten, seinen Teil zu vernichten.</string>
+    <string name="repair_destroy_old_button">Alte Verteilung vernichten</string>
     <string name="repair_not_now_button">Jetzt nicht</string>
     <string name="repair_done_title">Fertig</string>
     <string name="repair_close_button">Schliessen</string>
@@ -288,7 +288,7 @@
     <string name="paywall_title">Deposplit Premium</string>
     <string name="paywall_intro">Einmal kaufen, fertig. Kein Abo, keine Werbung.</string>
     <string name="paywall_benefit_secrets_title">Beliebig viele Geheimnisse</string>
-    <string name="paywall_benefit_secrets_body">Kostenlos sind %1$d Geheimnisse gleichzeitig. Ein verworfenes gibt seinen Platz sofort frei.</string>
+    <string name="paywall_benefit_secrets_body">Kostenlos sind %1$d Geheimnisse gleichzeitig. Ein vernichtetes gibt seinen Platz sofort frei.</string>
     <string name="paywall_benefit_byor_title">Ihr eigenes Relais</string>
     <string name="paywall_benefit_byor_body">Richten Sie dieses Gerät auf ein Relais aus, das Sie selbst betreiben. Das Relais anderer zu erreichen ist ohnehin kostenlos — gescannt oder von Hand eingetragen.</string>
     <string name="paywall_active">Premium ist auf diesem Gerät freigeschaltet.</string>
@@ -299,7 +299,7 @@
     <string name="settings_premium_inactive">Nicht freigeschaltet: %1$d Geheimnisse gleichzeitig und deposplit.com als Relais.</string>
     <string name="settings_premium_button">Premium ansehen</string>
     <string name="settings_relay_premium_required">Ein eigenes Standard-Relais zu wählen gehört zu Premium.</string>
-    <string name="deposit_free_tier_full">%1$d von %2$d kostenlosen Geheimnissen sind belegt. Verwerfen Sie eines oder schalten Sie Premium frei.</string>
+    <string name="deposit_free_tier_full">%1$d von %2$d kostenlosen Geheimnissen sind belegt. Eines vernichten oder Premium freischalten.</string>
 
     <string name="contacts_awaiting_relink_description">%1$s hat Sie noch nicht erneut verifiziert</string>
     <string name="contacts_mark_relinked_description">%1$s als erneut verifiziert markieren</string>

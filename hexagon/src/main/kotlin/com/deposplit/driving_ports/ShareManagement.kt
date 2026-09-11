@@ -33,7 +33,7 @@ interface ShareManagement {
     fun requestAll(secretId: UUID)
     fun openRequest(shareId: UUID, type: ShareTransactionType): ShareRequest
     // Pure read — collects approved retrieval shares (possibly more than k) and decrypts them.
-    // Never tears down local ShareMetadata or relay rows; use discardSecret for that.
+    // Never tears down local ShareMetadata or relay rows; use destroySecret for that.
     // Cross-checks any surplus beyond k for consistency — throws rather than returning a guessed
     // secret if the surplus can't be reconciled.
     fun reconstruct(secretId: UUID): ReconstructionResult
@@ -47,9 +47,9 @@ interface ShareManagement {
     // enough of them answer.
     fun clearCollectedShares(secretId: UUID)
     // Fans out a sender-initiated removal request to every known holder of secretId and flips the
-    // Secret to DISCARDING immediately (before any holder responds).
-    fun discardSecret(secretId: UUID)
-    // Local-only teardown for a DISCARDING secret whose holders will never all respond (e.g. a
+    // Secret to DESTROYING immediately (before any holder responds).
+    fun destroySecret(secretId: UUID)
+    // Local-only teardown for a DESTROYING secret whose holders will never all respond (e.g. a
     // permanently dark holder). Does not wait for or require relay confirmation.
     fun forceForgetSecret(secretId: UUID)
 

@@ -131,9 +131,9 @@ class SecretDetailViewModel(
         }
     }
 
-    fun discard() {
+    fun destroy() {
         viewModelScope.launch {
-            withContext(Dispatchers.IO) { runCatching { shareManagement.discardSecret(secretId) } }
+            withContext(Dispatchers.IO) { runCatching { shareManagement.destroySecret(secretId) } }
             load()
         }
     }

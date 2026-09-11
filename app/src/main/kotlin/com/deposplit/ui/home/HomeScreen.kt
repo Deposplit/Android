@@ -407,7 +407,7 @@ private fun SecretGroupCard(group: SecretGroup, onOpen: () -> Unit) {
 internal fun HealthBadge(health: SecretHealth) {
     val (labelRes, color) = when (health) {
         SecretHealth.HEALTHY -> return
-        SecretHealth.DISCARDING -> R.string.home_health_discarding to MaterialTheme.colorScheme.tertiary
+        SecretHealth.DESTROYING -> R.string.home_health_destroying to MaterialTheme.colorScheme.tertiary
         SecretHealth.CAUTION -> R.string.home_health_caution to MaterialTheme.colorScheme.tertiary
         SecretHealth.CRITICAL -> R.string.home_health_critical to MaterialTheme.colorScheme.error
         SecretHealth.LOST -> R.string.home_health_lost to MaterialTheme.colorScheme.error

@@ -3,10 +3,10 @@ package com.deposplit.value_objects
 import java.time.Instant
 import java.util.UUID
 
-// Two-state lifecycle. No `DISCARDED`
+// Two-state lifecycle. No `DESTROYED`
 // tombstone: once every holder confirms deletion (or the sender force-forgets), the Secret
 // record is removed outright.
-enum class SecretState { ACTIVE, DISCARDING }
+enum class SecretState { ACTIVE, DESTROYING }
 
 // Sender-side per-secret aggregate — the single source of truth for
 // k/n/label/mimeType/secretCreatedAt, keyed by secretId. ShareMetadata rows reference this rather

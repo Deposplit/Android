@@ -61,7 +61,7 @@ import java.util.UUID
 
 /**
  * The "reconstruct-and-re-split" repair flow: gather k approved retrievals → reconstruct →
- * re-deposit (prefilled) → optionally discard the old distribution. One screen with internal
+ * re-deposit (prefilled) → optionally destroy the old distribution. One screen with internal
  * wizard state ([RepairPhase]), so the reconstructed plaintext never leaves this route's
  * ViewModels or gets serialized into a navigation argument.
  */
@@ -141,11 +141,11 @@ fun RepairScreen(secretId: UUID, onNavigateBack: () -> Unit) {
                 }
             }
 
-            RepairPhase.CONFIRM_DISCARD -> ConfirmDiscardContent(
+            RepairPhase.CONFIRM_DESTROY -> ConfirmDestroyContent(
                 uiState = uiState,
                 padding = padding,
-                onDiscard = viewModel::discardOldAndFinish,
-                onSkip = viewModel::skipDiscard,
+                onDestroyOld = viewModel::destroyOldAndFinish,
+                onSkip = viewModel::skipDestroy,
             )
 
             RepairPhase.DONE -> DoneContent(padding = padding, onClose = onNavigateBack)
@@ -288,10 +288,10 @@ private fun GatheringContent(
 }
 
 @Composable
-private fun ConfirmDiscardContent(
+private fun ConfirmDestroyContent(
     uiState: RepairViewModel.UiState,
     padding: PaddingValues,
-    onDiscard: () -> Unit,
+    onDestroyOld: () -> Unit,
     onSkip: () -> Unit,
 ) {
     Column(
@@ -318,13 +318,13 @@ private fun ConfirmDiscardContent(
         )
         Spacer(Modifier.height(20.dp))
         Button(
-            onClick = onDiscard,
+            onClick = onDestroyOld,
             enabled = !uiState.isActing,
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
             modifier = Modifier.fillMaxWidth(),
         ) {
             if (uiState.isActing) CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-            else Text(stringResource(R.string.repair_discard_old_button))
+            else Text(stringResource(R.string.repair_destroy_old_button))
         }
         Spacer(Modifier.height(8.dp))
         TextButton(onClick = onSkip) { Text(stringResource(R.string.repair_not_now_button)) }

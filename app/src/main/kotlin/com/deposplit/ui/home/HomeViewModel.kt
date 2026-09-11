@@ -67,7 +67,7 @@ data class HolderStatus(
 }
 
 // Graduated n_live health alarm.
-enum class SecretHealth { HEALTHY, CAUTION, CRITICAL, LOST, DISCARDING }
+enum class SecretHealth { HEALTHY, CAUTION, CRITICAL, LOST, DESTROYING }
 
 data class SecretGroup(
     val secret: Secret,
@@ -78,7 +78,7 @@ data class SecretGroup(
     // instead of being counted as still-live.
     val health: SecretHealth
         get() {
-            if (secret.state == SecretState.DISCARDING) return SecretHealth.DISCARDING
+            if (secret.state == SecretState.DESTROYING) return SecretHealth.DESTROYING
             val nLive = holders.count { it.freshnessBucket == FreshnessBucket.CONFIRMED }
             val k = secret.k
             return when {
@@ -107,7 +107,7 @@ data class SecretGroup(
     @get:StringRes
     val retrievalUnavailableReason: Int?
         get() = when {
-            secret.state != SecretState.ACTIVE -> R.string.secret_detail_retrieve_disabled_discarding
+            secret.state != SecretState.ACTIVE -> R.string.secret_detail_retrieve_disabled_destroying
             !canRequestRetrieval -> R.string.secret_detail_retrieve_disabled_all_asked
             else -> null
         }

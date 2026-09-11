@@ -23,13 +23,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
-enum class RepairPhase { GATHERING, RECONSTRUCTING, REDEPOSIT, CONFIRM_DISCARD, DONE }
+enum class RepairPhase { GATHERING, RECONSTRUCTING, REDEPOSIT, CONFIRM_DESTROY, DONE }
 
 /**
  * The "reconstruct-and-re-split" repair flow — composes three already-existing primitives
- * (`reconstruct`, `deposit`, `discardSecret`) that were previously only reachable from three
+ * (`reconstruct`, `deposit`, `destroySecret`) that were previously only reachable from three
  * disconnected screens. What gives the flow a reason to be surfaced is the freshness-gated health
- * signal: a secret whose live holder count has fallen needs repairing, not discarding.
+ * signal: a secret whose live holder count has fallen needs repairing, not destroying.
  */
 class RepairViewModel(
     private val secretId: UUID,
@@ -189,26 +189,26 @@ class RepairViewModel(
     fun newDepositSucceeded() {
         _uiState.update {
             it.copy(
-                phase = RepairPhase.CONFIRM_DISCARD,
+                phase = RepairPhase.CONFIRM_DESTROY,
                 depositedHolderCount = it.prefill?.selectedContactIds?.size ?: 0,
                 prefill = null,
             )
         }
     }
 
-    // Fans out removal requests to the *old* distribution's holders and flips it to DISCARDING.
-    // Called at most once per flow — discardSecret is not idempotent against repeat calls (each
+    // Fans out removal requests to the *old* distribution's holders and flips it to DESTROYING.
+    // Called at most once per flow — destroySecret is not idempotent against repeat calls (each
     // re-opens a fresh removal request per holder), so this phase transition must never be
     // re-entered after firing.
-    fun discardOldAndFinish() {
+    fun destroyOldAndFinish() {
         viewModelScope.launch {
             _uiState.update { it.copy(isActing = true) }
-            withContext(Dispatchers.IO) { runCatching { shareManagement.discardSecret(secretId) } }
+            withContext(Dispatchers.IO) { runCatching { shareManagement.destroySecret(secretId) } }
             _uiState.update { it.copy(isActing = false, phase = RepairPhase.DONE) }
         }
     }
 
-    fun skipDiscard() {
+    fun skipDestroy() {
         _uiState.update { it.copy(phase = RepairPhase.DONE) }
     }
 }

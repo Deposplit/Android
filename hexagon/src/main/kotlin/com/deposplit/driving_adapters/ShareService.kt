@@ -222,26 +222,26 @@ class ShareService(
                     shareMetadataRepository.save(meta.copy(lastConfirmedAt = Instant.now()))
                 }
         }
-        reconcileDiscarding()
+        reconcileDestroying()
         processHeartbeats()
     }
 
     private fun isRetentionStillPending(depositId: UUID): Boolean =
         runCatching { retainedDepositRepository.getAll() }.getOrDefault(emptyList()).any { it.id == depositId }
 
-    // For every DISCARDING Secret, checks whether each remaining holder's fanned-out removal
+    // For every DESTROYING Secret, checks whether each remaining holder's fanned-out removal
     // request has been approved; approved ones are cleaned up (relay row deleted, local
-    // ShareMetadata removed). Once a DISCARDING secret has no ShareMetadata rows left, its
-    // Secret record itself is removed — the ACTIVE/DISCARDING two-state lifecycle.
-    private fun reconcileDiscarding() {
-        val discarding = secretRepository.getAll().filter { it.state == SecretState.DISCARDING }
-        if (discarding.isEmpty()) return
-        val discardingIds = discarding.map { it.id }.toSet()
+    // ShareMetadata removed). Once a DESTROYING secret has no ShareMetadata rows left, its
+    // Secret record itself is removed — the ACTIVE/DESTROYING two-state lifecycle.
+    private fun reconcileDestroying() {
+        val destroying = secretRepository.getAll().filter { it.state == SecretState.DESTROYING }
+        if (destroying.isEmpty()) return
+        val destroyingIds = destroying.map { it.id }.toSet()
 
         val removalRequests = rowsAcrossRelays(Role.SENDER, ShareTransactionType.REMOVAL)
-            .filter { (_, request) -> request.secretId in discardingIds }
+            .filter { (_, request) -> request.secretId in destroyingIds }
 
-        for (secret in discarding) {
+        for (secret in destroying) {
             val metasForSecret = shareMetadataRepository.getAll().filter { it.secretId == secret.id }
             for (meta in metasForSecret) {
                 val contact = contactRepository.getById(meta.contactId) ?: continue
@@ -326,7 +326,7 @@ class ShareService(
     }
 
     // Pure read: collects and decrypts k approved retrieval shares, but never tears down
-    // local ShareMetadata or relay rows. Use discardSecret for teardown — reconstruct is now a
+    // local ShareMetadata or relay rows. Use destroySecret for teardown — reconstruct is now a
     // *step* toward a possible re-split, not an implicit "I'm done with this" signal.
     override fun reconstruct(secretId: UUID): ReconstructionResult {
         val secret = secretRepository.getAll().find { it.id == secretId }
@@ -378,17 +378,17 @@ class ShareService(
     }
 
     // Fans out a sender-initiated removal to every known holder of secretId and flips the Secret
-    // to DISCARDING immediately, before any holder has responded.
-    override fun discardSecret(secretId: UUID) {
+    // to DESTROYING immediately, before any holder has responded.
+    override fun destroySecret(secretId: UUID) {
         val secret = secretRepository.getAll().find { it.id == secretId }
             ?: error("No local record for secret $secretId")
-        secretRepository.save(secret.copy(state = SecretState.DISCARDING))
+        secretRepository.save(secret.copy(state = SecretState.DESTROYING))
         shareMetadataRepository.getAll().filter { it.secretId == secretId }.forEach { share ->
             runCatching { openRequest(share.id, ShareTransactionType.REMOVAL) }
         }
     }
 
-    // Local-only teardown for a DISCARDING secret whose holders won't all respond (e.g. a
+    // Local-only teardown for a DESTROYING secret whose holders won't all respond (e.g. a
     // permanently dark holder) — removes the Secret and its remaining ShareMetadata rows without
     // waiting for relay confirmation.
     override fun forceForgetSecret(secretId: UUID) {

@@ -97,7 +97,7 @@ fun SecretDetailScreen(
     )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var confirmingClear by remember { mutableStateOf(false) }
-    var confirmingDiscard by remember { mutableStateOf(false) }
+    var confirmingDestroy by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -234,9 +234,9 @@ fun SecretDetailScreen(
                             },
                         ) { Text(stringResource(R.string.home_repair_button)) }
                     }
-                    if (group.secret.state == SecretState.DISCARDING) {
+                    if (group.secret.state == SecretState.DESTROYING) {
                         Text(
-                            text = stringResource(R.string.home_discarding_label),
+                            text = stringResource(R.string.home_destroying_label),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.tertiary,
                         )
@@ -245,8 +245,8 @@ fun SecretDetailScreen(
                             onNavigateBack()
                         }) { Text(stringResource(R.string.home_force_forget_button)) }
                     } else {
-                        TextButton(onClick = { confirmingDiscard = true }) {
-                            Text(stringResource(R.string.home_discard_button), color = MaterialTheme.colorScheme.error)
+                        TextButton(onClick = { confirmingDestroy = true }) {
+                            Text(stringResource(R.string.home_destroy_button), color = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
@@ -282,20 +282,20 @@ fun SecretDetailScreen(
         )
     }
 
-    if (confirmingDiscard) {
+    if (confirmingDestroy) {
         val holderCount = uiState.group?.holders?.size ?: 0
         AlertDialog(
-            onDismissRequest = { confirmingDiscard = false },
-            title = { Text(stringResource(R.string.home_discard_title)) },
-            text = { Text(stringResource(R.string.home_discard_body, holderCount)) },
+            onDismissRequest = { confirmingDestroy = false },
+            title = { Text(stringResource(R.string.home_destroy_title)) },
+            text = { Text(stringResource(R.string.home_destroy_body, holderCount)) },
             confirmButton = {
                 TextButton(onClick = {
-                    confirmingDiscard = false
-                    viewModel.discard()
-                }) { Text(stringResource(R.string.home_discard_confirm)) }
+                    confirmingDestroy = false
+                    viewModel.destroy()
+                }) { Text(stringResource(R.string.home_destroy_confirm)) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmingDiscard = false }) { Text(stringResource(R.string.action_cancel)) }
+                TextButton(onClick = { confirmingDestroy = false }) { Text(stringResource(R.string.action_cancel)) }
             },
         )
     }

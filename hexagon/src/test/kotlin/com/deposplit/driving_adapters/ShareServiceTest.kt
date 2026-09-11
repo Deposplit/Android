@@ -2003,7 +2003,7 @@ class ShareServiceTest {
     }
 
     @Test
-    fun `discarding a secret frees a slot before any holder confirms`() {
+    fun `destroying a secret frees a slot before any holder confirms`() {
         val relay = FakeShareRelay()
         val holderKeys = TestKeyPair.generate()
         val holderContact = aliceContact.copy(id = UUID.randomUUID(), pseudonym = "holder", verifyKey = holderKeys.publicKey)
@@ -2012,10 +2012,10 @@ class ShareServiceTest {
         repeat(SecretLimits.FREE_TIER_MAX_ACTIVE_SECRETS) { svc.deposit(byteArrayOf(1, 2, 3), "s$it", holders, 2) }
 
         // The record survives until every holder confirms removal; the slot does not wait for that.
-        svc.discardSecret(svc.listSecrets().first().id)
+        svc.destroySecret(svc.listSecrets().first().id)
         svc.deposit(byteArrayOf(4, 5, 6), "the replacement", holders, 2)
 
-        assertEquals(1, svc.listSecrets().count { it.state == SecretState.DISCARDING })
+        assertEquals(1, svc.listSecrets().count { it.state == SecretState.DESTROYING })
         assertEquals(SecretLimits.FREE_TIER_MAX_ACTIVE_SECRETS, svc.listSecrets().count { it.state == SecretState.ACTIVE })
     }
 
@@ -2029,7 +2029,7 @@ class ShareServiceTest {
         repeat(SecretLimits.FREE_TIER_MAX_ACTIVE_SECRETS) { svc.deposit(byteArrayOf(1, 2, 3), "s$it", holders, 2) }
         val degraded = svc.listSecrets().first()
 
-        // Repair deposits the replacement before discarding the original, so at the cap both exist
+        // Repair deposits the replacement before destroying the original, so at the cap both exist
         // at once. Refusing that would leave a free user's only way out of a degrading secret the
         // one that destroys it first.
         svc.deposit(byteArrayOf(1, 2, 3), degraded.label, holders, 2, replacing = degraded.id)
