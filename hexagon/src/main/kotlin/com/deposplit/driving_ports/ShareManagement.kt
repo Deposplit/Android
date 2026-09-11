@@ -37,6 +37,15 @@ interface ShareManagement {
     // Cross-checks any surplus beyond k for consistency — throws rather than returning a guessed
     // secret if the surplus can't be reconciled.
     fun reconstruct(secretId: UUID): ReconstructionResult
+    // The counterpart to reconstruct's pure read: deletes every retrieval row this device opened
+    // for secretId — the copies collected from holders, and any ask still waiting for an answer —
+    // so they stop existing on the relay once the sender no longer needs them.
+    //
+    // Deliberately not teardown. The deposit rows, the local ShareMetadata and the holders' own
+    // copies are all left alone, so the secret stays split among the same people and can be asked
+    // for again: afterwards requestAll asks every holder afresh, and reconstruct refuses until
+    // enough of them answer.
+    fun clearCollectedShares(secretId: UUID)
     // Fans out a sender-initiated removal request to every known holder of secretId and flips the
     // Secret to DISCARDING immediately (before any holder responds).
     fun discardSecret(secretId: UUID)

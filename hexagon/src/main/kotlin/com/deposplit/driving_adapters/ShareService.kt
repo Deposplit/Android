@@ -361,6 +361,22 @@ class ShareService(
         return ReconstructionResult(result.secret, integrity, secret.mimeType)
     }
 
+    // Deletes every retrieval row for secretId through the relay it was found on — approved and
+    // still pending alike, so that afterwards there is no retrieval flow for this secret at all:
+    // requestAll asks every holder again (it skips only holders with a live row, and none are
+    // left) and reconstruct refuses until they answer.
+    //
+    // Clearing the approved rows alone would leave asks that nobody has answered yet still
+    // standing, and copies would go on arriving after the sender said they were finished.
+    //
+    // Each deletion is soft-failed on its own: one unreachable relay must not strand the rows held
+    // on the others.
+    override fun clearCollectedShares(secretId: UUID) {
+        rowsAcrossRelays(Role.SENDER, ShareTransactionType.RETRIEVAL)
+            .filter { it.second.secretId == secretId }
+            .forEach { (relay, request) -> runCatching { relay.deleteShareRequest(request.id) } }
+    }
+
     // Fans out a sender-initiated removal to every known holder of secretId and flips the Secret
     // to DISCARDING immediately, before any holder has responded.
     override fun discardSecret(secretId: UUID) {

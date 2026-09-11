@@ -1521,6 +1521,92 @@ class ShareServiceTest {
         assertEquals(expected, targeted)
     }
 
+    // ── Clearing the copies collected from holders ────────────────────────────────────────────
+
+    /** An ask nobody has answered yet is part of the same flow as a copy already collected.
+     * Leaving it standing would let shares go on arriving after the owner said they were finished.
+     */
+    @Test
+    fun `clearing takes back both the collected copies and the asks still waiting`() {
+        val relay = FakeShareRelay()
+        val collected = makeHolderFixture("collected")
+        val stillAsking = makeHolderFixture("stillAsking")
+        val (svc, _, _, secretRepo, metaRepo) =
+            newServiceForRecoveryTest(relay, listOf(collected.contact, stillAsking.contact))
+        val secretId = UUID.randomUUID()
+        secretRepo.save(Secret(secretId, "s", MimeType.DEFAULT, 2, 2, Instant.now(), SecretState.ACTIVE))
+        metaRepo.save(ShareMetadata(UUID.randomUUID(), secretId, collected.contact.id, lastConfirmedAt = null))
+        metaRepo.save(ShareMetadata(UUID.randomUUID(), secretId, stillAsking.contact.id, lastConfirmedAt = null))
+        val collectedRow = makeApprovedRetrievalRow(secretId, collected, byteArrayOf(1, 2, 3))
+        val pendingRow = makePendingRetrievalRow(secretId, stillAsking.contact.verifyKey)
+        relay.pending = listOf(collectedRow, pendingRow)
+
+        svc.clearCollectedShares(secretId)
+
+        assertEquals(setOf(collectedRow.id, pendingRow.id), relay.deletedRequestIds.toSet())
+    }
+
+    /** Clearing is not teardown: the holders keep their shares, the deposit rows that record them
+     * stay, and so does every local record of the split. Only this owner's collected copies go.
+     */
+    @Test
+    fun `clearing leaves the deposits, the other secrets and every local record alone`() {
+        val relay = FakeShareRelay()
+        val holder = makeHolderFixture("holder")
+        val (svc, _, _, secretRepo, metaRepo) = newServiceForRecoveryTest(relay, listOf(holder.contact))
+        val secretId = UUID.randomUUID()
+        val otherSecretId = UUID.randomUUID()
+        secretRepo.save(Secret(secretId, "s", MimeType.DEFAULT, 2, 2, Instant.now(), SecretState.ACTIVE))
+        metaRepo.save(ShareMetadata(UUID.randomUUID(), secretId, holder.contact.id, lastConfirmedAt = null))
+        val collectedRow = makeApprovedRetrievalRow(secretId, holder, byteArrayOf(1, 2, 3))
+        val anotherSecretsCopy = makeApprovedRetrievalRow(otherSecretId, holder, byteArrayOf(4, 5, 6))
+        val holdersDeposit = depositRow(
+            UUID.randomUUID(), ByteArray(0), holder.contact.verifyKey, ByteArray(0),
+        ).copy(secretId = secretId)
+        relay.pending = listOf(collectedRow, anotherSecretsCopy, holdersDeposit)
+
+        svc.clearCollectedShares(secretId)
+
+        assertEquals(listOf(collectedRow.id), relay.deletedRequestIds)
+        assertEquals(1, metaRepo.getAll().count { it.secretId == secretId })
+        assertEquals(listOf(secretId), secretRepo.getAll().map { it.id })
+    }
+
+    /** The point of the whole feature. An APPROVED row counts as a live request, so until it is
+     * cleared requestAll skips every holder and the retrieval flow cannot be run a second time
+     * without editing the relay by hand.
+     */
+    @Test
+    fun `a secret whose copies have been cleared can have its shares retrieved again`() {
+        val relay = FakeShareRelay()
+        val first = makeHolderFixture("first")
+        val second = makeHolderFixture("second")
+        val (svc, _, _, secretRepo, metaRepo) =
+            newServiceForRecoveryTest(relay, listOf(first.contact, second.contact))
+        val secretId = UUID.randomUUID()
+        secretRepo.save(Secret(secretId, "s", MimeType.DEFAULT, 2, 2, Instant.now(), SecretState.ACTIVE))
+        metaRepo.save(ShareMetadata(UUID.randomUUID(), secretId, first.contact.id, lastConfirmedAt = null))
+        metaRepo.save(ShareMetadata(UUID.randomUUID(), secretId, second.contact.id, lastConfirmedAt = null))
+        relay.pending = listOf(
+            makeApprovedRetrievalRow(secretId, first, byteArrayOf(1)),
+            makeApprovedRetrievalRow(secretId, second, byteArrayOf(2)),
+        )
+
+        svc.requestAll(secretId)
+        assertTrue(relay.openedRequests.isEmpty(), "both holders still have a live row, so nobody should be asked again")
+
+        svc.clearCollectedShares(secretId)
+        relay.pending = relay.pending.filterNot { relay.deletedRequestIds.contains(it.id) }
+
+        svc.requestAll(secretId)
+
+        assertEquals(listOf(ShareTransactionType.RETRIEVAL), relay.openedRequests.map { it.transactionType }.distinct())
+        assertEquals(
+            setOf(first.contact.verifyKey.toList(), second.contact.verifyKey.toList()),
+            relay.openedRequests.map { it.recipientKey.toList() }.toSet(),
+        )
+    }
+
     // ── Identity regeneration (the "regenerate my own identity" trigger) ───────────────────────
 
     @Test
