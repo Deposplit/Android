@@ -85,7 +85,7 @@ fun AddContactScreen(onNavigateBack: () -> Unit) {
             OutlinedTextField(
                 value = uiState.pseudonym,
                 onValueChange = viewModel::onPseudonymChange,
-                label = { Text(stringResource(R.string.add_contact_name_label)) },
+                label = { Text(stringResource(R.string.add_contact_pseudonym_label)) },
                 isError = uiState.pseudonymError != null,
                 supportingText = uiState.pseudonymError?.let { resId -> { Text(stringResource(resId)) } },
                 singleLine = true,

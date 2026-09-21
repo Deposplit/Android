@@ -111,9 +111,9 @@
 
     <!-- Add contact -->
     <string name="add_contact_title">Kontakt hinzufügen</string>
-    <string name="add_contact_name_label">Name</string>
-    <string name="add_contact_verify_key_label">Verifizierungsschlüssel (base64url)</string>
-    <string name="add_contact_enc_key_label">Verschlüsselungsschlüssel (base64url)</string>
+    <string name="add_contact_pseudonym_label">Pseudonym</string>
+    <string name="add_contact_verify_key_label">Verifizierungsschlüssel</string>
+    <string name="add_contact_enc_key_label">Verschlüsselungsschlüssel</string>
     <string name="add_contact_error_required">Pflichtfeld</string>
     <string name="add_contact_error_invalid_base64url">Ungültiges base64url</string>
     <string name="add_contact_error_verify_key_length">Muss 32 Bytes lang sein (Verifizierungsschlüssel)</string>
