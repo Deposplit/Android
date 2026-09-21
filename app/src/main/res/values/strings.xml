@@ -256,7 +256,7 @@
 
     <!-- Reconstruction integrity advisory -->
     <string name="reconstruction_advisory_no_margin">Reconstructed from exactly the required shares — no integrity cross-check was possible.</string>
-    <string name="reconstruction_advisory_confirmed">Integrity confirmed — every collected share agreed.</string>
+    <string name="reconstruction_advisory_confirmed">Integrity confirmed — every collected share agrees.</string>
     <string name="reconstruction_advisory_excluded">Excluded %1$d inconsistent share(s) (from: %2$s). Reconstructed from the remaining consistent shares.</string>
 
     <!-- Reconstructed secret rendering -->

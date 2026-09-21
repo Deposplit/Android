@@ -193,8 +193,8 @@
     <!-- Requests -->
     <string name="requests_empty">Keine ausstehenden Anfragen</string>
     <string name="requests_from">Von: %1$s</string>
-    <string name="requests_action_deny">Ablehnen</string>
-    <string name="requests_action_approve">Annehmen</string>
+    <string name="requests_action_deny">Verweigern</string>
+    <string name="requests_action_approve">Genehmigen</string>
     <string name="requests_error_load">Laden fehlgeschlagen</string>
     <string name="requests_error_respond">Antwort fehlgeschlagen</string>
 
@@ -256,7 +256,7 @@
 
     <!-- Integritätshinweis bei der Rekonstruktion -->
     <string name="reconstruction_advisory_no_margin">Aus genau den erforderlichen Anteilen rekonstruiert — eine Integritätsprüfung war nicht möglich.</string>
-    <string name="reconstruction_advisory_confirmed">Integrität bestätigt — alle gesammelten Anteile stimmten überein.</string>
+    <string name="reconstruction_advisory_confirmed">Integrität bestätigt — alle gesammelten Anteile stimmen überein.</string>
     <string name="reconstruction_advisory_excluded">%1$d inkonsistente(n) Anteil(e) ausgeschlossen (von: %2$s). Aus den übrigen konsistenten Anteilen rekonstruiert.</string>
 
     <!-- Darstellung des rekonstruierten Geheimnisses -->
