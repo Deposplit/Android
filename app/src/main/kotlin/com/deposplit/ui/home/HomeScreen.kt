@@ -239,6 +239,7 @@ fun HomeScreen(
                     onRetry = requestsViewModel::load,
                     onRespond = requestsViewModel::respond,
                     keyChangedDaysAgo = requestsViewModel::keyChangedDaysAgo,
+                    canApprove = requestsViewModel::canApprove,
                     contactName = requestsViewModel::contactName,
                     onDismissConflict = requestsViewModel::dismissConflict,
                 )

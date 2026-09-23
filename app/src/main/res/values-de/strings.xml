@@ -195,6 +195,7 @@
     <string name="requests_from">Von: %1$s</string>
     <string name="requests_action_deny">Verweigern</string>
     <string name="requests_action_approve">Genehmigen</string>
+    <string name="requests_approve_not_held">Dieser Anteil ist nicht auf diesem Gerät, es gibt also nichts zurückzugeben.</string>
     <string name="requests_error_load">Laden fehlgeschlagen</string>
     <string name="requests_error_respond">Antwort fehlgeschlagen</string>
 

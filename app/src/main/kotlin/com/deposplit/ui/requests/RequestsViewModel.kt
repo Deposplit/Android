@@ -31,6 +31,7 @@ class RequestsViewModel(
         val requests: List<ShareRequest> = emptyList(),
         val contacts: List<Contact> = emptyList(),
         val keyConflicts: List<KeyConflict> = emptyList(),
+        val heldSecretIds: Set<UUID> = emptySet(),
         val isLoading: Boolean = false,
         @StringRes val error: Int? = null,
         val respondingIds: Set<UUID> = emptySet(),
@@ -48,20 +49,22 @@ class RequestsViewModel(
             _uiState.update { it.copy(isLoading = true, error = null) }
             runCatching {
                 withContext(Dispatchers.IO) {
-                    Triple(
+                    Loaded(
                         shareManagement.listPendingRequests(),
                         contactManagement.listContacts(),
                         runCatching { shareManagement.listKeyConflicts() }.getOrDefault(emptyList()),
+                        runCatching { shareManagement.listHeld().map { it.secretId }.toSet() }.getOrDefault(emptySet()),
                     )
                 }
             }
-                .onSuccess { (requests, contacts, keyConflicts) ->
+                .onSuccess { loaded ->
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            requests = requests,
-                            contacts = contacts,
-                            keyConflicts = keyConflicts,
+                            requests = loaded.requests,
+                            contacts = loaded.contacts,
+                            keyConflicts = loaded.keyConflicts,
+                            heldSecretIds = loaded.heldSecretIds,
                             respondingIds = emptySet(),
                         )
                     }
@@ -90,6 +93,12 @@ class RequestsViewModel(
         }
     }
 
+    // Approving a retrieval re-encrypts the share to the requester, so it needs the share in hand.
+    // The ask can still arrive after this device deleted it: the owner learns of a withdrawal only
+    // on their next poll, and until then the card has to say why Approve cannot work.
+    fun canApprove(request: ShareRequest): Boolean =
+        request.transactionType != ShareTransactionType.RETRIEVAL || request.secretId in uiState.value.heldSecretIds
+
     // Retrieve-approval hardening: the attack signature is key change → quick retrieval,
     // so this is surfaced only for Retrieval requests, not every request type.
     fun keyChangedDaysAgo(request: ShareRequest): Long? {
@@ -112,4 +121,11 @@ class RequestsViewModel(
                 .onSuccess { load() }
         }
     }
+
+    private data class Loaded(
+        val requests: List<ShareRequest>,
+        val contacts: List<Contact>,
+        val keyConflicts: List<KeyConflict>,
+        val heldSecretIds: Set<UUID>,
+    )
 }

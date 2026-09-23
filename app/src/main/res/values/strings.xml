@@ -195,6 +195,7 @@
     <string name="requests_from">From: %1$s</string>
     <string name="requests_action_deny">Deny</string>
     <string name="requests_action_approve">Approve</string>
+    <string name="requests_approve_not_held">This share is not on this device, so there is nothing to hand back.</string>
     <string name="requests_error_load">Failed to load</string>
     <string name="requests_error_respond">Failed to respond</string>
 

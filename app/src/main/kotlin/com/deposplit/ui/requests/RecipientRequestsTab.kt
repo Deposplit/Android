@@ -47,6 +47,7 @@ fun RecipientRequestsTab(
     onRetry: () -> Unit,
     onRespond: (UUID, Boolean) -> Unit,
     keyChangedDaysAgo: (ShareRequest) -> Long? = { null },
+    canApprove: (ShareRequest) -> Boolean = { true },
     contactName: (KeyConflict) -> String? = { null },
     onDismissConflict: (UUID) -> Unit = {},
 ) {
@@ -115,6 +116,7 @@ fun RecipientRequestsTab(
                         senderName = senderName,
                         senderSubtitle = senderContact?.takeIf { it.nickname != null }?.pseudonym,
                         keyChangedDaysAgo = keyChangedDaysAgo(request),
+                        canApprove = canApprove(request),
                         isResponding = request.id in uiState.respondingIds,
                         onRespond = { approved -> onRespond(request.id, approved) },
                     )
@@ -176,6 +178,7 @@ private fun RequestItem(
     // The sender's pseudonym, shown only when senderName above is actually a nickname.
     senderSubtitle: String? = null,
     keyChangedDaysAgo: Long?,
+    canApprove: Boolean,
     isResponding: Boolean,
     onRespond: (Boolean) -> Unit,
 ) {
@@ -272,7 +275,7 @@ private fun RequestItem(
                 }
                 Button(
                     onClick = { onRespond(true) },
-                    enabled = !isResponding,
+                    enabled = !isResponding && canApprove,
                     modifier = Modifier.weight(1f),
                 ) {
                     if (isResponding) CircularProgressIndicator(
@@ -282,6 +285,16 @@ private fun RequestItem(
                     )
                     else Text(stringResource(R.string.requests_action_approve))
                 }
+            }
+            // Deny stays available: it is the one answer the relay can carry, and it gives the
+            // owner an outcome rather than an ask that waits for ever.
+            if (!canApprove) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.requests_approve_not_held),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
