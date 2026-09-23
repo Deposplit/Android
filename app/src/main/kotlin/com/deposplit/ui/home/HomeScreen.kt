@@ -118,6 +118,16 @@ fun HomeScreen(
         requestsViewModel.load()
     }
 
+    // Each tab reads from the relay as it comes into view, as a phon tab does by being a page of its
+    // own, so what it shows is as fresh as the moment it was looked at. Only a switch counts: the
+    // launch and every resume have their own reload just above. Requests has a view model of its
+    // own; the other two share one, exactly as the refresh button divides them.
+    fun selectTab(tab: Int) {
+        if (tab == selectedTab) return
+        selectedTab = tab
+        if (tab == 2) requestsViewModel.load() else viewModel.load()
+    }
+
     // Asked at the first moment it could ever mean anything: this phone is now keeping something
     // for somebody, so a request for it can arrive. Asking at first launch would be a dialog
     // about a notice that cannot exist yet, and this app has exactly one to offer.
@@ -218,17 +228,17 @@ fun HomeScreen(
             SecondaryTabRow(selectedTabIndex = selectedTab) {
                 Tab(
                     selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
+                    onClick = { selectTab(0) },
                     text = { Text(stringResource(R.string.home_tab_distributed)) },
                 )
                 Tab(
                     selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
+                    onClick = { selectTab(1) },
                     text = { Text(stringResource(R.string.home_tab_held)) },
                 )
                 Tab(
                     selected = selectedTab == 2,
-                    onClick = { selectedTab = 2 },
+                    onClick = { selectTab(2) },
                     text = { Text(stringResource(R.string.home_tab_requests)) },
                 )
             }
