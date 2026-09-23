@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -44,6 +45,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -233,6 +235,13 @@ fun DepositForm(
                 label = { Text(stringResource(R.string.deposit_secret_text_label)) },
                 isError = uiState.secretError != null,
                 supportingText = uiState.secretError?.let { resId -> { Text(stringResource(resId)) } },
+                // What is typed is what gets split. A secret is not prose: a lower-case start or a
+                // deliberate "typo" is part of it, and a keyboard that fixes either changes the
+                // secret without saying so. Compose leaves autocorrect on unless told otherwise.
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.None,
+                    autoCorrectEnabled = false,
+                ),
                 minLines = 3,
                 maxLines = 6,
                 modifier = Modifier.fillMaxWidth(),
