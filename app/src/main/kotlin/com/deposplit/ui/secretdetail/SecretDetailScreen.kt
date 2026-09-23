@@ -238,7 +238,7 @@ fun SecretDetailScreen(
                         // The health badge above already says Destroying, so this says the thing
                         // the badge cannot: how many holders are still to answer, which is exactly
                         // the judgement Force Forget beside it asks for. The count shrinks as each
-                        // one confirms, because reconcileDestroying drops their ShareMetadata row.
+                        // one confirms, because reconcileRemovals drops their ShareMetadata row.
                         Text(
                             text = pluralStringResource(
                                 R.plurals.secret_detail_destroying_waiting,

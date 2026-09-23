@@ -222,34 +222,34 @@ class ShareService(
                     shareMetadataRepository.save(meta.copy(lastConfirmedAt = Instant.now()))
                 }
         }
-        reconcileDestroying()
+        reconcileRemovals()
         processHeartbeats()
     }
 
     private fun isRetentionStillPending(depositId: UUID): Boolean =
         runCatching { retainedDepositRepository.getAll() }.getOrDefault(emptyList()).any { it.id == depositId }
 
-    // For every DESTROYING Secret, checks whether each remaining holder's fanned-out removal
-    // request has been approved; approved ones are cleaned up (local ShareMetadata removed, then
-    // the relay row). Once a DESTROYING secret has no ShareMetadata rows left, its Secret record
-    // itself is removed — the ACTIVE/DESTROYING two-state lifecycle.
+    // Drops every holder whose removal request has come back approved, whatever state the secret
+    // is in: one holder removed from an ACTIVE secret just as much as each holder of a DESTROYING
+    // one. Approved ones are cleaned up (local ShareMetadata removed, then the relay row). Once a
+    // DESTROYING secret has no ShareMetadata rows left, its Secret record itself is removed — the
+    // ACTIVE/DESTROYING two-state lifecycle.
     //
     // The approved removal row is the only thing that ever says a holder destroyed their piece.
     // Approving it makes the relay sweep the rest of that holder's rows for this secret, the
     // deposit included, so there is nothing else left to read and an absence would say nothing.
+    // It is read for active secrets too, because otherwise a holder removed from one would be
+    // believed in for good, and asked for their piece again on every retrieval.
     // The signature is checked for the same reason it is checked on a retrieval approval: a relay
     // that could forge one could make this device forget a share that is still out there.
-    private fun reconcileDestroying() {
-        val destroying = secretRepository.getAll().filter { it.state == SecretState.DESTROYING }
-        if (destroying.isEmpty()) return
-        val destroyingIds = destroying.map { it.id }.toSet()
+    private fun reconcileRemovals() {
+        val metas = shareMetadataRepository.getAll()
+        if (metas.isNotEmpty()) {
+            val secretIds = metas.map { it.secretId }.toSet()
+            val removalRequests = rowsAcrossRelays(Role.SENDER, ShareTransactionType.REMOVAL)
+                .filter { (_, request) -> request.secretId in secretIds }
 
-        val removalRequests = rowsAcrossRelays(Role.SENDER, ShareTransactionType.REMOVAL)
-            .filter { (_, request) -> request.secretId in destroyingIds }
-
-        for (secret in destroying) {
-            val metasForSecret = shareMetadataRepository.getAll().filter { it.secretId == secret.id }
-            for (meta in metasForSecret) {
+            for (meta in metas) {
                 val contact = contactRepository.getById(meta.contactId) ?: continue
                 val approvedRemoval = removalRequests.firstOrNull { (_, r) ->
                     r.secretId == meta.secretId && r.recipientKey.contentEquals(contact.verifyKey) &&
@@ -261,11 +261,14 @@ class ShareService(
                 runCatching { shareMetadataRepository.delete(meta.id) }
                 runCatching { approvedRemoval.first.deleteShareRequest(approvedRemoval.second.id) }
             }
-            val remaining = shareMetadataRepository.getAll().filter { it.secretId == secret.id }
-            if (remaining.isEmpty()) {
-                runCatching { secretRepository.delete(secret.id) }
-            }
         }
+
+        // Only a destruction ends the secret itself. A holder removed from an active secret leaves
+        // it one holder short, which is what its health already shows.
+        val remaining = shareMetadataRepository.getAll().map { it.secretId }.toSet()
+        secretRepository.getAll()
+            .filter { it.state == SecretState.DESTROYING && it.id !in remaining }
+            .forEach { runCatching { secretRepository.delete(it.id) } }
     }
 
     override fun listDistributed(): List<ShareMetadata> = shareMetadataRepository.getAll()

@@ -2157,6 +2157,30 @@ class ShareServiceTest {
         assertEquals(listOf(SecretState.DESTROYING), fixture.svc.listSecrets().map { it.state })
     }
 
+    // A removal is not only a destruction's fan-out: one holder can be asked to destroy their piece
+    // of a secret that stays active, and their approval is just as much the only evidence left.
+    // Missing it leaves the owner believing in that holder for good, and asking them again on every
+    // retrieval.
+    @Test
+    fun `a holder removed from an active secret is dropped, and the secret stays active`() {
+        val relay = FakeShareRelay()
+        val charlieKeys = TestKeyPair.generate()
+        val charlieContact = aliceContact.copy(id = UUID.randomUUID(), pseudonym = "charlie", verifyKey = charlieKeys.publicKey)
+        val holders = listOf(aliceContact, charlieContact)
+        val fixture = newService(relay, contacts = holders)
+        fixture.svc.deposit(byteArrayOf(1, 2, 3), "destroy test", holders, 2)
+        val secretId = fixture.svc.listSecrets().first().id
+        val removal = removalRow(secretId, aliceContact.verifyKey)
+        relay.pending = listOf(removal)
+
+        relay.answerRemoval(removal, aliceKeys)
+        fixture.svc.syncDistributed()
+
+        assertEquals(listOf(charlieContact.id), fixture.metaRepo.getAll().map { it.contactId })
+        assertEquals(listOf(SecretState.ACTIVE), fixture.svc.listSecrets().map { it.state })
+        assertTrue(relay.deletedRequestIds.contains(removal.id), "the answered removal was left on the relay")
+    }
+
     @Test
     fun `a repair re-split is exempt from the free-tier cap`() {
         val relay = FakeShareRelay()
