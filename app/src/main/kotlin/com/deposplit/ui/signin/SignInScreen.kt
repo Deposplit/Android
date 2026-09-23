@@ -79,7 +79,7 @@ fun SignInScreen(onNavigateToHome: () -> Unit) {
                     { Text(stringResource(resId), color = MaterialTheme.colorScheme.error) }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
+                keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, imeAction = ImeAction.Go),
                 keyboardActions = KeyboardActions(onGo = { viewModel.onRegister() }),
             )
             Spacer(Modifier.height(16.dp))

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -336,6 +337,7 @@ private fun ContactItem(
                     value = nicknameInput,
                     onValueChange = { nicknameInput = it },
                     label = { Text(stringResource(R.string.contacts_rename_label)) },
+                    keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
                     singleLine = true,
                 )
             },

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -34,6 +35,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -88,6 +91,7 @@ fun AddContactScreen(onNavigateBack: () -> Unit) {
                 label = { Text(stringResource(R.string.add_contact_pseudonym_label)) },
                 isError = uiState.pseudonymError != null,
                 supportingText = uiState.pseudonymError?.let { resId -> { Text(stringResource(resId)) } },
+                keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -98,6 +102,10 @@ fun AddContactScreen(onNavigateBack: () -> Unit) {
                 label = { Text(stringResource(R.string.add_contact_verify_key_label)) },
                 isError = uiState.verifyKeyError != null,
                 supportingText = uiState.verifyKeyError?.let { resId -> { Text(stringResource(resId)) } },
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.None,
+                    autoCorrectEnabled = false,
+                ),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -108,6 +116,10 @@ fun AddContactScreen(onNavigateBack: () -> Unit) {
                 label = { Text(stringResource(R.string.add_contact_enc_key_label)) },
                 isError = uiState.encKeyError != null,
                 supportingText = uiState.encKeyError?.let { resId -> { Text(stringResource(resId)) } },
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.None,
+                    autoCorrectEnabled = false,
+                ),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -119,6 +131,11 @@ fun AddContactScreen(onNavigateBack: () -> Unit) {
                 value = uiState.relayBaseUrl,
                 onValueChange = viewModel::onRelayBaseUrlChange,
                 label = { Text(stringResource(R.string.add_contact_relay_label)) },
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.None,
+                    autoCorrectEnabled = false,
+                    keyboardType = KeyboardType.Uri,
+                ),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -127,6 +144,7 @@ fun AddContactScreen(onNavigateBack: () -> Unit) {
                 value = uiState.nickname,
                 onValueChange = viewModel::onNicknameChange,
                 label = { Text(stringResource(R.string.add_contact_nickname_label)) },
+                keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
