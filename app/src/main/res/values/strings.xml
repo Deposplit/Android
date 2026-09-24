@@ -41,7 +41,8 @@
     <string name="home_held_delete_all_from">Delete all shares from %1$s</string>
     <string name="home_held_delete_confirm">Delete</string>
     <string name="home_error_fallback">Failed to load</string>
-    <string name="home_sync_warning">Relay not reachable</string>
+    <string name="home_relay_unreachable">Relay %1$s not reachable. Showing the last known state.</string>
+    <string name="home_sync_failed">Could not refresh. Showing the last known state.</string>
 
     <!-- Secret lifecycle -->
     <string name="home_health_caution">Margin of one — re-split soon</string>
@@ -197,6 +198,7 @@
     <string name="requests_action_approve">Approve</string>
     <string name="requests_approve_not_held">This share is not on this device, so there is nothing to hand back.</string>
     <string name="requests_error_load">Failed to load</string>
+    <string name="requests_relay_unreachable">Relay %1$s not reachable. Its requests cannot be shown right now.</string>
     <string name="requests_error_respond">Failed to respond</string>
 
     <!-- Key conflicts (never auto-resolved) and retrieve-approval hardening -->

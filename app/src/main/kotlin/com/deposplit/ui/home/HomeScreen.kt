@@ -78,6 +78,8 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.deposplit.DeposplitApp
 import com.deposplit.R
 import com.deposplit.background.RequestNotifier
+import com.deposplit.ui.SoftWarningRow
+import com.deposplit.ui.relayName
 import com.deposplit.value_objects.SecretState
 import com.deposplit.value_objects.ShareRequestState
 import com.deposplit.ui.requests.RecipientRequestsTab
@@ -112,6 +114,11 @@ fun HomeScreen(
     val requestsUiState by requestsViewModel.uiState.collectAsStateWithLifecycle()
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var pendingDelete by remember { mutableStateOf<HeldShareDisplay?>(null) }
+    val showsWarning = if (selectedTab == 2) {
+        requestsUiState.unreachableRelays.isNotEmpty()
+    } else {
+        uiState.unreachableRelays.isNotEmpty() || uiState.syncFailed
+    }
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.load()
@@ -160,7 +167,7 @@ fun HomeScreen(
                         Icon(
                             Icons.Default.Refresh,
                             contentDescription = stringResource(R.string.action_refresh),
-                            tint = if (uiState.syncWarning) MaterialTheme.colorScheme.error else LocalContentColor.current,
+                            tint = if (showsWarning) MaterialTheme.colorScheme.error else LocalContentColor.current,
                         )
                     }
                 },
@@ -203,25 +210,14 @@ fun HomeScreen(
                     )
                 }
             }
-            if (uiState.syncWarning) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Icon(
-                        Icons.Default.Warning,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(14.dp),
-                    )
-                    Text(
-                        text = stringResource(R.string.home_sync_warning),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
+            // The Requests tab names its own unreachable relays, in words about requests, so these
+            // two views of local data are the ones that say what they are showing instead.
+            if (selectedTab != 2) {
+                uiState.unreachableRelays.forEach { relay ->
+                    SoftWarningRow(stringResource(R.string.home_relay_unreachable, relayName(relay)))
+                }
+                if (uiState.syncFailed) {
+                    SoftWarningRow(stringResource(R.string.home_sync_failed))
                 }
             }
 

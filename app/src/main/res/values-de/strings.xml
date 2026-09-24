@@ -41,7 +41,8 @@
     <string name="home_held_delete_all_from">Alle Anteile von %1$s löschen</string>
     <string name="home_held_delete_confirm">Löschen</string>
     <string name="home_error_fallback">Laden fehlgeschlagen</string>
-    <string name="home_sync_warning">Relais nicht erreichbar</string>
+    <string name="home_relay_unreachable">Relais %1$s nicht erreichbar. Angezeigt wird der zuletzt bekannte Stand.</string>
+    <string name="home_sync_failed">Aktualisieren fehlgeschlagen. Angezeigt wird der zuletzt bekannte Stand.</string>
 
     <!-- Lebenszyklus des Geheimnisses -->
     <string name="home_health_caution">Nur ein Puffer von eins — bald neu aufteilen</string>
@@ -197,6 +198,7 @@
     <string name="requests_action_approve">Genehmigen</string>
     <string name="requests_approve_not_held">Dieser Anteil ist nicht auf diesem Gerät, es gibt also nichts zurückzugeben.</string>
     <string name="requests_error_load">Laden fehlgeschlagen</string>
+    <string name="requests_relay_unreachable">Relais %1$s nicht erreichbar. Anfragen über dieses Relais können gerade nicht angezeigt werden.</string>
     <string name="requests_error_respond">Antwort fehlgeschlagen</string>
 
     <!-- Schlüsselkonflikte (nie automatisch aufgelöst) und Verstärkung bei Abruf-Freigabe -->

@@ -31,6 +31,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.deposplit.R
+import com.deposplit.ui.SoftWarningRow
+import com.deposplit.ui.relayName
 import com.deposplit.value_objects.KeyConflict
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareTransactionType
@@ -77,13 +79,16 @@ fun RecipientRequestsTab(
                 }
             }
         }
+        uiState.unreachableRelays.forEach { relay ->
+            SoftWarningRow(stringResource(R.string.requests_relay_unreachable, relayName(relay)))
+        }
         when {
             uiState.isLoading -> Box(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 contentAlignment = Alignment.Center,
             ) { CircularProgressIndicator() }
 
-            uiState.error != null && uiState.requests.isEmpty() && uiState.keyConflicts.isEmpty() -> Spacer(Modifier.weight(1f))
+            (uiState.error != null || !uiState.anyRelayAnswered) && uiState.requests.isEmpty() && uiState.keyConflicts.isEmpty() -> Spacer(Modifier.weight(1f))
 
             uiState.requests.isEmpty() && uiState.keyConflicts.isEmpty() -> Box(
                 modifier = Modifier.weight(1f).fillMaxWidth(),

@@ -227,7 +227,10 @@ private object FailingShareEncryption : ShareEncryption {
  * differently-filtered queries per relay (deposit/pending, then inventory/approved) that
  * must not see each other's rows.
  */
-private class FakeShareRelay(var unreachable: Boolean = false) : ShareRelay {
+private class FakeShareRelay(
+    var unreachable: Boolean = false,
+    override val baseUrl: String = "http://relay.example:9000",
+) : ShareRelay {
     data class OpenedRequest(
         val secretId: UUID,
         val recipientKey: ByteArray,
@@ -507,7 +510,7 @@ class ShareServiceTest {
         val forged = unsigned.copy(senderSignature = signOpenAs(strangerKeys, unsigned))
         relay.pending = listOf(forged)
 
-        assertEquals(emptyList(), svc.listPendingRequests())
+        assertEquals(emptyList(), svc.listPendingRequests().items)
     }
 
     @Test
@@ -585,8 +588,8 @@ class ShareServiceTest {
         val askedOfBob = unsigned.copy(senderSignature = signOpenAs(aliceKeys, unsigned))
         defaultRelay.pending = listOf(askedOfBob)
 
-        assertEquals(listOf(id), svc.listPendingRequests().map { it.id })
-        assertEquals(listOf(id), svc.listSentRequests().map { it.id })
+        assertEquals(listOf(id), svc.listPendingRequests().items.map { it.id })
+        assertEquals(listOf(id), svc.listSentRequests().items.map { it.id })
     }
 
     /**
@@ -602,7 +605,7 @@ class ShareServiceTest {
         private val instances = mutableMapOf<String, FakeShareRelay>()
 
         override fun resolve(relayBaseUrl: String?): ShareRelay =
-            instances.getOrPut(relayBaseUrl ?: defaultUrl) { FakeShareRelay().apply { pending = rows } }
+            instances.getOrPut(relayBaseUrl ?: defaultUrl) { FakeShareRelay(baseUrl = relayBaseUrl ?: defaultUrl).apply { pending = rows } }
     }
 
     /**
@@ -632,7 +635,7 @@ class ShareServiceTest {
         val result = svc.reconstruct(secretId)
 
         assertTrue(result.secret.contentEquals(secretBytes))
-        assertEquals(rows.map { it.id }.sortedBy { it.toString() }, svc.listSentRequests().map { it.id }.sortedBy { it.toString() })
+        assertEquals(rows.map { it.id }.sortedBy { it.toString() }, svc.listSentRequests().items.map { it.id }.sortedBy { it.toString() })
     }
 
     @Test
@@ -717,6 +720,93 @@ class ShareServiceTest {
 
         assertEquals(listOf(fromAliceId), defaultRelay.respondCalls)
         assertEquals(listOf(fromAliceId), shareRepo.getAll().map { it.id })
+    }
+
+    // ── Reporting a relay that did not answer ─────────────────────────────────────────────────
+
+    private val byorUrl = "http://byor.example:9000"
+
+    // Bob, with alice on this device's default relay and charlie pinned to a second one.
+    private fun newTwoRelayService(defaultRelay: FakeShareRelay, byorRelay: FakeShareRelay): Pair<ShareService, IdentityService> {
+        val charlieKeys = TestKeyPair.generate()
+        val charlieContact = aliceContact.copy(id = UUID.randomUUID(), pseudonym = "charlie", verifyKey = charlieKeys.publicKey, relayBaseUrl = byorUrl)
+        val identityStore = InMemoryIdentityStoreForShareServiceTest()
+        val bobIdentity = IdentityService(identityStore)
+        bobIdentity.register("bob")
+        val contactRepo = FakeContactRepository(listOf(aliceContact, charlieContact))
+        val purchases = FakePurchaseRepository()
+        val svc = ShareService(
+            relayResolver = TwoRelayResolver(defaultRelay, defaultRelayUrl, byorUrl, byorRelay),
+            encryption = NoOpShareEncryption,
+            shareRepository = FakeShareRepository(),
+            shareMetadataRepository = FakeShareMetadataRepository(),
+            secretRepository = FakeSecretRepository(),
+            contactRepository = contactRepo,
+            contactManagement = ContactService(contactRepo, purchases, identityStore, InMemoryContactRelinkRepositoryForShareServiceTest()),
+            keyConflictRepository = FakeKeyConflictRepository(),
+            retainedDepositRepository = FakeRetainedDepositRepository(),
+            identity = bobIdentity,
+            purchases = purchases,
+        )
+        return svc to bobIdentity
+    }
+
+    /**
+     * Each relay is soft-failed on its own, so a sync pass never throws for one that is down —
+     * which is exactly why it has to say so. Otherwise a dead relay reads as an empty one, and
+     * nothing on screen tells the person that what they see is only the last known state.
+     */
+    @Test
+    fun `both sync passes name the relay that did not answer, and only that one`() {
+        val (svc, _) = newTwoRelayService(
+            FakeShareRelay(baseUrl = defaultRelayUrl),
+            FakeShareRelay(unreachable = true, baseUrl = byorUrl),
+        )
+
+        assertEquals(setOf(byorUrl), svc.syncInbox().unreachableRelays)
+        assertEquals(setOf(byorUrl), svc.syncDistributed().unreachableRelays)
+    }
+
+    @Test
+    fun `both sync passes report nothing when every relay answers`() {
+        val (svc, _) = newTwoRelayService(FakeShareRelay(baseUrl = defaultRelayUrl), FakeShareRelay(baseUrl = byorUrl))
+
+        assertEquals(emptySet(), svc.syncInbox().unreachableRelays)
+        assertEquals(emptySet(), svc.syncDistributed().unreachableRelays)
+    }
+
+    @Test
+    fun `listPendingRequests keeps the rows from the relay that answered and names the one that did not`() {
+        val defaultRelay = FakeShareRelay(baseUrl = defaultRelayUrl)
+        val (svc, bob) = newTwoRelayService(defaultRelay, FakeShareRelay(unreachable = true, baseUrl = byorUrl))
+        val id = UUID.randomUUID()
+        val unsigned = depositRow(id, aliceKeys.publicKey, bob.verifyKey()!!, ByteArray(0)).copy(transactionType = ShareTransactionType.REMOVAL)
+        defaultRelay.pending = listOf(unsigned.copy(senderSignature = signOpenAs(aliceKeys, unsigned)))
+
+        val fanOut = svc.listPendingRequests()
+
+        assertEquals(listOf(id), fanOut.items.map { it.id })
+        assertEquals(setOf(byorUrl), fanOut.unreachableRelays)
+        assertTrue(fanOut.anyAnswered)
+    }
+
+    /**
+     * An empty list from relays that answered means there is nothing to do; an empty list because
+     * none answered means nobody knows. The Requests tab has nothing local to fall back on, so it
+     * must be able to tell the two apart.
+     */
+    @Test
+    fun `listPendingRequests says no relay answered when every one of them failed`() {
+        val (svc, _) = newTwoRelayService(
+            FakeShareRelay(unreachable = true, baseUrl = defaultRelayUrl),
+            FakeShareRelay(unreachable = true, baseUrl = byorUrl),
+        )
+
+        val fanOut = svc.listPendingRequests()
+
+        assertTrue(fanOut.items.isEmpty())
+        assertEquals(setOf(defaultRelayUrl, byorUrl), fanOut.unreachableRelays)
+        assertFalse(fanOut.anyAnswered)
     }
 
     // ── Identity recovery ───────────────────────────────────────────────────────

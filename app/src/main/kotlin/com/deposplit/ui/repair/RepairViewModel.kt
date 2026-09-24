@@ -84,7 +84,7 @@ class RepairViewModel(
                     val secret = shareManagement.listSecrets().find { it.id == secretId }
                     val distributed = shareManagement.listDistributed().filter { it.secretId == secretId }
                     val contacts = contactManagement.listContacts()
-                    val requests = shareManagement.listSentRequests().filter { it.secretId == secretId }
+                    val requests = shareManagement.listSentRequests().items.filter { it.secretId == secretId }
                     val holders = distributed.map { share ->
                         val contact = contacts.find { it.id == share.contactId }
                         val latestRetrieval = contact?.let { holder ->

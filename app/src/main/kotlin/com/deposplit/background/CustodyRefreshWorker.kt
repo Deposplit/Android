@@ -36,23 +36,24 @@ class CustodyRefreshWorker(
         if (!app.authAdapter.isRegistered()) return@withContext Result.success()
         if (app.authAdapter.integrity() == IdentityIntegrity.KEYS_LOST) return@withContext Result.success()
 
-        try {
+        val report = try {
             app.shareManagement.syncInbox()
         } catch (_: Exception) {
-            // An unreachable relay is the ordinary case, not an error worth surfacing. Backoff
-            // retries well inside the day this pass repeats on.
             return@withContext Result.retry()
         }
 
-        // Best-effort, and last. Failing to announce must never undo a pass that already emitted
-        // its heartbeats: a retry would re-run syncInbox, which is harmless but pointless, and
+        // Best-effort. Failing to announce must never undo a pass that already emitted its
+        // heartbeats: a retry would re-run syncInbox, which is harmless but pointless, and
         // meanwhile the custody signal this pass exists for has already gone out.
         runCatching {
-            val waiting = app.shareManagement.listPendingRequests()
+            val waiting = app.shareManagement.listPendingRequests().items
                 .filter { it.transactionType == ShareTransactionType.RETRIEVAL }
             RequestNotifier.announce(applicationContext, waiting)
         }
 
-        Result.success()
+        // An unreachable relay is the ordinary case, not an error worth surfacing. What the others
+        // answered has been handled; backoff retries the rest well inside the day this pass
+        // repeats on.
+        if (report.unreachableRelays.isEmpty()) Result.success() else Result.retry()
     }
 }

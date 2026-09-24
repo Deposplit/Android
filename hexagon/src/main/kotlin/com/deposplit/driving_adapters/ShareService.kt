@@ -26,6 +26,7 @@ import com.deposplit.value_objects.PayloadCanonical
 import com.deposplit.value_objects.ReconstructionIntegrity
 import com.deposplit.value_objects.ReconstructionResult
 import com.deposplit.value_objects.RegenerateIdentityResult
+import com.deposplit.value_objects.RelayFanOut
 import com.deposplit.value_objects.RetainedDepositBlob
 import com.deposplit.value_objects.Role
 import com.deposplit.value_objects.Secret
@@ -37,6 +38,7 @@ import com.deposplit.value_objects.ShareTransactionType
 import com.deposplit.value_objects.SecretLimits
 import com.deposplit.value_objects.SecretTooLargeException
 import com.deposplit.value_objects.SignatureVerificationException
+import com.deposplit.value_objects.SyncReport
 import com.deposplit.value_objects.VerificationLevel
 import java.time.Duration
 import java.time.Instant
@@ -62,7 +64,8 @@ class ShareService(
     // fan-out methods (syncInbox, listPendingRequests, syncDistributed, listSentRequests) since a
     // device has no other way to know in advance which relay a given contact's pending item lives
     // on. Each relay call is independently soft-failed so one unreachable BYOR relay doesn't blank
-    // out results from the default relay or others.
+    // out results from the default relay or others — and recorded by fromRelay, so that it does
+    // not go unnoticed either.
     //
     // Resolve first, then dedupe: null and a contact pinned to this device's own default relay are
     // two names for one relay, and only the resolver knows that. Deduping the overrides instead
@@ -73,6 +76,16 @@ class ShareService(
         (contactRepository.getAll().map { it.relayBaseUrl } + null).map(relayResolver::resolve).distinct()
 
     private fun relayForContact(contact: Contact): ShareRelay = relayResolver.resolve(contact.relayBaseUrl)
+
+    // One listing against one relay. A relay that fails contributes nothing and is noted in
+    // unreachable by its base URL, which is how a sync pass or a fan-out read reports it. Only
+    // listings go through here: whether a relay answers is a question about the relay, whereas a
+    // failure acting on one row is about that row.
+    private fun <T> fromRelay(relay: ShareRelay, unreachable: MutableSet<String>, listing: () -> List<T>): List<T> =
+        runCatching(listing).getOrElse {
+            unreachable += relay.baseUrl
+            emptyList()
+        }
 
     // Every row this device is a party to, from every relay it knows, listed once — each paired
     // with the relay it was found on, so a caller can act on it through that same one.
@@ -90,13 +103,17 @@ class ShareService(
         role: Role,
         transactionType: ShareTransactionType? = null,
         state: ShareRequestState? = null,
-    ): List<Pair<ShareRelay, ShareRequest>> =
-        allRelays()
+    ): RelayFanOut<Pair<ShareRelay, ShareRequest>> {
+        val relays = allRelays()
+        val unreachable = mutableSetOf<String>()
+        val rows = relays
             .flatMap { relay ->
-                runCatching { relay.listShareRequests(role, transactionType, state) }.getOrDefault(emptyList())
+                fromRelay(relay, unreachable) { relay.listShareRequests(role, transactionType, state) }
                     .map { relay to it }
             }
             .distinctBy { it.second.id }
+        return RelayFanOut(rows, unreachable, anyAnswered = unreachable.size < relays.size)
+    }
 
     // Finds a row by id across every known relay — the caller (UI) has no relay context for a
     // bare requestId, only the fan-out list already used to discover it. Returns the relay it was
@@ -175,10 +192,11 @@ class ShareService(
 
     override fun listSecrets(): List<Secret> = secretRepository.getAll()
 
-    override fun syncDistributed() {
+    override fun syncDistributed(): SyncReport {
         val existingMetadata = shareMetadataRepository.getAll()
+        val unreachable = mutableSetOf<String>()
         allRelays().forEach { relay ->
-            runCatching { relay.listShareRequests(Role.SENDER, ShareTransactionType.DEPOSIT) }.getOrDefault(emptyList())
+            fromRelay(relay, unreachable) { relay.listShareRequests(Role.SENDER, ShareTransactionType.DEPOSIT) }
                 .forEach { req ->
                     if (req.state == ShareRequestState.WITHDRAWN) {
                         // Best-effort tombstone: the holder unilaterally stopped holding
@@ -210,8 +228,7 @@ class ShareService(
             // A retrieve approval is also proof-of-custody. Polled here purely for that
             // freshness side effect; the functional read path for these rows is reconstruct()/
             // listSentRequests(), unchanged.
-            runCatching { relay.listShareRequests(Role.SENDER, ShareTransactionType.RETRIEVAL, ShareRequestState.APPROVED) }
-                .getOrDefault(emptyList())
+            fromRelay(relay, unreachable) { relay.listShareRequests(Role.SENDER, ShareTransactionType.RETRIEVAL, ShareRequestState.APPROVED) }
                 .forEach { req ->
                     // Matched on secretId plus the holder's key, the same pair requestRetrieval
                     // fans out on — the row itself carries no pointer back to this device's
@@ -222,8 +239,9 @@ class ShareService(
                     shareMetadataRepository.save(meta.copy(lastConfirmedAt = Instant.now()))
                 }
         }
-        reconcileRemovals()
-        processHeartbeats()
+        reconcileRemovals(unreachable)
+        processHeartbeats(unreachable)
+        return SyncReport(unreachable)
     }
 
     private fun isRetentionStillPending(depositId: UUID): Boolean =
@@ -242,11 +260,13 @@ class ShareService(
     // believed in for good, and asked for their piece again on every retrieval.
     // The signature is checked for the same reason it is checked on a retrieval approval: a relay
     // that could forge one could make this device forget a share that is still out there.
-    private fun reconcileRemovals() {
+    private fun reconcileRemovals(unreachable: MutableSet<String>) {
         val metas = shareMetadataRepository.getAll()
         if (metas.isNotEmpty()) {
             val secretIds = metas.map { it.secretId }.toSet()
-            val removalRequests = rowsAcrossRelays(Role.SENDER, ShareTransactionType.REMOVAL)
+            val fanOut = rowsAcrossRelays(Role.SENDER, ShareTransactionType.REMOVAL)
+            unreachable += fanOut.unreachableRelays
+            val removalRequests = fanOut.items
                 .filter { (_, request) -> request.secretId in secretIds }
 
             for (meta in metas) {
@@ -273,10 +293,10 @@ class ShareService(
 
     override fun listDistributed(): List<ShareMetadata> = shareMetadataRepository.getAll()
 
-    override fun listSentRequests(): List<ShareRequest> =
-        rowsAcrossRelays(Role.SENDER)
-            .map { it.second }
-            .filterNot { it.transactionType == ShareTransactionType.DEPOSIT }
+    override fun listSentRequests(): RelayFanOut<ShareRequest> =
+        rowsAcrossRelays(Role.SENDER).mapItems { rows ->
+            rows.map { it.second }.filterNot { it.transactionType == ShareTransactionType.DEPOSIT }
+        }
 
     // A holder is worth prioritizing for a fresh retrieval ask when the custody-freshness rule
     // that decides "still counts toward n_live" already trusts them: an unexpired
@@ -293,7 +313,7 @@ class ShareService(
     override fun requestAll(secretId: UUID) {
         val secret = secretRepository.getAll().find { it.id == secretId } ?: return
         val deposited = shareMetadataRepository.getAll().filter { it.secretId == secretId }
-        val existing = rowsAcrossRelays(Role.SENDER, ShareTransactionType.RETRIEVAL).map { it.second }
+        val existing = rowsAcrossRelays(Role.SENDER, ShareTransactionType.RETRIEVAL).items.map { it.second }
         // Fan out to the health-informed fresh set first; widen to everyone only when
         // there aren't enough confirmed holders to reach k. A retrieval request exists solely to
         // feed an eventual reconstruct(), so this targeting applies here rather than as a
@@ -343,7 +363,7 @@ class ShareService(
     override fun reconstruct(secretId: UUID): ReconstructionResult {
         val secret = secretRepository.getAll().find { it.id == secretId }
             ?: error("No local record for secret $secretId")
-        val allRequests = rowsAcrossRelays(Role.SENDER, ShareTransactionType.RETRIEVAL)
+        val allRequests = rowsAcrossRelays(Role.SENDER, ShareTransactionType.RETRIEVAL).items
         // An unverified recipientSignature is treated as "not yet approved" rather than a hard
         // error — a forged approval simply doesn't count toward the threshold.
         val approved = allRequests.filter { (_, r) ->
@@ -384,7 +404,7 @@ class ShareService(
     // Each deletion is soft-failed on its own: one unreachable relay must not strand the rows held
     // on the others.
     override fun clearCollectedShares(secretId: UUID) {
-        rowsAcrossRelays(Role.SENDER, ShareTransactionType.RETRIEVAL)
+        rowsAcrossRelays(Role.SENDER, ShareTransactionType.RETRIEVAL).items
             .filter { it.second.secretId == secretId }
             .forEach { (relay, request) -> runCatching { relay.deleteShareRequest(request.id) } }
     }
@@ -412,11 +432,12 @@ class ShareService(
 
     // ── Recipient flows ───────────────────────────────────────────────────────
 
-    override fun syncInbox() {
+    override fun syncInbox(): SyncReport {
+        val unreachable = mutableSetOf<String>()
         allRelays().forEach { relay ->
-            val pending = runCatching {
+            val pending = fromRelay(relay, unreachable) {
                 relay.listShareRequests(Role.RECIPIENT, ShareTransactionType.DEPOSIT, ShareRequestState.PENDING)
-            }.getOrDefault(emptyList())
+            }
             // Unknown sender or unverified senderSignature: skip silently, do not auto-approve.
             for (req in pending.filter(::verifyOpen)) {
                 val senderContact = contactRepository.getByVerifyKey(req.senderKey) ?: continue
@@ -467,9 +488,10 @@ class ShareService(
                 }
             }
         }
-        processRecoveryMetadata()
-        processRotations()
+        processRecoveryMetadata(unreachable)
+        processRotations(unreachable)
         emitHeartbeats()
+        return SyncReport(unreachable)
     }
 
     // Holder side — opportunistically piggybacks this same inbox poll: for each distinct
@@ -512,13 +534,13 @@ class ShareService(
         runCatching { contactManagement.markRelinked(contact.id) }
     }
 
-    private fun processHeartbeats() {
+    private fun processHeartbeats(unreachable: MutableSet<String>) {
         // Nothing here can be verified without our own key, so a device whose key storage is
         // locked does nothing and picks this up on a later pass rather than failing every notice.
         val myKey = identity.verifyKey() ?: return
         val existingMetadata = shareMetadataRepository.getAll()
         allRelays().forEach { relay ->
-            val notices = runCatching { relay.listHeartbeats() }.getOrDefault(emptyList())
+            val notices = fromRelay(relay, unreachable) { relay.listHeartbeats() }
             for (notice in notices) {
                 val contact = contactRepository.getByVerifyKey(notice.holderKey) ?: continue
                 noteRelinked(contact)
@@ -555,9 +577,9 @@ class ShareService(
     // can never carry a higher level forward), and updates the contact
     // record in place, preserving contactId. Unknown senders and forged/mismatched signatures are
     // silently skipped — a stranger's notice must never mutate a real contact.
-    private fun processRotations() {
+    private fun processRotations(unreachable: MutableSet<String>) {
         allRelays().forEach { relay ->
-            val notices = runCatching { relay.listRotations() }.getOrDefault(emptyList())
+            val notices = fromRelay(relay, unreachable) { relay.listRotations() }
             for (notice in notices) {
                 val contact = contactRepository.getByVerifyKey(notice.oldVerifyKey) ?: continue
                 noteRelinked(contact)
@@ -607,18 +629,6 @@ class ShareService(
         relayForContact(contact).pushRotation(contact.verifyKey, newVerifyKey, newEncKey, newCipherSuite, signature)
     }
 
-    // Whether every relay this device knows of answered. syncInbox and syncDistributed soft-fail
-    // per relay on purpose — one dark BYOR relay must not blank out results from the others — which
-    // also means neither can tell its caller that a relay went unheard. Rotation is the one caller
-    // that needs to know, because it is about to retire the identity those rows are addressed to,
-    // so it asks separately rather than the fan-out growing a return value every other caller
-    // would ignore.
-    private fun allRelaysAnswered(): Boolean = allRelays().all { relay ->
-        runCatching {
-            relay.listShareRequests(Role.RECIPIENT, ShareTransactionType.DEPOSIT, ShareRequestState.PENDING)
-        }.isSuccess
-    }
-
     // The identity-regeneration trigger. Order matters: the drain and rotation pushes must both
     // happen before activateKeyPair, since pushRotation (and the drain's own relay calls) sign
     // with whatever identity is currently persisted — that's what proves continuity from the old
@@ -626,10 +636,15 @@ class ShareService(
     // (nothing was persisted yet), so a retry simply regenerates and re-pushes from scratch; any
     // contact who received an orphaned first attempt auto-corrects on the next successful push,
     // per the existing K_old-signed auto-accept rule.
+    //
+    // The drain succeeded only if both passes ran and every relay answered them: it is about to
+    // retire the identity those rows are addressed to, so a relay that went unheard is exactly
+    // what it must report.
     override fun regenerateIdentity(): RegenerateIdentityResult {
-        runCatching { syncInbox() }
-        runCatching { syncDistributed() }
-        val drainSucceeded = allRelaysAnswered()
+        val inbox = runCatching { syncInbox() }.getOrNull()
+        val distributed = runCatching { syncDistributed() }.getOrNull()
+        val drainSucceeded = inbox != null && distributed != null &&
+            inbox.unreachableRelays.isEmpty() && distributed.unreachableRelays.isEmpty()
         val newKeys = identity.generateNewKeyPair()
         val contacts = contactRepository.getAll()
         var notified = 0
@@ -646,11 +661,11 @@ class ShareService(
     // push is trusted only once its senderSignature verifies against a *known* contact — the
     // holder must already have been re-added out-of-band before their push is honored. Consumed
     // rows are deleted from the relay once processed.
-    private fun processRecoveryMetadata() {
+    private fun processRecoveryMetadata(unreachable: MutableSet<String>) {
         allRelays().forEach { relay ->
-            val pushes = runCatching {
+            val pushes = fromRelay(relay, unreachable) {
                 relay.listShareRequests(Role.RECIPIENT, ShareTransactionType.INVENTORY, ShareRequestState.APPROVED)
-            }.getOrDefault(emptyList())
+            }
             for (req in pushes.filter(::verifyOpen)) {
                 val holderContact = contactRepository.getByVerifyKey(req.senderKey) ?: continue
                 noteRelinked(holderContact)
@@ -687,12 +702,13 @@ class ShareService(
 
     override fun listHeld(): List<HeldShare> = shareRepository.getAll()
 
-    override fun listPendingRequests(): List<ShareRequest> =
-        rowsAcrossRelays(Role.RECIPIENT, state = ShareRequestState.PENDING)
-            .map { it.second }
-            .filterNot { it.transactionType == ShareTransactionType.DEPOSIT }
-            // A forged removal/retrieval request has no AEAD backstop — must never reach the UI.
-            .filter(::verifyOpen)
+    override fun listPendingRequests(): RelayFanOut<ShareRequest> =
+        rowsAcrossRelays(Role.RECIPIENT, state = ShareRequestState.PENDING).mapItems { rows ->
+            rows.map { it.second }
+                .filterNot { it.transactionType == ShareTransactionType.DEPOSIT }
+                // A forged removal/retrieval request has no AEAD backstop — must never reach the UI.
+                .filter(::verifyOpen)
+        }
 
     override fun respond(requestId: UUID, approved: Boolean) {
         val (relay, request) = findShareRequest(requestId)

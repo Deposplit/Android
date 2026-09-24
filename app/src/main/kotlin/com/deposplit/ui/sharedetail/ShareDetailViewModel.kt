@@ -63,7 +63,7 @@ class ShareDetailViewModel(
                         ?: error("Share not found")
                     val secret = shareManagement.listSecrets().find { it.id == share.secretId }
                         ?: error("Secret not found")
-                    val allRequests = shareManagement.listSentRequests()
+                    val allRequests = shareManagement.listSentRequests().items
                     val contacts = contactManagement.listContacts()
                     LoadResult(share, secret, allRequests, contacts)
                 }

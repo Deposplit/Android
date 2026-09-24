@@ -7,10 +7,12 @@ import com.deposplit.value_objects.KeyConflict
 import com.deposplit.value_objects.MimeType
 import com.deposplit.value_objects.ReconstructionResult
 import com.deposplit.value_objects.RegenerateIdentityResult
+import com.deposplit.value_objects.RelayFanOut
 import com.deposplit.value_objects.Secret
 import com.deposplit.value_objects.ShareMetadata
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareTransactionType
+import com.deposplit.value_objects.SyncReport
 import java.util.UUID
 
 interface ShareManagement {
@@ -27,9 +29,9 @@ interface ShareManagement {
         replacing: UUID? = null,
     )
     fun listSecrets(): List<Secret>
-    fun syncDistributed()
+    fun syncDistributed(): SyncReport
     fun listDistributed(): List<ShareMetadata>
-    fun listSentRequests(): List<ShareRequest>
+    fun listSentRequests(): RelayFanOut<ShareRequest>
     fun requestAll(secretId: UUID)
     fun openRequest(shareId: UUID, type: ShareTransactionType): ShareRequest
     // Pure read — collects approved retrieval shares (possibly more than k) and decrypts them.
@@ -54,9 +56,9 @@ interface ShareManagement {
     fun forceForgetSecret(secretId: UUID)
 
     // ─── Recipient ────────────────────────────────────────────────────────────
-    fun syncInbox()
+    fun syncInbox(): SyncReport
     fun listHeld(): List<HeldShare>
-    fun listPendingRequests(): List<ShareRequest>
+    fun listPendingRequests(): RelayFanOut<ShareRequest>
     fun respond(requestId: UUID, approved: Boolean)
     fun deleteHeldShare(shareId: UUID)
     fun deleteAllHeldFromSender(contactId: UUID)

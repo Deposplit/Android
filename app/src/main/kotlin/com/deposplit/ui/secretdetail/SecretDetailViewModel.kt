@@ -67,7 +67,7 @@ class SecretDetailViewModel(
                     buildSecretGroups(
                         shareManagement.listSecrets(),
                         shareManagement.listDistributed(),
-                        runCatching { shareManagement.listSentRequests() }.getOrDefault(emptyList()),
+                        runCatching { shareManagement.listSentRequests().items }.getOrDefault(emptyList()),
                         contactManagement.listContacts(),
                     ).find { it.secret.id == secretId } ?: error("Secret not found")
                 }

@@ -191,6 +191,7 @@ private data class Phase2Result(
     val distributed: List<ShareMetadata>,
     val held: List<HeldShare>,
     val awaitingRelink: Int,
+    val unreachableRelays: List<String>,
 )
 
 class HomeViewModel(
@@ -203,7 +204,11 @@ class HomeViewModel(
         val heldShares: List<HeldShareDisplay> = emptyList(),
         val heldSortOrder: HeldSortOrder = HeldSortOrder.DATE,
         val isLoading: Boolean = false,
-        val syncWarning: Boolean = false,
+        // Every relay the last refresh could not reach, by base URL. Each one gets a warning of
+        // its own, because with several relays a single one could not say whose data is stale.
+        val unreachableRelays: List<String> = emptyList(),
+        // The refresh failed for a reason of this device's own rather than a relay's.
+        val syncFailed: Boolean = false,
         // How many contacts still hold a key this device no longer signs with. A standing
         // advisory rather than an alarm: it is expected work after a phone switch, and it clears
         // itself as each contact gets back in touch.
@@ -221,7 +226,7 @@ class HomeViewModel(
     fun load() {
         val sortOrder = _uiState.value.heldSortOrder
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, syncWarning = false) }
+            _uiState.update { it.copy(isLoading = true, error = null) }
 
             // Phase 1: local data only — renders immediately even when offline
             val phase1 = runCatching {
@@ -250,17 +255,19 @@ class HomeViewModel(
                 )
             }
 
-            // Phase 2: relay sync — soft failure, shows warning banner without wiping the lists
+            // Phase 2: relay sync — soft failure, a warning per relay without wiping the lists
             runCatching {
                 withContext(Dispatchers.IO) {
-                    shareManagement.syncInbox()
-                    shareManagement.syncDistributed()
+                    val inbox = shareManagement.syncInbox()
+                    val distributed = shareManagement.syncDistributed()
+                    val sent = shareManagement.listSentRequests()
                     Phase2Result(
-                        allRequests = shareManagement.listSentRequests(),
+                        allRequests = sent.items,
                         secrets = shareManagement.listSecrets(),
                         distributed = shareManagement.listDistributed(),
                         held = shareManagement.listHeld(),
                         awaitingRelink = contactManagement.contactsAwaitingRelink().size,
+                        unreachableRelays = (inbox.unreachableRelays + distributed.unreachableRelays + sent.unreachableRelays).sorted(),
                     )
                 }
             }.onSuccess { phase2 ->
@@ -272,10 +279,12 @@ class HomeViewModel(
                         heldShares = toDisplayList(freshHeld, contacts, currentSortOrder),
                         // The sync may itself be the evidence that clears someone.
                         awaitingRelinkCount = phase2.awaitingRelink,
+                        unreachableRelays = phase2.unreachableRelays,
+                        syncFailed = false,
                     )
                 }
             }.onFailure {
-                _uiState.update { it.copy(syncWarning = true) }
+                _uiState.update { it.copy(syncFailed = true) }
             }
         }
     }

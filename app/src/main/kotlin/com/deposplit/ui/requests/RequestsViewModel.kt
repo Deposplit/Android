@@ -8,6 +8,7 @@ import com.deposplit.driving_ports.ContactManagement
 import com.deposplit.driving_ports.ShareManagement
 import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.KeyConflict
+import com.deposplit.value_objects.RelayFanOut
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareTransactionType
 import com.deposplit.value_objects.displayName
@@ -33,6 +34,13 @@ class RequestsViewModel(
         val keyConflicts: List<KeyConflict> = emptyList(),
         val heldSecretIds: Set<UUID> = emptySet(),
         val isLoading: Boolean = false,
+        // Every relay that did not answer, by base URL. The list above still holds what the
+        // others returned, and each of these is named rather than turned into an error: error is
+        // kept for a failure of this device's own, which no relay line could explain.
+        val unreachableRelays: List<String> = emptyList(),
+        // False when no relay answered, so an empty list says nothing about whether any request is
+        // waiting, and the tab must not claim there is none.
+        val anyRelayAnswered: Boolean = true,
         @StringRes val error: Int? = null,
         val respondingIds: Set<UUID> = emptySet(),
     )
@@ -61,7 +69,9 @@ class RequestsViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            requests = loaded.requests,
+                            requests = loaded.requests.items,
+                            unreachableRelays = loaded.requests.unreachableRelays.sorted(),
+                            anyRelayAnswered = loaded.requests.anyAnswered,
                             contacts = loaded.contacts,
                             keyConflicts = loaded.keyConflicts,
                             heldSecretIds = loaded.heldSecretIds,
@@ -123,7 +133,7 @@ class RequestsViewModel(
     }
 
     private data class Loaded(
-        val requests: List<ShareRequest>,
+        val requests: RelayFanOut<ShareRequest>,
         val contacts: List<Contact>,
         val keyConflicts: List<KeyConflict>,
         val heldSecretIds: Set<UUID>,

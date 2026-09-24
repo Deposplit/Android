@@ -36,6 +36,9 @@ import java.time.Instant
 import java.util.UUID
 
 interface ShareRelay {
+    /** The URL this relay answers at — what a warning names when it does not. */
+    val baseUrl: String
+
     fun openShareRequest(
         secretId: UUID,
         recipientKey: ByteArray,
