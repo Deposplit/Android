@@ -65,6 +65,7 @@
     <string name="contacts_title">Contacts</string>
     <string name="contacts_action_scan_qr">Scan QR code</string>
     <string name="contacts_action_add">Add contact</string>
+    <string name="contacts_action_enter_manually">Enter contact manually</string>
     <string name="contacts_empty">No contacts yet</string>
     <string name="contacts_delete_description">Delete %1$s</string>
     <string name="contacts_relink_description">Relink %1$s (key changed)</string>

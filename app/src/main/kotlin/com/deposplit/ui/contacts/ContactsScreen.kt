@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.NotificationsOff
@@ -33,6 +34,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -92,16 +95,34 @@ fun ContactsScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
-                actions = {
-                    IconButton(onClick = onNavigateToScanQr) {
-                        Icon(Icons.Default.QrCodeScanner, contentDescription = stringResource(R.string.contacts_action_scan_qr))
-                    }
-                },
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onNavigateToAddContact) {
-                Icon(Icons.Default.PersonAdd, contentDescription = stringResource(R.string.contacts_action_add))
+            // One entry point with both ways in, like the iOS toolbar menu: scanning first, because it
+            // is the only one that can earn Very High.
+            var addMenuExpanded by remember { mutableStateOf(false) }
+            Box {
+                FloatingActionButton(onClick = { addMenuExpanded = true }) {
+                    Icon(Icons.Default.PersonAdd, contentDescription = stringResource(R.string.contacts_action_add))
+                }
+                DropdownMenu(expanded = addMenuExpanded, onDismissRequest = { addMenuExpanded = false }) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.contacts_action_scan_qr)) },
+                        leadingIcon = { Icon(Icons.Default.QrCodeScanner, contentDescription = null) },
+                        onClick = {
+                            addMenuExpanded = false
+                            onNavigateToScanQr()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.contacts_action_enter_manually)) },
+                        leadingIcon = { Icon(Icons.Default.Keyboard, contentDescription = null) },
+                        onClick = {
+                            addMenuExpanded = false
+                            onNavigateToAddContact()
+                        },
+                    )
+                }
             }
         },
     ) { padding ->
@@ -136,11 +157,22 @@ fun ContactsScreen(
                     .padding(padding),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = stringResource(R.string.contacts_empty),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = stringResource(R.string.contacts_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Button(onClick = onNavigateToScanQr) {
+                        Icon(Icons.Default.QrCodeScanner, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.contacts_action_scan_qr))
+                    }
+                    TextButton(onClick = onNavigateToAddContact) {
+                        Text(stringResource(R.string.contacts_action_enter_manually))
+                    }
+                }
             }
 
             else -> LazyColumn(

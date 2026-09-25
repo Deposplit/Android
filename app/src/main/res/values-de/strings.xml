@@ -65,6 +65,7 @@
     <string name="contacts_title">Kontakte</string>
     <string name="contacts_action_scan_qr">QR-Code scannen</string>
     <string name="contacts_action_add">Kontakt hinzufügen</string>
+    <string name="contacts_action_enter_manually">Kontakt manuell erfassen</string>
     <string name="contacts_empty">Noch keine Kontakte</string>
     <string name="contacts_delete_description">%1$s löschen</string>
     <string name="contacts_relink_description">%1$s neu verknüpfen (Schlüssel geändert)</string>
