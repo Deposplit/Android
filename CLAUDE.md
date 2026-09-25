@@ -169,6 +169,14 @@ in the lint gate to keep dead ones from accumulating again.
 - **Catalog backup uses the Storage Access Framework** — `CreateDocument` to export,
   `OpenDocument` to import.
 - **All UI is Jetpack Compose.** No XML layouts.
+- **Icons are Material Symbols, Rounded, unfilled** (weight 400, grade 0, optical size 24), one
+  vector drawable each in `res/drawable/ic_<name>.xml`, drawn with
+  `Icon(painterResource(R.drawable.ic_<name>), …)`. There is no icon library:
+  `material-icons-extended` holds only the retired Material Icons set, and with minification off
+  the release build shipped all of it. Take a new icon from
+  `https://raw.githubusercontent.com/google/material-design-icons/master/symbols/android/<name>/materialsymbolsrounded/<name>_24px.xml`
+  as it is — Google's own Android export, `autoMirrored` already set on directional icons — so it
+  matches the rest. An icon passed around as a value is a `@DrawableRes Int`, not a `Painter`.
 - **One WorkManager job, `custody-refresh`**, defined in `background/`. It runs `syncInbox()`
   daily so that heartbeats and pickups do not wait for somebody to open the app. WorkManager
   self-initialises through `androidx.startup`, so it needs no `Configuration.Provider` and no
@@ -209,7 +217,8 @@ fallback; the actual default is a runtime setting (`SharedPreferencesRelaySettin
 in the same `"deposplit"` preferences file as the identity flag). Point a debug build at a
 local relay from the in-app **Settings** screen: `http://10.0.2.2:9000` on an emulator
 (cleartext to that host is allowed by `app/src/debug/res/xml/network_security_config.xml`),
-or your LAN IP on a physical device.
+or `http://localhost:9000` on a phone after `adb reverse tcp:9000 tcp:9000`, which that file
+allows too. The full phone setup is in `deposplit.com/docs/testing.md`.
 
 **`FAKE_PREMIUM`** — the Settings relay editor sits behind `isPremium()`, so without this
 there is no way to point a debug build at a local relay. Set `FAKE_PREMIUM=true` in

@@ -3,6 +3,7 @@ package com.deposplit.ui.home
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,22 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.QrCode
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.filled.PersonOff
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -66,8 +51,8 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -153,19 +138,19 @@ fun HomeScreen(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
                     IconButton(onClick = onNavigateToQrDisplay) {
-                        Icon(Icons.Default.QrCode, contentDescription = stringResource(R.string.home_action_qr_code))
+                        Icon(painterResource(R.drawable.ic_qr_code), contentDescription = stringResource(R.string.home_action_qr_code))
                     }
                     IconButton(onClick = onNavigateToContacts) {
-                        Icon(Icons.Default.Group, contentDescription = stringResource(R.string.contacts_title))
+                        Icon(painterResource(R.drawable.ic_group), contentDescription = stringResource(R.string.contacts_title))
                     }
                     IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
+                        Icon(painterResource(R.drawable.ic_settings), contentDescription = stringResource(R.string.settings_title))
                     }
                     IconButton(onClick = {
                         if (selectedTab == 2) requestsViewModel.load() else viewModel.load()
                     }) {
                         Icon(
-                            Icons.Default.Refresh,
+                            painterResource(R.drawable.ic_refresh),
                             contentDescription = stringResource(R.string.action_refresh),
                             tint = if (showsWarning) MaterialTheme.colorScheme.error else LocalContentColor.current,
                         )
@@ -175,7 +160,7 @@ fun HomeScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onNavigateToDeposit) {
-                Icon(Icons.Default.Share, contentDescription = stringResource(R.string.home_action_new_secret))
+                Icon(painterResource(R.drawable.ic_arrow_split), contentDescription = stringResource(R.string.home_action_new_secret))
             }
         },
     ) { padding ->
@@ -194,7 +179,7 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Icon(
-                        Icons.Default.PersonOff,
+                        painterResource(R.drawable.ic_person_off),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(14.dp),
@@ -419,7 +404,7 @@ private fun SecretGroupCard(group: SecretGroup, onOpen: () -> Unit) {
                 }
             }
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                painter = painterResource(R.drawable.ic_keyboard_arrow_right),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -464,9 +449,9 @@ internal fun HolderRow(holder: HolderStatus, onClick: () -> Unit) {
             }
             // Early nudge, surfaced before the holder actually drops out of n_live.
             when {
-                holder.isGettingStale -> FreshnessLabel(R.string.home_freshness_stale, Icons.Filled.Schedule, MaterialTheme.colorScheme.tertiary)
-                holder.freshnessBucket == FreshnessBucket.UNMONITORED -> FreshnessLabel(R.string.home_freshness_unmonitored, Icons.Filled.VisibilityOff, MaterialTheme.colorScheme.onSurfaceVariant)
-                holder.freshnessBucket == FreshnessBucket.SILENT_OVERDUE -> FreshnessLabel(R.string.home_freshness_silent, Icons.Filled.Warning, MaterialTheme.colorScheme.error)
+                holder.isGettingStale -> FreshnessLabel(R.string.home_freshness_stale, R.drawable.ic_schedule, MaterialTheme.colorScheme.tertiary)
+                holder.freshnessBucket == FreshnessBucket.UNMONITORED -> FreshnessLabel(R.string.home_freshness_unmonitored, R.drawable.ic_visibility_off, MaterialTheme.colorScheme.onSurfaceVariant)
+                holder.freshnessBucket == FreshnessBucket.SILENT_OVERDUE -> FreshnessLabel(R.string.home_freshness_silent, R.drawable.ic_warning, MaterialTheme.colorScheme.error)
                 else -> {}
             }
         }
@@ -487,9 +472,9 @@ internal fun HolderRow(holder: HolderStatus, onClick: () -> Unit) {
 }
 
 @Composable
-private fun FreshnessLabel(@StringRes textRes: Int, icon: ImageVector, color: Color) {
+private fun FreshnessLabel(@StringRes textRes: Int, @DrawableRes iconRes: Int, color: Color) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(12.dp))
+        Icon(painterResource(iconRes), contentDescription = null, tint = color, modifier = Modifier.size(12.dp))
         Text(stringResource(textRes), style = MaterialTheme.typography.labelSmall, color = color)
     }
 }
@@ -540,7 +525,7 @@ private fun ShareItem(
             if (onDelete != null) {
                 IconButton(onClick = onDelete) {
                     Icon(
-                        Icons.Default.Delete,
+                        painterResource(R.drawable.ic_delete),
                         contentDescription = stringResource(R.string.home_held_delete_title),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

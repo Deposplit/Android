@@ -15,21 +15,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Autorenew
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Keyboard
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.NotificationsOff
-import androidx.compose.material.icons.filled.PersonOff
-import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -56,6 +41,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -92,7 +78,7 @@ fun ContactsScreen(
                 title = { Text(stringResource(R.string.contacts_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
+                        Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = stringResource(R.string.action_back))
                     }
                 },
             )
@@ -103,12 +89,12 @@ fun ContactsScreen(
             var addMenuExpanded by remember { mutableStateOf(false) }
             Box {
                 FloatingActionButton(onClick = { addMenuExpanded = true }) {
-                    Icon(Icons.Default.PersonAdd, contentDescription = stringResource(R.string.contacts_action_add))
+                    Icon(painterResource(R.drawable.ic_person_add), contentDescription = stringResource(R.string.contacts_action_add))
                 }
                 DropdownMenu(expanded = addMenuExpanded, onDismissRequest = { addMenuExpanded = false }) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.contacts_action_scan_qr)) },
-                        leadingIcon = { Icon(Icons.Default.QrCodeScanner, contentDescription = null) },
+                        leadingIcon = { Icon(painterResource(R.drawable.ic_qr_code_scanner), contentDescription = null) },
                         onClick = {
                             addMenuExpanded = false
                             onNavigateToScanQr()
@@ -116,7 +102,7 @@ fun ContactsScreen(
                     )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.contacts_action_enter_manually)) },
-                        leadingIcon = { Icon(Icons.Default.Keyboard, contentDescription = null) },
+                        leadingIcon = { Icon(painterResource(R.drawable.ic_keyboard), contentDescription = null) },
                         onClick = {
                             addMenuExpanded = false
                             onNavigateToAddContact()
@@ -165,7 +151,7 @@ fun ContactsScreen(
                     )
                     Spacer(Modifier.height(16.dp))
                     Button(onClick = onNavigateToScanQr) {
-                        Icon(Icons.Default.QrCodeScanner, contentDescription = null)
+                        Icon(painterResource(R.drawable.ic_qr_code_scanner), contentDescription = null)
                         Spacer(Modifier.width(8.dp))
                         Text(stringResource(R.string.contacts_action_scan_qr))
                     }
@@ -223,7 +209,7 @@ private fun ContactItem(
                     if (contact.revokedVerifyKeys.isNotEmpty()) {
                         Spacer(Modifier.width(6.dp))
                         Icon(
-                            Icons.Default.Warning,
+                            painterResource(R.drawable.ic_warning),
                             contentDescription = stringResource(R.string.contacts_revoked_badge_description),
                             tint = MaterialTheme.colorScheme.error,
                             modifier = Modifier.size(16.dp),
@@ -232,7 +218,7 @@ private fun ContactItem(
                     if (awaitingRelink) {
                         Spacer(Modifier.width(6.dp))
                         Icon(
-                            Icons.Default.PersonOff,
+                            painterResource(R.drawable.ic_person_off),
                             contentDescription = stringResource(
                                 R.string.contacts_awaiting_relink_description,
                                 contact.displayName,
@@ -244,7 +230,7 @@ private fun ContactItem(
                     if (contact.heartbeatEmissionOptedOut) {
                         Spacer(Modifier.width(6.dp))
                         Icon(
-                            Icons.Default.NotificationsOff,
+                            painterResource(R.drawable.ic_notifications_off),
                             contentDescription = stringResource(R.string.contacts_heartbeat_paused_badge_description),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(16.dp),
@@ -272,7 +258,7 @@ private fun ContactItem(
             if (awaitingRelink) {
                 IconButton(onClick = onMarkRelinked) {
                     Icon(
-                        Icons.Default.Check,
+                        painterResource(R.drawable.ic_check),
                         contentDescription = stringResource(
                             R.string.contacts_mark_relinked_description,
                             contact.displayName,
@@ -282,19 +268,19 @@ private fun ContactItem(
             }
             IconButton(onClick = { showRenameDialog = true }) {
                 Icon(
-                    Icons.Default.Edit,
+                    painterResource(R.drawable.ic_edit),
                     contentDescription = stringResource(R.string.contacts_rename_description, contact.displayName),
                 )
             }
             IconButton(onClick = onRelink) {
                 Icon(
-                    Icons.Default.Autorenew,
+                    painterResource(R.drawable.ic_autorenew),
                     contentDescription = stringResource(R.string.contacts_relink_description, contact.displayName),
                 )
             }
             IconButton(onClick = onToggleHeartbeatEmission) {
                 Icon(
-                    if (contact.heartbeatEmissionOptedOut) Icons.Default.Notifications else Icons.Default.NotificationsOff,
+                    if (contact.heartbeatEmissionOptedOut) painterResource(R.drawable.ic_notifications) else painterResource(R.drawable.ic_notifications_off),
                     contentDescription = stringResource(
                         if (contact.heartbeatEmissionOptedOut) {
                             R.string.contacts_resume_heartbeats_description
@@ -307,14 +293,14 @@ private fun ContactItem(
             }
             IconButton(onClick = { showCompromiseConfirm = true }) {
                 Icon(
-                    Icons.Default.Shield,
+                    painterResource(R.drawable.ic_shield),
                     contentDescription = stringResource(R.string.contacts_mark_compromised_description, contact.displayName),
                     tint = MaterialTheme.colorScheme.error,
                 )
             }
             IconButton(onClick = { showDeleteConfirm = true }) {
                 Icon(
-                    Icons.Default.Delete,
+                    painterResource(R.drawable.ic_delete),
                     contentDescription = stringResource(R.string.contacts_delete_description, contact.displayName),
                     tint = MaterialTheme.colorScheme.error,
                 )
