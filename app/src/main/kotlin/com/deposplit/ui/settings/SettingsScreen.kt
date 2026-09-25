@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -92,7 +94,10 @@ fun SettingsScreen(onNavigateBack: () -> Unit, onNavigateToPaywall: () -> Unit) 
             )
         }
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
             Spacer(Modifier.height(8.dp))
             Text(stringResource(R.string.settings_relay_description))
             Spacer(Modifier.height(12.dp))
