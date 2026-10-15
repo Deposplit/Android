@@ -177,6 +177,12 @@ in the lint gate to keep dead ones from accumulating again.
   `https://raw.githubusercontent.com/google/material-design-icons/master/symbols/android/<name>/materialsymbolsrounded/<name>_24px.xml`
   as it is — Google's own Android export, `autoMirrored` already set on directional icons — so it
   matches the rest. An icon passed around as a value is a `@DrawableRes Int`, not a `Painter`.
+- **Colours are the launcher icon's, not the wallpaper's.** `ui/theme/Color.kt` sets every
+  Material 3 role, generated from the icon's accent `#3EB2BE` with its neutrals keyed on the
+  icon's ink `#191C22`. Regenerate it rather than nudging single values. Dynamic colour is off
+  on purpose, because `primary` carries meaning (the High verification badge, retrieval
+  requests), and `tertiary` is the warm colour of the caution and staleness labels. The
+  semantic error red stays Material's own. Fonts are the system's.
 - **One WorkManager job, `custody-refresh`**, defined in `background/`. It runs `syncInbox()`
   daily so that heartbeats and pickups do not wait for somebody to open the app. WorkManager
   self-initialises through `androidx.startup`, so it needs no `Configuration.Provider` and no

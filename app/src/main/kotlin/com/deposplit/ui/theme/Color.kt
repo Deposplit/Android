@@ -1,11 +1,113 @@
 package com.deposplit.ui.theme
 
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+// Generated with material-color-utilities from the launcher icon's palette: the accent #3EB2BE
+// seeds a Fidelity scheme, so primaryContainer is the accent itself and the tertiary, which the
+// caution and staleness labels are drawn in, is its warm complement. The neutrals are keyed on
+// the icon's ink #191C22 instead, so the greys are the website's blue-greys rather than
+// teal-tinted ones. Every role is set, including the Fixed ones, so none falls back to the
+// Material baseline purple.
+internal val LightColorScheme = lightColorScheme(
+    primary = Color(0xFF006971),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFF3EB2BE),
+    onPrimaryContainer = Color(0xFF004046),
+    inversePrimary = Color(0xFF69D6E3),
+    secondary = Color(0xFF3F6469),
+    onSecondary = Color(0xFFFFFFFF),
+    secondaryContainer = Color(0xFFC2EAEF),
+    onSecondaryContainer = Color(0xFF456A6F),
+    tertiary = Color(0xFF914C18),
+    onTertiary = Color(0xFFFFFFFF),
+    tertiaryContainer = Color(0xFFE48E55),
+    onTertiaryContainer = Color(0xFF5F2A00),
+    background = Color(0xFFF9F9FF),
+    onBackground = Color(0xFF191C22),
+    surface = Color(0xFFF9F9FF),
+    onSurface = Color(0xFF191C22),
+    surfaceVariant = Color(0xFFDDE2F1),
+    onSurfaceVariant = Color(0xFF414752),
+    surfaceTint = Color(0xFF006971),
+    inverseSurface = Color(0xFF2D3037),
+    inverseOnSurface = Color(0xFFEFF0F9),
+    error = Color(0xFFBA1A1A),
+    onError = Color(0xFFFFFFFF),
+    errorContainer = Color(0xFFFFDAD6),
+    onErrorContainer = Color(0xFF93000A),
+    outline = Color(0xFF727784),
+    outlineVariant = Color(0xFFC1C6D4),
+    scrim = Color(0xFF000000),
+    surfaceBright = Color(0xFFF9F9FF),
+    surfaceContainer = Color(0xFFECEDF6),
+    surfaceContainerHigh = Color(0xFFE6E8F0),
+    surfaceContainerHighest = Color(0xFFE1E2EB),
+    surfaceContainerLow = Color(0xFFF2F3FC),
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceDim = Color(0xFFD8DAE2),
+    primaryFixed = Color(0xFF88F3FF),
+    primaryFixedDim = Color(0xFF69D6E3),
+    onPrimaryFixed = Color(0xFF001F23),
+    onPrimaryFixedVariant = Color(0xFF004F56),
+    secondaryFixed = Color(0xFFC2EAEF),
+    secondaryFixedDim = Color(0xFFA6CDD2),
+    onSecondaryFixed = Color(0xFF001F23),
+    onSecondaryFixedVariant = Color(0xFF274C51),
+    tertiaryFixed = Color(0xFFFFDBC8),
+    tertiaryFixedDim = Color(0xFFFFB689),
+    onTertiaryFixed = Color(0xFF321300),
+    onTertiaryFixedVariant = Color(0xFF743500),
+)
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+internal val DarkColorScheme = darkColorScheme(
+    primary = Color(0xFF69D6E3),
+    onPrimary = Color(0xFF00363B),
+    primaryContainer = Color(0xFF3EB2BE),
+    onPrimaryContainer = Color(0xFF004046),
+    inversePrimary = Color(0xFF006971),
+    secondary = Color(0xFFA6CDD2),
+    onSecondary = Color(0xFF0C363A),
+    secondaryContainer = Color(0xFF294F53),
+    onSecondaryContainer = Color(0xFF98BFC4),
+    tertiary = Color(0xFFFFB689),
+    onTertiary = Color(0xFF512300),
+    tertiaryContainer = Color(0xFFE48E55),
+    onTertiaryContainer = Color(0xFF5F2A00),
+    background = Color(0xFF101319),
+    onBackground = Color(0xFFE1E2EB),
+    surface = Color(0xFF101319),
+    onSurface = Color(0xFFE1E2EB),
+    surfaceVariant = Color(0xFF414752),
+    onSurfaceVariant = Color(0xFFC1C6D4),
+    surfaceTint = Color(0xFF69D6E3),
+    inverseSurface = Color(0xFFE1E2EB),
+    inverseOnSurface = Color(0xFF2D3037),
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005),
+    errorContainer = Color(0xFF93000A),
+    onErrorContainer = Color(0xFFFFDAD6),
+    outline = Color(0xFF8B919E),
+    outlineVariant = Color(0xFF414752),
+    scrim = Color(0xFF000000),
+    surfaceBright = Color(0xFF363940),
+    surfaceContainer = Color(0xFF1D2026),
+    surfaceContainerHigh = Color(0xFF272A30),
+    surfaceContainerHighest = Color(0xFF32353B),
+    surfaceContainerLow = Color(0xFF191C22),
+    surfaceContainerLowest = Color(0xFF0B0E14),
+    surfaceDim = Color(0xFF101319),
+    primaryFixed = Color(0xFF88F3FF),
+    primaryFixedDim = Color(0xFF69D6E3),
+    onPrimaryFixed = Color(0xFF001F23),
+    onPrimaryFixedVariant = Color(0xFF004F56),
+    secondaryFixed = Color(0xFFC2EAEF),
+    secondaryFixedDim = Color(0xFFA6CDD2),
+    onSecondaryFixed = Color(0xFF001F23),
+    onSecondaryFixedVariant = Color(0xFF274C51),
+    tertiaryFixed = Color(0xFFFFDBC8),
+    tertiaryFixedDim = Color(0xFFFFB689),
+    onTertiaryFixed = Color(0xFF321300),
+    onTertiaryFixedVariant = Color(0xFF743500),
+)
