@@ -137,10 +137,21 @@ class IdentityService(private val identityStore: IdentityStore) : Identity, Shar
     // Wire format is suiteTag(1) || nonce(12) || ciphertext+tag. No persistent state
     // needed: a device always encrypts with its current preferred TransportSuite, and a decrypting
     // device dispatches on the tag it reads.
-    override fun encrypt(plaintext: ByteArray, recipientEncKey: ByteArray): ByteArray {
+    override fun encrypt(plaintext: ByteArray, recipientEncKey: ByteArray): ByteArray =
+        seal(plaintext, recipientEncKey, SHARE_INFO)
+
+    override fun sealLabel(label: String, recipientEncKey: ByteArray): ByteArray =
+        seal(label.toByteArray(Charsets.UTF_8), recipientEncKey, LABEL_INFO)
+
+    // Malformed UTF-8 decodes to replacement characters rather than failing, as on the other
+    // platforms. A label is only ever shown, and the box has already proved who sealed it.
+    override fun openLabel(sealedLabel: ByteArray, senderEncKey: ByteArray): String =
+        String(unseal(sealedLabel, senderEncKey, LABEL_INFO), Charsets.UTF_8)
+
+    private fun seal(plaintext: ByteArray, recipientEncKey: ByteArray, info: ByteArray): ByteArray {
         val sk = X25519PrivateKeyParameters(identityStore.decKey())
         val nonce = ByteArray(NONCE_BYTES).also { secureRandom.nextBytes(it) }
-        val key = deriveKey(sk, X25519PublicKeyParameters(recipientEncKey), nonce)
+        val key = deriveKey(sk, X25519PublicKeyParameters(recipientEncKey), nonce, info)
         val cipher = ChaCha20Poly1305()
         cipher.init(true, AEADParameters(KeyParameter(key), TAG_BITS, nonce))
         val out = ByteArray(cipher.getOutputSize(plaintext.size))
@@ -156,27 +167,30 @@ class IdentityService(private val identityStore: IdentityStore) : Identity, Shar
     // cover that window without keeping a keyring.
     //
     // Never used for encrypt() — this device always seals under its current key.
-    override fun decrypt(noncePlusCiphertext: ByteArray, recipientEncKey: ByteArray): ByteArray {
+    override fun decrypt(noncePlusCiphertext: ByteArray, recipientEncKey: ByteArray): ByteArray =
+        unseal(noncePlusCiphertext, recipientEncKey, SHARE_INFO)
+
+    private fun unseal(noncePlusCiphertext: ByteArray, recipientEncKey: ByteArray, info: ByteArray): ByteArray {
         val tag = noncePlusCiphertext.getOrNull(0)
             ?: throw UnsupportedTransportSuiteException("ciphertext is empty — no transport suite tag")
         if (TransportSuite.fromTag(tag) == null) {
             throw UnsupportedTransportSuiteException("this share used an encryption scheme this app version doesn't support")
         }
         return try {
-            open(noncePlusCiphertext, recipientEncKey, identityStore.decKey())
+            open(noncePlusCiphertext, recipientEncKey, identityStore.decKey(), info)
         } catch (e: Exception) {
             // The current key's failure is the one worth reporting — the fallback missing or failing
             // too just means there was no earlier generation this box belongs to.
             val previous = identityStore.previousDecKey() ?: throw e
-            runCatching { open(noncePlusCiphertext, recipientEncKey, previous) }.getOrElse { throw e }
+            runCatching { open(noncePlusCiphertext, recipientEncKey, previous, info) }.getOrElse { throw e }
         }
     }
 
-    private fun open(noncePlusCiphertext: ByteArray, recipientEncKey: ByteArray, decKey: ByteArray): ByteArray {
+    private fun open(noncePlusCiphertext: ByteArray, recipientEncKey: ByteArray, decKey: ByteArray, info: ByteArray): ByteArray {
         val sk = X25519PrivateKeyParameters(decKey)
         val nonce = noncePlusCiphertext.copyOfRange(1, 1 + NONCE_BYTES)
         val ciphertext = noncePlusCiphertext.copyOfRange(1 + NONCE_BYTES, noncePlusCiphertext.size)
-        val key = deriveKey(sk, X25519PublicKeyParameters(recipientEncKey), nonce)
+        val key = deriveKey(sk, X25519PublicKeyParameters(recipientEncKey), nonce, info)
         val cipher = ChaCha20Poly1305()
         cipher.init(false, AEADParameters(KeyParameter(key), TAG_BITS, nonce))
         val out = ByteArray(cipher.getOutputSize(ciphertext.size))
@@ -189,13 +203,14 @@ class IdentityService(private val identityStore: IdentityStore) : Identity, Shar
         sk: X25519PrivateKeyParameters,
         pk: X25519PublicKeyParameters,
         nonce: ByteArray,
+        info: ByteArray,
     ): ByteArray {
         val agreement = X25519Agreement()
         agreement.init(sk)
         val sharedSecret = ByteArray(agreement.agreementSize)
         agreement.calculateAgreement(pk, sharedSecret, 0)
         val hkdf = HKDFBytesGenerator(SHA256Digest())
-        hkdf.init(HKDFParameters(sharedSecret, nonce, HKDF_INFO))
+        hkdf.init(HKDFParameters(sharedSecret, nonce, info))
         val key = ByteArray(KEY_BYTES)
         hkdf.generateBytes(key, 0, KEY_BYTES)
         return key
@@ -205,7 +220,10 @@ class IdentityService(private val identityStore: IdentityStore) : Identity, Shar
         private const val NONCE_BYTES = 12
         private const val KEY_BYTES = 32
         private const val TAG_BITS = 128
-        private val HKDF_INFO = "deposplit-share".toByteArray(Charsets.UTF_8)
+        private val SHARE_INFO = "deposplit-share".toByteArray(Charsets.UTF_8)
+
+        // A key derivation of its own, so a sealed label can never be mistaken for a sealed share.
+        private val LABEL_INFO = "deposplit-label".toByteArray(Charsets.UTF_8)
         private val secureRandom = SecureRandom()
     }
 }

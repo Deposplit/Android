@@ -116,6 +116,7 @@ fun RecipientRequestsTab(
                     val senderName = senderContact?.displayName ?: keyPreview(request.senderKey)
                     RequestItem(
                         request = request,
+                        label = uiState.labels[request.id],
                         senderName = senderName,
                         senderSubtitle = senderContact?.takeIf { it.nickname != null }?.pseudonym,
                         keyChangedDaysAgo = keyChangedDaysAgo(request),
@@ -177,6 +178,7 @@ private fun KeyConflictItem(conflict: KeyConflict, contactName: String, onDismis
 @Composable
 private fun RequestItem(
     request: ShareRequest,
+    label: String?,
     senderName: String,
     // The sender's pseudonym, shown only when senderName above is actually a nickname.
     senderSubtitle: String? = null,
@@ -225,7 +227,7 @@ private fun RequestItem(
                     )
                 }
                 Text(
-                    text = request.label,
+                    text = label ?: stringResource(R.string.requests_label_unavailable),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
                 )

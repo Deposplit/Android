@@ -59,6 +59,13 @@ interface ShareManagement {
     fun syncInbox(): SyncReport
     fun listHeld(): List<HeldShare>
     fun listPendingRequests(): RelayFanOut<ShareRequest>
+
+    /**
+     * The label a pending request may show: opened from its `sealedLabel`, or else the label of the
+     * share this device holds for that secret. `null` when neither is available.
+     */
+    fun labelOf(request: ShareRequest): String?
+
     fun respond(requestId: UUID, approved: Boolean)
     fun deleteHeldShare(shareId: UUID)
     fun deleteAllHeldFromSender(contactId: UUID)

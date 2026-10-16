@@ -33,6 +33,9 @@ class RequestsViewModel(
         val contacts: List<Contact> = emptyList(),
         val keyConflicts: List<KeyConflict> = emptyList(),
         val heldSecretIds: Set<UUID> = emptySet(),
+        // Opened once per load, by request id, rather than on every recomposition: opening is a key
+        // agreement, not a lookup. A request with no entry shows a placeholder.
+        val labels: Map<UUID, String> = emptyMap(),
         val isLoading: Boolean = false,
         // Every relay that did not answer, by base URL. The list above still holds what the
         // others returned, and each of these is named rather than turned into an error: error is
@@ -57,8 +60,10 @@ class RequestsViewModel(
             _uiState.update { it.copy(isLoading = true, error = null) }
             runCatching {
                 withContext(Dispatchers.IO) {
+                    val pending = shareManagement.listPendingRequests()
                     Loaded(
-                        shareManagement.listPendingRequests(),
+                        pending,
+                        pending.items.mapNotNull { request -> shareManagement.labelOf(request)?.let { request.id to it } }.toMap(),
                         contactManagement.listContacts(),
                         runCatching { shareManagement.listKeyConflicts() }.getOrDefault(emptyList()),
                         runCatching { shareManagement.listHeld().map { it.secretId }.toSet() }.getOrDefault(emptySet()),
@@ -75,6 +80,7 @@ class RequestsViewModel(
                             contacts = loaded.contacts,
                             keyConflicts = loaded.keyConflicts,
                             heldSecretIds = loaded.heldSecretIds,
+                            labels = loaded.labels,
                             respondingIds = emptySet(),
                         )
                     }
@@ -134,6 +140,7 @@ class RequestsViewModel(
 
     private data class Loaded(
         val requests: RelayFanOut<ShareRequest>,
+        val labels: Map<UUID, String>,
         val contacts: List<Contact>,
         val keyConflicts: List<KeyConflict>,
         val heldSecretIds: Set<UUID>,

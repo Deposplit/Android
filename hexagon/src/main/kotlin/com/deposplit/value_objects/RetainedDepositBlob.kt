@@ -7,9 +7,9 @@ import java.util.UUID
  * The deposit-retention rule — the sender retains each per-holder encrypted blob locally
  * until that holder's pickup is confirmed (relay-observed or heartbeat-attested), then discards
  * it. Retained so a relay GC before pickup can be answered with a cheap re-deposit rather than
- * counted as a lost share: each blob is encrypted to the *holder's* X25519 key, so the sender
- * cannot decrypt it herself — retaining all `n` is `n` opaque forward-only blobs, not a
- * reconstructable secret sitting on her device.
+ * counted as a lost share. Each blob is sealed to the *holder's* X25519 key, but the box is
+ * static-static, so the sender can recompute its key and open it herself: until pickup is
+ * confirmed, all `n` retained blobs together keep the secret reconstructable on her device.
  *
  * The re-deposit itself is **not implemented**: nothing reads [ciphertext] back. That path lands
  * with relay-side collection, which does not exist either, so the gap costs nothing today —

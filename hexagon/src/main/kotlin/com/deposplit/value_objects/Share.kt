@@ -54,7 +54,9 @@ data class ShareRequest(
     val secretId: UUID,
     val senderKey: ByteArray,
     val recipientKey: ByteArray,
-    val label: String,
+    // The label, sealed by the sender to the recipient. Only the recipient opens it, through
+    // ShareManagement.label(of).
+    val sealedLabel: ByteArray,
     val secretCreatedAt: Instant,
     val transactionType: ShareTransactionType,
     val state: ShareRequestState,

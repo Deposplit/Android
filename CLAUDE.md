@@ -166,6 +166,9 @@ in the lint gate to keep dead ones from accumulating again.
   by key, so a record survives the sender rotating their keys.
 - **Ciphertext wire format is `suiteTag(1) || nonce(12) || ciphertext+tag`.** The leading
   suite tag is easy to forget when hand-checking bytes.
+- **A secret's label is sealed with the same box**, under HKDF info `deposplit-label` rather than
+  `deposplit-share`, so a label box and a share box never share a derived key. The relay only ever
+  sees the sealed label.
 - **Catalog backup uses the Storage Access Framework** — `CreateDocument` to export,
   `OpenDocument` to import.
 - **All UI is Jetpack Compose.** No XML layouts.
@@ -241,7 +244,7 @@ iOS therefore has no counterpart to this flag and does not need one.
 ## Build and test
 
 ```bash
-./gradlew test                    # JVM unit tests (172 in :hexagon, 20 in :app) — what CI runs
+./gradlew test                    # JVM unit tests (181 in :hexagon, 20 in :app) — what CI runs
 ./gradlew :app:lintDebug          # the four gated lint checks — also what CI runs
 ./gradlew :hexagon:test           # domain only
 ./gradlew :hexagon:test --tests "com.deposplit.shamir.ShamirTest"

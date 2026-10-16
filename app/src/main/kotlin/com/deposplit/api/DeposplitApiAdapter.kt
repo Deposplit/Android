@@ -57,7 +57,7 @@ class DeposplitApiAdapter(
     override fun openShareRequest(
         secretId: UUID,
         recipientKey: ByteArray,
-        label: String,
+        sealedLabel: ByteArray,
         secretCreatedAt: Instant,
         transactionType: ShareTransactionType,
         ciphertext: ByteArray?,
@@ -70,7 +70,7 @@ class DeposplitApiAdapter(
             OpenShareRequestJson(
                 secretId = secretId.toString(),
                 recipientKey = recipientKey.encodeBase64Url(),
-                label = label,
+                sealedLabel = sealedLabel.encodeBase64(),
                 secretCreatedAt = secretCreatedAt.toString(),
                 transactionType = transactionType.wireValue,
                 ciphertext = ciphertext?.encodeBase64(),
@@ -219,7 +219,7 @@ class DeposplitApiAdapter(
     private data class OpenShareRequestJson(
         val secretId: String,
         val recipientKey: String,
-        val label: String,
+        val sealedLabel: String,
         val secretCreatedAt: String,
         val transactionType: String,
         val ciphertext: String? = null,
@@ -278,7 +278,7 @@ class DeposplitApiAdapter(
         val secretId: String,
         val senderKey: String,
         val recipientKey: String,
-        val label: String,
+        val sealedLabel: String,
         val secretCreatedAt: String,
         val transactionType: String,
         val state: String,
@@ -299,7 +299,7 @@ class DeposplitApiAdapter(
         secretId = UUID.fromString(secretId),
         senderKey = senderKey.decodeBase64Url(),
         recipientKey = recipientKey.decodeBase64Url(),
-        label = label,
+        sealedLabel = sealedLabel.decodeBase64(),
         secretCreatedAt = Instant.parse(secretCreatedAt),
         transactionType = ShareTransactionType.fromWire(transactionType) ?: error("Unknown transactionType: $transactionType"),
         state = when (state) {

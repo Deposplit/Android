@@ -29,4 +29,17 @@ interface ShareEncryption {
     fun encrypt(plaintext: ByteArray, recipientEncKey: ByteArray): ByteArray
     /** Decrypts [noncePlusCiphertext] (nonce(12) || ciphertext+tag) using [recipientEncKey] via X25519+HKDF-SHA-256+ChaCha20-Poly1305. */
     fun decrypt(noncePlusCiphertext: ByteArray, recipientEncKey: ByteArray): ByteArray
+
+    /**
+     * Seals a secret's label to [recipientEncKey] with the same box as [encrypt], under a key
+     * derivation of its own, so a label box and a share box never share a derived key. The relay
+     * stores the result without being able to read it.
+     */
+    fun sealLabel(label: String, recipientEncKey: ByteArray): ByteArray
+
+    /**
+     * Opens a label sealed by [sealLabel] under the row sender's [senderEncKey], with the same
+     * fallback to the previous decKey as [decrypt].
+     */
+    fun openLabel(sealedLabel: ByteArray, senderEncKey: ByteArray): String
 }

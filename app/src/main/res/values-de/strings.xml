@@ -195,6 +195,7 @@
     <!-- Requests -->
     <string name="requests_empty">Keine ausstehenden Anfragen</string>
     <string name="requests_from">Von: %1$s</string>
+    <string name="requests_label_unavailable">Bezeichnung nicht verfügbar</string>
     <string name="requests_action_deny">Verweigern</string>
     <string name="requests_action_approve">Genehmigen</string>
     <string name="requests_approve_not_held">Dieser Anteil ist nicht auf diesem Gerät, es gibt also nichts zurückzugeben.</string>

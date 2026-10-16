@@ -129,7 +129,7 @@ class ShareService(
     private fun verifyOpen(req: ShareRequest): Boolean {
         val contact = contactRepository.getByVerifyKey(req.senderKey) ?: return false
         val canon = PayloadCanonical.forOpen(
-            req.secretId, req.transactionType, req.recipientKey, req.label, req.secretCreatedAt, req.ciphertext,
+            req.secretId, req.transactionType, req.recipientKey, req.sealedLabel, req.secretCreatedAt, req.ciphertext,
             req.k, req.n, req.mimeType,
         )
         return identity.verify(canon, req.senderSignature, contact.verifyKey)
@@ -171,16 +171,18 @@ class ShareService(
         val createdAt = Instant.now()
         shares.zip(contacts).forEach { (share, contact) ->
             val ciphertext = encryption.encrypt(share, contact.encKey)
-            val canon = PayloadCanonical.forOpen(secretId, ShareTransactionType.DEPOSIT, contact.verifyKey, label, createdAt, ciphertext, threshold, contacts.size, mimeType)
+            val sealedLabel = encryption.sealLabel(label, contact.encKey)
+            val canon = PayloadCanonical.forOpen(secretId, ShareTransactionType.DEPOSIT, contact.verifyKey, sealedLabel, createdAt, ciphertext, threshold, contacts.size, mimeType)
             val senderSignature = identity.sign(canon)
             val req = relayForContact(contact).openShareRequest(
-                secretId, contact.verifyKey, label, createdAt, ShareTransactionType.DEPOSIT, ciphertext,
+                secretId, contact.verifyKey, sealedLabel, createdAt, ShareTransactionType.DEPOSIT, ciphertext,
                 k = threshold, n = contacts.size, mimeType = mimeType, senderSignature = senderSignature,
             )
             shareMetadataRepository.save(ShareMetadata(req.id, secretId, contact.id))
             // Retained until this holder's pickup is confirmed (relay-observed or
-            // heartbeat-attested), then discarded. Safe to retain: this blob is encrypted to the
-            // holder's X25519 key, so this device cannot decrypt it itself.
+            // heartbeat-attested), then discarded. The box is static-static X25519, so this device
+            // can recompute its key and open the blob itself until then: retaining all n keeps the
+            // secret recoverable here for that window.
             runCatching {
                 retainedDepositRepository.save(
                     RetainedDepositBlob(req.id, secretId, contact.id, label, createdAt, ciphertext, threshold, contacts.size, mimeType),
@@ -332,10 +334,11 @@ class ShareService(
                     (it.state == ShareRequestState.PENDING || it.state == ShareRequestState.APPROVED)
             }
             if (!hasActive) runCatching {
-                val canon = PayloadCanonical.forOpen(meta.secretId, ShareTransactionType.RETRIEVAL, contact.verifyKey, secret.label, secret.secretCreatedAt, null)
+                val sealedLabel = encryption.sealLabel(secret.label, contact.encKey)
+                val canon = PayloadCanonical.forOpen(meta.secretId, ShareTransactionType.RETRIEVAL, contact.verifyKey, sealedLabel, secret.secretCreatedAt, null)
                 val senderSignature = identity.sign(canon)
                 relayForContact(contact).openShareRequest(
-                    meta.secretId, contact.verifyKey, secret.label, secret.secretCreatedAt, ShareTransactionType.RETRIEVAL, null,
+                    meta.secretId, contact.verifyKey, sealedLabel, secret.secretCreatedAt, ShareTransactionType.RETRIEVAL, null,
                     senderSignature = senderSignature,
                 )
             }
@@ -349,10 +352,11 @@ class ShareService(
             ?: error("No local record for secret ${meta.secretId}")
         val contact = contactRepository.getById(meta.contactId)
             ?: error("Contact not found for id ${meta.contactId}")
-        val canon = PayloadCanonical.forOpen(meta.secretId, type, contact.verifyKey, secret.label, secret.secretCreatedAt, null)
+        val sealedLabel = encryption.sealLabel(secret.label, contact.encKey)
+        val canon = PayloadCanonical.forOpen(meta.secretId, type, contact.verifyKey, sealedLabel, secret.secretCreatedAt, null)
         val senderSignature = identity.sign(canon)
         return relayForContact(contact).openShareRequest(
-            meta.secretId, contact.verifyKey, secret.label, secret.secretCreatedAt, type, null,
+            meta.secretId, contact.verifyKey, sealedLabel, secret.secretCreatedAt, type, null,
             senderSignature = senderSignature,
         )
     }
@@ -460,11 +464,12 @@ class ShareService(
                     if (!stored) {
                         req.ciphertext?.let { ct ->
                             val plaintext = encryption.decrypt(ct, senderContact.encKey)
+                            val label = encryption.openLabel(req.sealedLabel, senderContact.encKey)
                             shareRepository.save(
                                 HeldShare(
                                     id = req.id,
                                     secretId = req.secretId,
-                                    label = req.label,
+                                    label = label,
                                     contactId = senderContact.id,
                                     senderPseudonym = senderContact.pseudonym,
                                     createdAt = req.secretCreatedAt,
@@ -673,7 +678,10 @@ class ShareService(
                 val n = req.n ?: continue
                 val mimeType = req.mimeType ?: continue
                 if (secretRepository.getAll().none { it.id == req.secretId }) {
-                    runCatching { secretRepository.save(Secret(req.secretId, req.label, mimeType, k, n, req.secretCreatedAt, SecretState.ACTIVE)) }
+                    // A label that will not open leaves the row for the next poll, rather than rebuilding
+                    // a secret nobody could recognise.
+                    val label = runCatching { encryption.openLabel(req.sealedLabel, holderContact.encKey) }.getOrNull() ?: continue
+                    runCatching { secretRepository.save(Secret(req.secretId, label, mimeType, k, n, req.secretCreatedAt, SecretState.ACTIVE)) }
                 }
                 if (shareMetadataRepository.getAll().none { it.secretId == req.secretId && it.contactId == holderContact.id }) {
                     runCatching { shareMetadataRepository.save(ShareMetadata(UUID.randomUUID(), req.secretId, holderContact.id)) }
@@ -687,13 +695,14 @@ class ShareService(
         val contact = contactRepository.getById(contactId) ?: error("Contact not found for id $contactId")
         shareRepository.getAll().filter { it.contactId == contactId }.forEach { share ->
             runCatching {
+                val sealedLabel = encryption.sealLabel(share.label, contact.encKey)
                 val canon = PayloadCanonical.forOpen(
-                    share.secretId, ShareTransactionType.INVENTORY, contact.verifyKey, share.label, share.createdAt, null,
+                    share.secretId, ShareTransactionType.INVENTORY, contact.verifyKey, sealedLabel, share.createdAt, null,
                     share.k, share.n, share.mimeType,
                 )
                 val senderSignature = identity.sign(canon)
                 relayForContact(contact).openShareRequest(
-                    share.secretId, contact.verifyKey, share.label, share.createdAt, ShareTransactionType.INVENTORY, null,
+                    share.secretId, contact.verifyKey, sealedLabel, share.createdAt, ShareTransactionType.INVENTORY, null,
                     k = share.k, n = share.n, mimeType = share.mimeType, senderSignature = senderSignature,
                 )
             }
@@ -709,6 +718,15 @@ class ShareService(
                 // A forged removal/retrieval request has no AEAD backstop — must never reach the UI.
                 .filter(::verifyOpen)
         }
+
+    override fun labelOf(request: ShareRequest): String? {
+        val opened = contactRepository.getByVerifyKey(request.senderKey)?.let { sender ->
+            runCatching { encryption.openLabel(request.sealedLabel, sender.encKey) }.getOrNull()
+        }
+        // A label sealed to a key two rotations back no longer opens. The share held for that secret
+        // still names it.
+        return opened ?: shareRepository.getAll().firstOrNull { it.secretId == request.secretId }?.label
+    }
 
     override fun respond(requestId: UUID, approved: Boolean) {
         val (relay, request) = findShareRequest(requestId)

@@ -213,12 +213,26 @@ private class FakeRetainedDepositRepository : RetainedDepositRepository {
 private object NoOpShareEncryption : ShareEncryption {
     override fun encrypt(plaintext: ByteArray, recipientEncKey: ByteArray) = plaintext
     override fun decrypt(noncePlusCiphertext: ByteArray, recipientEncKey: ByteArray) = noncePlusCiphertext
+    override fun sealLabel(label: String, recipientEncKey: ByteArray) = label.toByteArray(Charsets.UTF_8)
+    override fun openLabel(sealedLabel: ByteArray, senderEncKey: ByteArray) = String(sealedLabel, Charsets.UTF_8)
 }
 
-/** Stands in for the real failure at pickup: a share sealed to a key this device no longer holds. */
+/** Stands in for the real failure at pickup: a share, and its label, sealed to a key this device no longer holds. */
 private object FailingShareEncryption : ShareEncryption {
     override fun encrypt(plaintext: ByteArray, recipientEncKey: ByteArray) = plaintext
     override fun decrypt(noncePlusCiphertext: ByteArray, recipientEncKey: ByteArray): ByteArray =
+        throw RuntimeException("simulated decryption failure")
+    override fun sealLabel(label: String, recipientEncKey: ByteArray) = label.toByteArray(Charsets.UTF_8)
+    override fun openLabel(sealedLabel: ByteArray, senderEncKey: ByteArray): String =
+        throw RuntimeException("simulated decryption failure")
+}
+
+/** A share that opens beside a label that does not, so a test can tell the two failures apart. */
+private object UnopenableLabelEncryption : ShareEncryption {
+    override fun encrypt(plaintext: ByteArray, recipientEncKey: ByteArray) = plaintext
+    override fun decrypt(noncePlusCiphertext: ByteArray, recipientEncKey: ByteArray) = noncePlusCiphertext
+    override fun sealLabel(label: String, recipientEncKey: ByteArray) = label.toByteArray(Charsets.UTF_8)
+    override fun openLabel(sealedLabel: ByteArray, senderEncKey: ByteArray): String =
         throw RuntimeException("simulated decryption failure")
 }
 
@@ -234,6 +248,7 @@ private class FakeShareRelay(
     data class OpenedRequest(
         val secretId: UUID,
         val recipientKey: ByteArray,
+        val sealedLabel: ByteArray,
         val transactionType: ShareTransactionType,
         val k: Int?,
         val n: Int?,
@@ -256,16 +271,16 @@ private class FakeShareRelay(
     var throwOnWithdraw = false
 
     override fun openShareRequest(
-        secretId: UUID, recipientKey: ByteArray, label: String, secretCreatedAt: Instant,
+        secretId: UUID, recipientKey: ByteArray, sealedLabel: ByteArray, secretCreatedAt: Instant,
         transactionType: ShareTransactionType, ciphertext: ByteArray?, k: Int?, n: Int?,
         mimeType: MimeType?, senderSignature: ByteArray,
     ): ShareRequest {
-        openedRequests.add(OpenedRequest(secretId, recipientKey, transactionType, k, n, mimeType))
+        openedRequests.add(OpenedRequest(secretId, recipientKey, sealedLabel, transactionType, k, n, mimeType))
         val selfApproved = transactionType == ShareTransactionType.INVENTORY
         val now = Instant.now()
         return ShareRequest(
             id = UUID.randomUUID(), secretId = secretId, senderKey = ByteArray(0), recipientKey = recipientKey,
-            label = label, secretCreatedAt = secretCreatedAt, transactionType = transactionType,
+            sealedLabel = sealedLabel, secretCreatedAt = secretCreatedAt, transactionType = transactionType,
             state = if (selfApproved) ShareRequestState.APPROVED else ShareRequestState.PENDING,
             requestedAt = now, respondedAt = if (selfApproved) now else null,
             ciphertext = null, k = k, n = n, mimeType = mimeType, senderSignature = senderSignature, recipientSignature = null,
@@ -404,13 +419,16 @@ class ShareServiceTest {
         senderSignature: ByteArray,
         ciphertext: ByteArray = byteArrayOf(1, 2, 3),
         mimeType: MimeType = MimeType.DEFAULT,
+        // NoOpShareEncryption seals a label to its own UTF-8 bytes. A test using real encryption
+        // passes a genuinely sealed one instead.
+        sealedLabel: ByteArray = "test secret".toByteArray(Charsets.UTF_8),
     ): ShareRequest =
         ShareRequest(
             id = id,
             secretId = UUID.randomUUID(),
             senderKey = senderKey,
             recipientKey = recipientKey,
-            label = "test secret",
+            sealedLabel = sealedLabel,
             secretCreatedAt = Instant.now(),
             transactionType = ShareTransactionType.DEPOSIT,
             state = ShareRequestState.PENDING,
@@ -427,7 +445,7 @@ class ShareServiceTest {
     private fun signOpenAs(signer: TestKeyPair, row: ShareRequest): ByteArray =
         signer.sign(
             PayloadCanonical.forOpen(
-                row.secretId, row.transactionType, row.recipientKey, row.label, row.secretCreatedAt,
+                row.secretId, row.transactionType, row.recipientKey, row.sealedLabel, row.secretCreatedAt,
                 row.ciphertext, row.k, row.n, row.mimeType,
             ),
         )
@@ -466,6 +484,76 @@ class ShareServiceTest {
         assertEquals(emptyList<UUID>(), relay.respondCalls)
         assertEquals(emptyList<UUID>(), shareRepo.getAll().map { it.id })
         assertEquals(ShareRequestState.PENDING, relay.byId.getValue(id).state)
+    }
+
+    @Test
+    fun `syncInbox leaves a Deposit pending when its label cannot be opened`() {
+        val relay = FakeShareRelay()
+        val (svc, bob, shareRepo, _, _, _, _) = newService(relay, encryption = UnopenableLabelEncryption)
+        val id = UUID.randomUUID()
+        val unsigned = depositRow(id, aliceKeys.publicKey, bob.verifyKey()!!, ByteArray(0))
+        val row = unsigned.copy(senderSignature = signOpenAs(aliceKeys, unsigned))
+        relay.pending = listOf(row)
+        relay.byId[id] = row
+
+        svc.syncInbox()
+
+        // A share stored without the label it came with is a share nobody could recognise, so the
+        // pickup waits for the next poll exactly as an undecryptable share does.
+        assertEquals(emptyList<UUID>(), relay.respondCalls)
+        assertEquals(emptyList<UUID>(), shareRepo.getAll().map { it.id })
+        assertEquals(ShareRequestState.PENDING, relay.byId.getValue(id).state)
+    }
+
+    @Test
+    fun `deposit seals the label to each holder so the relay never sees it in the clear`() {
+        val sender = IdentityService(InMemoryIdentityStoreForShareServiceTest()).also { it.register("sender") }
+        val holderA = IdentityService(InMemoryIdentityStoreForShareServiceTest()).also { it.register("a") }
+        val holderB = IdentityService(InMemoryIdentityStoreForShareServiceTest()).also { it.register("b") }
+        val contactA = aliceContact.copy(id = UUID.randomUUID(), verifyKey = TestKeyPair.generate().publicKey, encKey = holderA.encKey()!!)
+        val contactB = aliceContact.copy(id = UUID.randomUUID(), verifyKey = TestKeyPair.generate().publicKey, encKey = holderB.encKey()!!)
+        val relay = FakeShareRelay()
+        val (svc, _, _, _, _, _, _) = newService(relay, contacts = listOf(contactA, contactB), encryption = sender)
+
+        svc.deposit(byteArrayOf(1, 2, 3), "Bitcoin seed", listOf(contactA, contactB), threshold = 2)
+
+        val sealed = relay.openedRequests.map { it.sealedLabel }
+        assertEquals(2, sealed.size)
+        val plaintext = "Bitcoin seed".toByteArray(Charsets.UTF_8)
+        assertTrue(sealed.none { box -> box.toList().windowed(plaintext.size).any { it == plaintext.toList() } })
+        assertEquals("Bitcoin seed", holderA.openLabel(sealed[0], sender.encKey()!!))
+        assertEquals("Bitcoin seed", holderB.openLabel(sealed[1], sender.encKey()!!))
+    }
+
+    @Test
+    fun `labelOf opens the sealed label of a request from a known contact`() {
+        val (svc, bob, _, _, _, _, _) = newService(FakeShareRelay())
+        val row = depositRow(UUID.randomUUID(), aliceKeys.publicKey, bob.verifyKey()!!, ByteArray(0), sealedLabel = "passport".toByteArray(Charsets.UTF_8))
+
+        assertEquals("passport", svc.labelOf(row))
+    }
+
+    @Test
+    fun `labelOf falls back to the held share when the sealed label will not open`() {
+        val (svc, bob, shareRepo, _, _, _, _) = newService(FakeShareRelay(), encryption = FailingShareEncryption)
+        val row = depositRow(UUID.randomUUID(), aliceKeys.publicKey, bob.verifyKey()!!, ByteArray(0))
+        shareRepo.save(
+            HeldShare(
+                id = UUID.randomUUID(), secretId = row.secretId, label = "passport", contactId = aliceContact.id,
+                senderPseudonym = "alice", createdAt = Instant.now(), pickedUpAt = Instant.now(),
+                plaintextShare = byteArrayOf(9), k = 2, n = 3, mimeType = MimeType.DEFAULT,
+            )
+        )
+
+        assertEquals("passport", svc.labelOf(row))
+    }
+
+    @Test
+    fun `labelOf is null when the sealed label will not open and no share is held`() {
+        val (svc, bob, _, _, _, _, _) = newService(FakeShareRelay(), encryption = FailingShareEncryption)
+        val row = depositRow(UUID.randomUUID(), aliceKeys.publicKey, bob.verifyKey()!!, ByteArray(0))
+
+        assertEquals(null, svc.labelOf(row))
     }
 
     @Test
@@ -856,11 +944,11 @@ class ShareServiceTest {
         k: Int = 2, n: Int = 3, mimeType: MimeType = MimeType.DEFAULT, label: String = "recovered secret",
     ): ShareRequest {
         val createdAt = Instant.now()
-        val canon = PayloadCanonical.forOpen(secretId, ShareTransactionType.INVENTORY, recipientKey, label, createdAt, null, k, n, mimeType)
+        val canon = PayloadCanonical.forOpen(secretId, ShareTransactionType.INVENTORY, recipientKey, label.toByteArray(Charsets.UTF_8), createdAt, null, k, n, mimeType)
         val sig = signer.sign(canon)
         val now = Instant.now()
         return ShareRequest(
-            id = UUID.randomUUID(), secretId = secretId, senderKey = senderKey, recipientKey = recipientKey, label = label,
+            id = UUID.randomUUID(), secretId = secretId, senderKey = senderKey, recipientKey = recipientKey, sealedLabel = label.toByteArray(Charsets.UTF_8),
             secretCreatedAt = createdAt, transactionType = ShareTransactionType.INVENTORY, state = ShareRequestState.APPROVED,
             requestedAt = now, respondedAt = now, ciphertext = null, k = k, n = n, mimeType = mimeType,
             senderSignature = sig, recipientSignature = null,
@@ -1125,7 +1213,7 @@ class ShareServiceTest {
     private fun bareDepositRow(id: UUID, secretId: UUID, recipientKey: ByteArray, state: ShareRequestState): ShareRequest =
         ShareRequest(
             id = id, secretId = secretId, senderKey = ByteArray(32) { 0x05 }, recipientKey = recipientKey,
-            label = "test secret", secretCreatedAt = Instant.now(), transactionType = ShareTransactionType.DEPOSIT,
+            sealedLabel = "test secret".toByteArray(Charsets.UTF_8), secretCreatedAt = Instant.now(), transactionType = ShareTransactionType.DEPOSIT,
             state = state, requestedAt = Instant.now(),
             respondedAt = if (state == ShareRequestState.PENDING) null else Instant.now(),
             ciphertext = null, k = 2, n = 3, mimeType = MimeType.DEFAULT, senderSignature = ByteArray(0),
@@ -1283,7 +1371,7 @@ class ShareServiceTest {
         metaRepo.save(ShareMetadata(depositId, secretId, aliceContact.id))
         val retrievalRow = ShareRequest(
             id = UUID.randomUUID(), secretId = secretId, senderKey = ByteArray(32) { 0x05 }, recipientKey = aliceContact.verifyKey,
-            label = "s", secretCreatedAt = Instant.now(), transactionType = ShareTransactionType.RETRIEVAL, state = ShareRequestState.APPROVED,
+            sealedLabel = "s".toByteArray(Charsets.UTF_8), secretCreatedAt = Instant.now(), transactionType = ShareTransactionType.RETRIEVAL, state = ShareRequestState.APPROVED,
             requestedAt = Instant.now(), respondedAt = Instant.now(), ciphertext = byteArrayOf(1), k = null, n = null,
             senderSignature = ByteArray(0), recipientSignature = null,
         )
@@ -1460,7 +1548,7 @@ class ShareServiceTest {
         val sig = holder.keys.sign(canon)
         return ShareRequest(
             id = id, secretId = secretId, senderKey = ByteArray(0), recipientKey = holder.contact.verifyKey,
-            label = "s", secretCreatedAt = Instant.now(), transactionType = ShareTransactionType.RETRIEVAL,
+            sealedLabel = "s".toByteArray(Charsets.UTF_8), secretCreatedAt = Instant.now(), transactionType = ShareTransactionType.RETRIEVAL,
             state = ShareRequestState.APPROVED, requestedAt = Instant.now(),
             respondedAt = Instant.now(), ciphertext = ciphertext, k = null, n = null,
             senderSignature = ByteArray(0), recipientSignature = sig,
@@ -1472,7 +1560,7 @@ class ShareServiceTest {
     private fun makePendingRetrievalRow(secretId: UUID, recipientKey: ByteArray): ShareRequest =
         ShareRequest(
             id = UUID.randomUUID(), secretId = secretId, senderKey = ByteArray(0), recipientKey = recipientKey,
-            label = "s", secretCreatedAt = Instant.now(), transactionType = ShareTransactionType.RETRIEVAL,
+            sealedLabel = "s".toByteArray(Charsets.UTF_8), secretCreatedAt = Instant.now(), transactionType = ShareTransactionType.RETRIEVAL,
             state = ShareRequestState.PENDING, requestedAt = Instant.now(),
             respondedAt = null, ciphertext = null, k = null, n = null,
             senderSignature = ByteArray(0), recipientSignature = null,
@@ -1812,7 +1900,11 @@ class ShareServiceTest {
         val id = UUID.randomUUID()
         val share = "bob's share".encodeToByteArray()
         val sealedToBobsOldKey = aliceIdentity.encrypt(share, bobIdentity.encKey()!!)
-        val unsigned = depositRow(id, aliceKeys.publicKey, bobIdentity.verifyKey()!!, ByteArray(0), sealedToBobsOldKey)
+        val labelSealedToBobsOldKey = aliceIdentity.sealLabel("passport", bobIdentity.encKey()!!)
+        val unsigned = depositRow(
+            id, aliceKeys.publicKey, bobIdentity.verifyKey()!!, ByteArray(0), sealedToBobsOldKey,
+            sealedLabel = labelSealedToBobsOldKey,
+        )
         val row = unsigned.copy(senderSignature = signOpenAs(aliceKeys, unsigned))
 
         bobIdentity.activateKeyPair(bobIdentity.generateNewKeyPair())
@@ -1823,6 +1915,7 @@ class ShareServiceTest {
 
         assertEquals(1, shareRepo.getAll().size)
         assertTrue(shareRepo.getAll().single().plaintextShare.contentEquals(share))
+        assertEquals("passport", shareRepo.getAll().single().label)
         assertEquals(listOf(id), relay.respondCalls)
     }
 
@@ -2142,7 +2235,7 @@ class ShareServiceTest {
     private fun removalRow(secretId: UUID, recipientKey: ByteArray): ShareRequest =
         ShareRequest(
             id = UUID.randomUUID(), secretId = secretId, senderKey = ByteArray(0), recipientKey = recipientKey,
-            label = "destroy test", secretCreatedAt = Instant.now(), transactionType = ShareTransactionType.REMOVAL,
+            sealedLabel = "destroy test".toByteArray(Charsets.UTF_8), secretCreatedAt = Instant.now(), transactionType = ShareTransactionType.REMOVAL,
             state = ShareRequestState.PENDING, requestedAt = Instant.now(), respondedAt = null,
             ciphertext = null, k = null, n = null, mimeType = null,
             senderSignature = ByteArray(0), recipientSignature = null,

@@ -42,7 +42,7 @@ interface ShareRelay {
     fun openShareRequest(
         secretId: UUID,
         recipientKey: ByteArray,
-        label: String,
+        sealedLabel: ByteArray,
         secretCreatedAt: Instant,
         transactionType: ShareTransactionType,
         ciphertext: ByteArray?,

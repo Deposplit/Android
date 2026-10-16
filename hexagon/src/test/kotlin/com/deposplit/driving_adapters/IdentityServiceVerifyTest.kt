@@ -229,4 +229,48 @@ class IdentityServiceVerifyTest {
             bob.decrypt(ByteArray(0), alice.encKey()!!)
         }
     }
+
+    // Sealed labels — the same box as a share, under a key derivation of its own.
+
+    @Test
+    fun `sealLabel then openLabel round-trips`() {
+        val alice = newIdentity()
+        val bob = newIdentity()
+        val sealed = alice.sealLabel("Bitcoin seed \uD83D\uDD11", bob.encKey()!!)
+
+        assertEquals(TransportSuite.current.tag, sealed[0])
+        assertEquals("Bitcoin seed \uD83D\uDD11", bob.openLabel(sealed, alice.encKey()!!))
+    }
+
+    @Test
+    fun `a sealed label does not carry its text in the clear`() {
+        val alice = newIdentity()
+        val bob = newIdentity()
+        val plaintext = "Bitcoin seed".encodeToByteArray().toList()
+        val sealed = alice.sealLabel("Bitcoin seed", bob.encKey()!!).toList()
+
+        assertFalse(sealed.windowed(plaintext.size).any { it == plaintext })
+    }
+
+    @Test
+    fun `a share box does not open as a label nor a label box as a share`() {
+        val alice = newIdentity()
+        val bob = newIdentity()
+        val shareBox = alice.encrypt("one share".encodeToByteArray(), bob.encKey()!!)
+        val labelBox = alice.sealLabel("one label", bob.encKey()!!)
+
+        assertFailsWith<Exception> { bob.openLabel(shareBox, alice.encKey()!!) }
+        assertFailsWith<Exception> { bob.decrypt(labelBox, alice.encKey()!!) }
+    }
+
+    @Test
+    fun `openLabel falls back to the decKey displaced by the last rotation`() {
+        val alice = newIdentity()
+        val bob = newIdentity()
+        val sealedToAlicesOldKey = bob.sealLabel("passport", alice.encKey()!!)
+
+        alice.activateKeyPair(alice.generateNewKeyPair())
+
+        assertEquals("passport", alice.openLabel(sealedToAlicesOldKey, bob.encKey()!!))
+    }
 }

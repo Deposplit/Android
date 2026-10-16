@@ -34,12 +34,16 @@ object PayloadCanonical {
      *
      * A null and an empty-string `mimeType` produce identical bytes here, which is why the relay
      * refuses to store an empty one.
+     *
+     * The label is signed in its sealed form, as standard base64 like the ciphertext, in the
+     * position the plaintext label held. Base64 has no newline in it, so a label with a line break
+     * cannot be read as a field separator.
      */
     fun forOpen(
         secretId: UUID,
         transactionType: ShareTransactionType,
         recipientKey: ByteArray,
-        label: String,
+        sealedLabel: ByteArray,
         secretCreatedAt: Instant,
         ciphertext: ByteArray?,
         k: Int? = null,
@@ -49,7 +53,7 @@ object PayloadCanonical {
         secretId.toString(),
         transactionType.wireValue,
         base64Url.encodeToString(recipientKey),
-        label,
+        base64Std.encodeToString(sealedLabel),
         secretCreatedAt.toEpochMilli().toString(),
         ciphertext?.let { base64Std.encodeToString(it) } ?: "",
         k?.toString() ?: "",
