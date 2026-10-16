@@ -1,6 +1,7 @@
 package com.deposplit.driving_adapters
 
 import com.deposplit.driven_ports.IdentityStore
+import com.deposplit.value_objects.KeyPairMaterial
 import com.deposplit.value_objects.TransportSuite
 import com.deposplit.value_objects.UnsupportedTransportSuiteException
 import kotlin.test.Test
@@ -8,6 +9,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import org.bouncycastle.crypto.params.X25519PrivateKeyParameters
 
 /** In-memory IdentityStore — no Keystore/file I/O needed for these tests. */
 private class InMemoryIdentityStore : IdentityStore {
@@ -132,7 +134,7 @@ class IdentityServiceVerifyTest {
 
         alice.activateKeyPair(alice.generateNewKeyPair())
 
-        assertTrue(alice.decrypt(sealedToAlicesOldKey, bob.encKey()!!).contentEquals(share))
+        assertTrue(alice.decrypt(sealedToAlicesOldKey).contentEquals(share))
     }
 
     @Test
@@ -146,20 +148,41 @@ class IdentityServiceVerifyTest {
 
         // Deliberate: one generation covers the deposit-to-pickup window, and no more key material
         // than that lingers at rest.
-        assertFailsWith<Exception> { alice.decrypt(sealedToAlicesOldestKey, bob.encKey()!!) }
+        assertFailsWith<Exception> { alice.decrypt(sealedToAlicesOldestKey) }
     }
 
     @Test
-    fun `encrypt never seals under the displaced key`() {
+    fun `sealing involves no key of the sender's own`() {
         val alice = newIdentity()
         val bob = newIdentity()
-        val alicesOldEncKey = alice.encKey()!!
+        val sealedBeforeAlicesRotations = alice.encrypt("outgoing".encodeToByteArray(), bob.encKey()!!)
+        alice.activateKeyPair(alice.generateNewKeyPair())
         alice.activateKeyPair(alice.generateNewKeyPair())
 
-        val sealed = alice.encrypt("outgoing".encodeToByteArray(), bob.encKey()!!)
+        // Bob never needs Alice's key to open it, so however often she rotates, what she sealed opens.
+        assertTrue(bob.decrypt(sealedBeforeAlicesRotations).contentEquals("outgoing".encodeToByteArray()))
+    }
 
-        assertTrue(bob.decrypt(sealed, alice.encKey()!!).contentEquals("outgoing".encodeToByteArray()))
-        assertFailsWith<Exception> { bob.decrypt(sealed, alicesOldEncKey) }
+    // The property the retained deposits rest on: a box sealed for a holder stays closed to the owner.
+    @Test
+    fun `a sender cannot open a box she sealed for somebody else`() {
+        val alice = newIdentity()
+        val bob = newIdentity()
+        val sealed = alice.encrypt("Bob's share".encodeToByteArray(), bob.encKey()!!)
+
+        assertFailsWith<Exception> { alice.decrypt(sealed) }
+    }
+
+    @Test
+    fun `a box is the tag the encapsulated key and the ciphertext with a fresh ephemeral key each time`() {
+        val alice = newIdentity()
+        val bob = newIdentity()
+        val plaintext = "shhh".encodeToByteArray()
+        val first = alice.encrypt(plaintext, bob.encKey()!!)
+        val second = alice.encrypt(plaintext, bob.encKey()!!)
+
+        assertEquals(1 + 32 + plaintext.size + 16, first.size)
+        assertFalse(first.copyOfRange(1, 33).contentEquals(second.copyOfRange(1, 33)))
     }
 
     @Test
@@ -174,7 +197,7 @@ class IdentityServiceVerifyTest {
         // Registration is a new identity, not a continuation of the old one, so nothing carries over.
         alice.register("test")
 
-        assertFailsWith<Exception> { alice.decrypt(sealedToAlicesOldKey, bob.encKey()!!) }
+        assertFailsWith<Exception> { alice.decrypt(sealedToAlicesOldKey) }
     }
 
     @Test
@@ -204,7 +227,7 @@ class IdentityServiceVerifyTest {
         val ciphertext = alice.encrypt(plaintext, bob.encKey()!!)
 
         assertEquals(TransportSuite.current.tag, ciphertext[0])
-        val decrypted = bob.decrypt(ciphertext, alice.encKey()!!)
+        val decrypted = bob.decrypt(ciphertext)
         assertTrue(decrypted.contentEquals(plaintext))
     }
 
@@ -216,7 +239,7 @@ class IdentityServiceVerifyTest {
         val tampered = byteArrayOf(0x7f) + ciphertext.copyOfRange(1, ciphertext.size)
 
         assertFailsWith<UnsupportedTransportSuiteException> {
-            bob.decrypt(tampered, alice.encKey()!!)
+            bob.decrypt(tampered)
         }
     }
 
@@ -226,7 +249,7 @@ class IdentityServiceVerifyTest {
         val bob = newIdentity()
 
         assertFailsWith<UnsupportedTransportSuiteException> {
-            bob.decrypt(ByteArray(0), alice.encKey()!!)
+            bob.decrypt(ByteArray(0))
         }
     }
 
@@ -239,7 +262,7 @@ class IdentityServiceVerifyTest {
         val sealed = alice.sealLabel("Bitcoin seed \uD83D\uDD11", bob.encKey()!!)
 
         assertEquals(TransportSuite.current.tag, sealed[0])
-        assertEquals("Bitcoin seed \uD83D\uDD11", bob.openLabel(sealed, alice.encKey()!!))
+        assertEquals("Bitcoin seed \uD83D\uDD11", bob.openLabel(sealed))
     }
 
     @Test
@@ -259,8 +282,8 @@ class IdentityServiceVerifyTest {
         val shareBox = alice.encrypt("one share".encodeToByteArray(), bob.encKey()!!)
         val labelBox = alice.sealLabel("one label", bob.encKey()!!)
 
-        assertFailsWith<Exception> { bob.openLabel(shareBox, alice.encKey()!!) }
-        assertFailsWith<Exception> { bob.decrypt(labelBox, alice.encKey()!!) }
+        assertFailsWith<Exception> { bob.openLabel(shareBox) }
+        assertFailsWith<Exception> { bob.decrypt(labelBox) }
     }
 
     @Test
@@ -271,6 +294,48 @@ class IdentityServiceVerifyTest {
 
         alice.activateKeyPair(alice.generateNewKeyPair())
 
-        assertEquals("passport", alice.openLabel(sealedToAlicesOldKey, bob.encKey()!!))
+        assertEquals("passport", alice.openLabel(sealedToAlicesOldKey))
+    }
+
+    // Cross-platform box vectors — the same four boxes, sealed once by CryptoKit and once by
+    // BouncyCastle to one fixed recipient key, are opened by iOS, Android and phon alike. HPKE draws
+    // a fresh ephemeral key per box, so a box cannot be reproduced byte for byte; what each platform
+    // proves is that it opens what the other library sealed. Identical fixtures are checked into
+    // iOS's IdentityServiceVerifyTests.swift and phon's IdentityServiceVerifyTests.scala.
+
+    private val vectorRecipientDecKey = ByteArray(32) { (0x20 + it).toByte() }
+    private val vectorRecipientEncKey = hex("358072d6365880d1aeea329adf9121383851ed21a28e3b75e965d0d2cd166254")
+    private val cryptoKitShareBox = hex("028645dabe9fc9135324fc4b60c60d562a5b91cbba3a4e7767363138c411154465cfaff103793c5427240d1c797a5c7f3019b453158117d32c409c073aa86d828ce754b2")
+    private val cryptoKitLabelBox = hex("02182112460138f7f6314a553918a4f46d85148ccd8a7ab322c0cb2eb34ac97f528f0673b03dac84898ee14fbc6cff3c2318acb1fe4ef3d036a797f294ce8cef4274")
+    private val bouncyCastleShareBox = hex("02b09f312abb31cbf78fc7c41f3912006d25d966d2be78a376bd388cdd30e685446a75dadf1450dade7e955dd6879fa1e9fd1aa7e62e721912fa5bcec7854e7397b80767")
+    private val bouncyCastleLabelBox = hex("02e859635cccd28e42b3f26bfacdf98db69242fd81c5faa67dec62de46714b270f48bdce7f66c707226e73396b84cb1d9fa4e5b9cf7b008df9fed2163a14f8be83fc")
+
+    private fun hex(s: String): ByteArray = ByteArray(s.length / 2) { s.substring(2 * it, 2 * it + 2).toInt(16).toByte() }
+
+    private fun vectorRecipient(): IdentityService {
+        val recipient = newIdentity()
+        val current = recipient.generateNewKeyPair()
+        recipient.activateKeyPair(KeyPairMaterial(current.verifyKey, current.signKey, vectorRecipientEncKey, vectorRecipientDecKey))
+        return recipient
+    }
+
+    @Test
+    fun `the fixed recipient key derives the fixed public key`() {
+        val derived = X25519PrivateKeyParameters(vectorRecipientDecKey, 0).generatePublicKey().encoded
+        assertTrue(derived.contentEquals(vectorRecipientEncKey))
+    }
+
+    @Test
+    fun `the CryptoKit vector boxes open`() {
+        val recipient = vectorRecipient()
+        assertEquals("a share of a secret", String(recipient.decrypt(cryptoKitShareBox), Charsets.UTF_8))
+        assertEquals("Bitcoin seed \uD83D\uDD11", recipient.openLabel(cryptoKitLabelBox))
+    }
+
+    @Test
+    fun `the BouncyCastle vector boxes open`() {
+        val recipient = vectorRecipient()
+        assertEquals("a share of a secret", String(recipient.decrypt(bouncyCastleShareBox), Charsets.UTF_8))
+        assertEquals("Bitcoin seed \uD83D\uDD11", recipient.openLabel(bouncyCastleLabelBox))
     }
 }

@@ -212,27 +212,27 @@ private class FakeRetainedDepositRepository : RetainedDepositRepository {
 
 private object NoOpShareEncryption : ShareEncryption {
     override fun encrypt(plaintext: ByteArray, recipientEncKey: ByteArray) = plaintext
-    override fun decrypt(noncePlusCiphertext: ByteArray, recipientEncKey: ByteArray) = noncePlusCiphertext
+    override fun decrypt(box: ByteArray) = box
     override fun sealLabel(label: String, recipientEncKey: ByteArray) = label.toByteArray(Charsets.UTF_8)
-    override fun openLabel(sealedLabel: ByteArray, senderEncKey: ByteArray) = String(sealedLabel, Charsets.UTF_8)
+    override fun openLabel(sealedLabel: ByteArray) = String(sealedLabel, Charsets.UTF_8)
 }
 
 /** Stands in for the real failure at pickup: a share, and its label, sealed to a key this device no longer holds. */
 private object FailingShareEncryption : ShareEncryption {
     override fun encrypt(plaintext: ByteArray, recipientEncKey: ByteArray) = plaintext
-    override fun decrypt(noncePlusCiphertext: ByteArray, recipientEncKey: ByteArray): ByteArray =
+    override fun decrypt(box: ByteArray): ByteArray =
         throw RuntimeException("simulated decryption failure")
     override fun sealLabel(label: String, recipientEncKey: ByteArray) = label.toByteArray(Charsets.UTF_8)
-    override fun openLabel(sealedLabel: ByteArray, senderEncKey: ByteArray): String =
+    override fun openLabel(sealedLabel: ByteArray): String =
         throw RuntimeException("simulated decryption failure")
 }
 
 /** A share that opens beside a label that does not, so a test can tell the two failures apart. */
 private object UnopenableLabelEncryption : ShareEncryption {
     override fun encrypt(plaintext: ByteArray, recipientEncKey: ByteArray) = plaintext
-    override fun decrypt(noncePlusCiphertext: ByteArray, recipientEncKey: ByteArray) = noncePlusCiphertext
+    override fun decrypt(box: ByteArray) = box
     override fun sealLabel(label: String, recipientEncKey: ByteArray) = label.toByteArray(Charsets.UTF_8)
-    override fun openLabel(sealedLabel: ByteArray, senderEncKey: ByteArray): String =
+    override fun openLabel(sealedLabel: ByteArray): String =
         throw RuntimeException("simulated decryption failure")
 }
 
@@ -521,14 +521,54 @@ class ShareServiceTest {
         assertEquals(2, sealed.size)
         val plaintext = "Bitcoin seed".toByteArray(Charsets.UTF_8)
         assertTrue(sealed.none { box -> box.toList().windowed(plaintext.size).any { it == plaintext.toList() } })
-        assertEquals("Bitcoin seed", holderA.openLabel(sealed[0], sender.encKey()!!))
-        assertEquals("Bitcoin seed", holderB.openLabel(sealed[1], sender.encKey()!!))
+        assertEquals("Bitcoin seed", holderA.openLabel(sealed[0]))
+        assertEquals("Bitcoin seed", holderB.openLabel(sealed[1]))
+    }
+
+    // The retention rule is safe only because a retained blob is closed to the device retaining it:
+    // all n of them together would otherwise be the secret, waiting on the owner's phone.
+    @Test
+    fun `deposit retains blobs only their holders can open and the sender cannot`() {
+        val sender = IdentityService(InMemoryIdentityStoreForShareServiceTest()).also { it.register("sender") }
+        val holderA = IdentityService(InMemoryIdentityStoreForShareServiceTest()).also { it.register("a") }
+        val holderB = IdentityService(InMemoryIdentityStoreForShareServiceTest()).also { it.register("b") }
+        val contactA = aliceContact.copy(id = UUID.randomUUID(), verifyKey = TestKeyPair.generate().publicKey, encKey = holderA.encKey()!!)
+        val contactB = aliceContact.copy(id = UUID.randomUUID(), verifyKey = TestKeyPair.generate().publicKey, encKey = holderB.encKey()!!)
+        val fixture = newService(FakeShareRelay(), contacts = listOf(contactA, contactB), encryption = sender)
+
+        fixture.svc.deposit(byteArrayOf(1, 2, 3), "s", listOf(contactA, contactB), threshold = 2)
+
+        val retained = fixture.retainedRepo.getAll()
+        assertEquals(2, retained.size)
+        retained.forEach { blob -> assertFailsWith<Exception> { sender.decrypt(blob.ciphertext) } }
+        val holders = mapOf(contactA.id to holderA, contactB.id to holderB)
+        retained.forEach { blob -> assertTrue(holders.getValue(blob.contactId).decrypt(blob.ciphertext).isNotEmpty()) }
+    }
+
+    @Test
+    fun `labelOf opens nothing for a request whose signature does not verify`() {
+        val (svc, bob, shareRepo, _, _, _, _) = newService(FakeShareRelay())
+        // Claims to come from Alice but is signed by somebody else.
+        val unsigned = depositRow(UUID.randomUUID(), aliceKeys.publicKey, bob.verifyKey()!!, ByteArray(0), sealedLabel = "forged".toByteArray(Charsets.UTF_8))
+        val forged = unsigned.copy(senderSignature = signOpenAs(strangerKeys, unsigned))
+
+        assertEquals(null, svc.labelOf(forged))
+
+        shareRepo.save(
+            HeldShare(
+                id = UUID.randomUUID(), secretId = forged.secretId, label = "passport", contactId = aliceContact.id,
+                senderPseudonym = "alice", createdAt = Instant.now(), pickedUpAt = Instant.now(),
+                plaintextShare = byteArrayOf(9), k = 2, n = 3, mimeType = MimeType.DEFAULT,
+            )
+        )
+        assertEquals("passport", svc.labelOf(forged))
     }
 
     @Test
     fun `labelOf opens the sealed label of a request from a known contact`() {
         val (svc, bob, _, _, _, _, _) = newService(FakeShareRelay())
-        val row = depositRow(UUID.randomUUID(), aliceKeys.publicKey, bob.verifyKey()!!, ByteArray(0), sealedLabel = "passport".toByteArray(Charsets.UTF_8))
+        val unsigned = depositRow(UUID.randomUUID(), aliceKeys.publicKey, bob.verifyKey()!!, ByteArray(0), sealedLabel = "passport".toByteArray(Charsets.UTF_8))
+        val row = unsigned.copy(senderSignature = signOpenAs(aliceKeys, unsigned))
 
         assertEquals("passport", svc.labelOf(row))
     }

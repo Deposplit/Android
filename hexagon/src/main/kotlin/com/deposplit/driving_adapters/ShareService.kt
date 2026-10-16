@@ -180,9 +180,8 @@ class ShareService(
             )
             shareMetadataRepository.save(ShareMetadata(req.id, secretId, contact.id))
             // Retained until this holder's pickup is confirmed (relay-observed or
-            // heartbeat-attested), then discarded. The box is static-static X25519, so this device
-            // can recompute its key and open the blob itself until then: retaining all n keeps the
-            // secret recoverable here for that window.
+            // heartbeat-attested), then discarded. Safe to retain: the box was sealed under an
+            // ephemeral key discarded at sealing, so only the holder can open it, not this device.
             runCatching {
                 retainedDepositRepository.save(
                     RetainedDepositBlob(req.id, secretId, contact.id, label, createdAt, ciphertext, threshold, contacts.size, mimeType),
@@ -386,7 +385,7 @@ class ShareService(
             val contact = contacts.find { it.verifyKey.contentEquals(req.recipientKey) }
                 ?: error("Contact not found for recipient key")
             contactIds.add(contact.id)
-            encryption.decrypt(req.ciphertext!!, contact.encKey)
+            encryption.decrypt(req.ciphertext!!)
         }
         val result = combineWithIntegrity(decrypted, secret.k)
         val integrity = when {
@@ -463,8 +462,8 @@ class ShareService(
                     var stored = shareRepository.getPlaintextShare(req.secretId) != null
                     if (!stored) {
                         req.ciphertext?.let { ct ->
-                            val plaintext = encryption.decrypt(ct, senderContact.encKey)
-                            val label = encryption.openLabel(req.sealedLabel, senderContact.encKey)
+                            val plaintext = encryption.decrypt(ct)
+                            val label = encryption.openLabel(req.sealedLabel)
                             shareRepository.save(
                                 HeldShare(
                                     id = req.id,
@@ -680,7 +679,7 @@ class ShareService(
                 if (secretRepository.getAll().none { it.id == req.secretId }) {
                     // A label that will not open leaves the row for the next poll, rather than rebuilding
                     // a secret nobody could recognise.
-                    val label = runCatching { encryption.openLabel(req.sealedLabel, holderContact.encKey) }.getOrNull() ?: continue
+                    val label = runCatching { encryption.openLabel(req.sealedLabel) }.getOrNull() ?: continue
                     runCatching { secretRepository.save(Secret(req.secretId, label, mimeType, k, n, req.secretCreatedAt, SecretState.ACTIVE)) }
                 }
                 if (shareMetadataRepository.getAll().none { it.secretId == req.secretId && it.contactId == holderContact.id }) {
@@ -720,9 +719,9 @@ class ShareService(
         }
 
     override fun labelOf(request: ShareRequest): String? {
-        val opened = contactRepository.getByVerifyKey(request.senderKey)?.let { sender ->
-            runCatching { encryption.openLabel(request.sealedLabel, sender.encKey) }.getOrNull()
-        }
+        // A box proves nothing about who sealed it, so a label is opened only for a request whose
+        // signature verifies.
+        val opened = if (verifyOpen(request)) runCatching { encryption.openLabel(request.sealedLabel) }.getOrNull() else null
         // A label sealed to a key two rotations back no longer opens. The share held for that secret
         // still names it.
         return opened ?: shareRepository.getAll().firstOrNull { it.secretId == request.secretId }?.label

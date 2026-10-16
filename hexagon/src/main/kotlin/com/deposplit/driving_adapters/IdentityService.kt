@@ -31,18 +31,12 @@ import com.deposplit.value_objects.IdentityStorageUnavailableException
 import com.deposplit.value_objects.KeyPairMaterial
 import com.deposplit.value_objects.TransportSuite
 import com.deposplit.value_objects.UnsupportedTransportSuiteException
-import org.bouncycastle.crypto.agreement.X25519Agreement
-import org.bouncycastle.crypto.digests.SHA256Digest
 import org.bouncycastle.crypto.generators.Ed25519KeyPairGenerator
-import org.bouncycastle.crypto.generators.HKDFBytesGenerator
 import org.bouncycastle.crypto.generators.X25519KeyPairGenerator
-import org.bouncycastle.crypto.modes.ChaCha20Poly1305
-import org.bouncycastle.crypto.params.AEADParameters
+import org.bouncycastle.crypto.hpke.HPKE
 import org.bouncycastle.crypto.params.Ed25519KeyGenerationParameters
 import org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters
 import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters
-import org.bouncycastle.crypto.params.HKDFParameters
-import org.bouncycastle.crypto.params.KeyParameter
 import org.bouncycastle.crypto.params.X25519KeyGenerationParameters
 import org.bouncycastle.crypto.params.X25519PrivateKeyParameters
 import org.bouncycastle.crypto.params.X25519PublicKeyParameters
@@ -134,9 +128,8 @@ class IdentityService(private val identityStore: IdentityStore) : Identity, Shar
         false
     }
 
-    // Wire format is suiteTag(1) || nonce(12) || ciphertext+tag. No persistent state
-    // needed: a device always encrypts with its current preferred TransportSuite, and a decrypting
-    // device dispatches on the tag it reads.
+    // Sealing involves no key of this device's own: HPKE draws a fresh ephemeral key for every box
+    // and discards it once the box is sealed, so not even this device can open what it sealed.
     override fun encrypt(plaintext: ByteArray, recipientEncKey: ByteArray): ByteArray =
         seal(plaintext, recipientEncKey, SHARE_INFO)
 
@@ -144,20 +137,16 @@ class IdentityService(private val identityStore: IdentityStore) : Identity, Shar
         seal(label.toByteArray(Charsets.UTF_8), recipientEncKey, LABEL_INFO)
 
     // Malformed UTF-8 decodes to replacement characters rather than failing, as on the other
-    // platforms. A label is only ever shown, and the box has already proved who sealed it.
-    override fun openLabel(sealedLabel: ByteArray, senderEncKey: ByteArray): String =
-        String(unseal(sealedLabel, senderEncKey, LABEL_INFO), Charsets.UTF_8)
+    // platforms. A label is only ever shown, and the signature over it has already proved who
+    // sealed it.
+    override fun openLabel(sealedLabel: ByteArray): String =
+        String(unseal(sealedLabel, LABEL_INFO), Charsets.UTF_8)
 
     private fun seal(plaintext: ByteArray, recipientEncKey: ByteArray, info: ByteArray): ByteArray {
-        val sk = X25519PrivateKeyParameters(identityStore.decKey())
-        val nonce = ByteArray(NONCE_BYTES).also { secureRandom.nextBytes(it) }
-        val key = deriveKey(sk, X25519PublicKeyParameters(recipientEncKey), nonce, info)
-        val cipher = ChaCha20Poly1305()
-        cipher.init(true, AEADParameters(KeyParameter(key), TAG_BITS, nonce))
-        val out = ByteArray(cipher.getOutputSize(plaintext.size))
-        var len = cipher.processBytes(plaintext, 0, plaintext.size, out, 0)
-        len += cipher.doFinal(out, len)
-        return byteArrayOf(TransportSuite.current.tag) + nonce + out.copyOf(len)
+        val hpke = hpke()
+        val (ciphertext, encapsulatedKey) =
+            hpke.seal(hpke.deserializePublicKey(recipientEncKey), info, NO_AAD, plaintext, null, null, null)
+        return byteArrayOf(TransportSuite.current.tag) + encapsulatedKey + ciphertext
     }
 
     // Falls back to the decKey displaced by the last rotation when the current one cannot open the
@@ -165,65 +154,44 @@ class IdentityService(private val identityStore: IdentityStore) : Identity, Shar
     // who rotates between a deposit and their pickup would otherwise never be able to collect it:
     // the row stays pending and every later poll fails identically. One generation is enough to
     // cover that window without keeping a keyring.
-    //
-    // Never used for encrypt() — this device always seals under its current key.
-    override fun decrypt(noncePlusCiphertext: ByteArray, recipientEncKey: ByteArray): ByteArray =
-        unseal(noncePlusCiphertext, recipientEncKey, SHARE_INFO)
+    override fun decrypt(box: ByteArray): ByteArray = unseal(box, SHARE_INFO)
 
-    private fun unseal(noncePlusCiphertext: ByteArray, recipientEncKey: ByteArray, info: ByteArray): ByteArray {
-        val tag = noncePlusCiphertext.getOrNull(0)
+    private fun unseal(box: ByteArray, info: ByteArray): ByteArray {
+        val tag = box.getOrNull(0)
             ?: throw UnsupportedTransportSuiteException("ciphertext is empty — no transport suite tag")
         if (TransportSuite.fromTag(tag) == null) {
             throw UnsupportedTransportSuiteException("this share used an encryption scheme this app version doesn't support")
         }
         return try {
-            open(noncePlusCiphertext, recipientEncKey, identityStore.decKey(), info)
+            open(box, identityStore.decKey(), info)
         } catch (e: Exception) {
             // The current key's failure is the one worth reporting — the fallback missing or failing
             // too just means there was no earlier generation this box belongs to.
             val previous = identityStore.previousDecKey() ?: throw e
-            runCatching { open(noncePlusCiphertext, recipientEncKey, previous, info) }.getOrElse { throw e }
+            runCatching { open(box, previous, info) }.getOrElse { throw e }
         }
     }
 
-    private fun open(noncePlusCiphertext: ByteArray, recipientEncKey: ByteArray, decKey: ByteArray, info: ByteArray): ByteArray {
-        val sk = X25519PrivateKeyParameters(decKey)
-        val nonce = noncePlusCiphertext.copyOfRange(1, 1 + NONCE_BYTES)
-        val ciphertext = noncePlusCiphertext.copyOfRange(1 + NONCE_BYTES, noncePlusCiphertext.size)
-        val key = deriveKey(sk, X25519PublicKeyParameters(recipientEncKey), nonce, info)
-        val cipher = ChaCha20Poly1305()
-        cipher.init(false, AEADParameters(KeyParameter(key), TAG_BITS, nonce))
-        val out = ByteArray(cipher.getOutputSize(ciphertext.size))
-        var len = cipher.processBytes(ciphertext, 0, ciphertext.size, out, 0)
-        len += cipher.doFinal(out, len)
-        return out.copyOf(len)
-    }
-
-    private fun deriveKey(
-        sk: X25519PrivateKeyParameters,
-        pk: X25519PublicKeyParameters,
-        nonce: ByteArray,
-        info: ByteArray,
-    ): ByteArray {
-        val agreement = X25519Agreement()
-        agreement.init(sk)
-        val sharedSecret = ByteArray(agreement.agreementSize)
-        agreement.calculateAgreement(pk, sharedSecret, 0)
-        val hkdf = HKDFBytesGenerator(SHA256Digest())
-        hkdf.init(HKDFParameters(sharedSecret, nonce, info))
-        val key = ByteArray(KEY_BYTES)
-        hkdf.generateBytes(key, 0, KEY_BYTES)
-        return key
+    private fun open(box: ByteArray, decKey: ByteArray, info: ByteArray): ByteArray {
+        require(box.size > 1 + ENCAPSULATED_KEY_BYTES) { "box too short to carry an encapsulated key" }
+        val encapsulatedKey = box.copyOfRange(1, 1 + ENCAPSULATED_KEY_BYTES)
+        val ciphertext = box.copyOfRange(1 + ENCAPSULATED_KEY_BYTES, box.size)
+        val hpke = hpke()
+        val publicKey = X25519PrivateKeyParameters(decKey, 0).generatePublicKey().encoded
+        val recipient = hpke.deserializePrivateKey(decKey, publicKey)
+        return hpke.open(encapsulatedKey, recipient, info, NO_AAD, ciphertext, null, null, null)
     }
 
     companion object {
-        private const val NONCE_BYTES = 12
-        private const val KEY_BYTES = 32
-        private const val TAG_BITS = 128
+        // DHKEM(X25519)'s encapsulated key: the ephemeral public key, 32 bytes.
+        private const val ENCAPSULATED_KEY_BYTES = 32
+        private val NO_AAD = ByteArray(0)
         private val SHARE_INFO = "deposplit-share".toByteArray(Charsets.UTF_8)
 
-        // A key derivation of its own, so a sealed label can never be mistaken for a sealed share.
+        // HPKE info of its own, so a sealed label can never be opened as a sealed share.
         private val LABEL_INFO = "deposplit-label".toByteArray(Charsets.UTF_8)
-        private val secureRandom = SecureRandom()
+
+        private fun hpke() =
+            HPKE(HPKE.mode_base, HPKE.kem_X25519_SHA256, HPKE.kdf_HKDF_SHA256, HPKE.aead_CHACHA20_POLY1305)
     }
 }

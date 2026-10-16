@@ -24,22 +24,34 @@
 
 package com.deposplit.driving_adapters
 
+/**
+ * Every box is HPKE base mode under the current [com.deposplit.value_objects.TransportSuite]: a
+ * fresh ephemeral key per box, discarded once it is sealed, so only the recipient can open it —
+ * not even the device that sealed it. Wire format: suiteTag(1) || enc(32) || ciphertext+tag(16).
+ * The box proves nothing about who sealed it; the Ed25519 signature covering it does, and is
+ * checked before every open.
+ */
 interface ShareEncryption {
-    /** Encrypts [plaintext] to [recipientEncKey] via X25519+HKDF-SHA-256+ChaCha20-Poly1305. Returns nonce(12) || ciphertext+tag. */
+    /** Seals [plaintext] (a share, or a share being handed back) to [recipientEncKey]. */
     fun encrypt(plaintext: ByteArray, recipientEncKey: ByteArray): ByteArray
-    /** Decrypts [noncePlusCiphertext] (nonce(12) || ciphertext+tag) using [recipientEncKey] via X25519+HKDF-SHA-256+ChaCha20-Poly1305. */
-    fun decrypt(noncePlusCiphertext: ByteArray, recipientEncKey: ByteArray): ByteArray
 
     /**
-     * Seals a secret's label to [recipientEncKey] with the same box as [encrypt], under a key
-     * derivation of its own, so a label box and a share box never share a derived key. The relay
-     * stores the result without being able to read it.
+     * Opens a box sealed to this device, dispatching on the leading transport-suite tag. Throws
+     * [com.deposplit.value_objects.UnsupportedTransportSuiteException] for an unrecognized tag —
+     * never a silent misparse.
+     */
+    fun decrypt(box: ByteArray): ByteArray
+
+    /**
+     * Seals a secret's label to [recipientEncKey] with the same box as [encrypt], under HPKE info
+     * of its own, so a label box and a share box never share a key. The relay stores the result
+     * without being able to read it.
      */
     fun sealLabel(label: String, recipientEncKey: ByteArray): ByteArray
 
     /**
-     * Opens a label sealed by [sealLabel] under the row sender's [senderEncKey], with the same
-     * fallback to the previous decKey as [decrypt].
+     * Opens a label sealed to this device by [sealLabel], with the same fallback to the previous
+     * decKey as [decrypt].
      */
-    fun openLabel(sealedLabel: ByteArray, senderEncKey: ByteArray): String
+    fun openLabel(sealedLabel: ByteArray): String
 }

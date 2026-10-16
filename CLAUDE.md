@@ -164,11 +164,14 @@ in the lint gate to keep dead ones from accumulating again.
 - **Held shares live in `filesDir/shares.json`**, keyed by share id, with the share itself as
   standard base64. The sender is referenced by `contactId` — a stable local UUID — and never
   by key, so a record survives the sender rotating their keys.
-- **Ciphertext wire format is `suiteTag(1) || nonce(12) || ciphertext+tag`.** The leading
-  suite tag is easy to forget when hand-checking bytes.
-- **A secret's label is sealed with the same box**, under HKDF info `deposplit-label` rather than
-  `deposplit-share`, so a label box and a share box never share a derived key. The relay only ever
-  sees the sealed label.
+- **Every box is BouncyCastle's `HPKE`**, base mode with `kem_X25519_SHA256`, `kdf_HKDF_SHA256`
+  and `aead_CHACHA20_POLY1305`: sealed under a fresh ephemeral key that is discarded afterwards, so
+  only the recipient opens it — never the device that sealed it. The `info` is `deposplit-share`
+  for shares and `deposplit-label` for labels, so a label box and a share box never share a key.
+  Opening needs only this device's own decKey.
+- **Box wire format is `suiteTag(1) || enc(32) || ciphertext+tag`** — the suite tag (`2`), then the
+  encapsulated key `seal` returns second, then the ciphertext it returns first. The leading tag is
+  easy to forget when hand-checking bytes.
 - **Catalog backup uses the Storage Access Framework** — `CreateDocument` to export,
   `OpenDocument` to import.
 - **All UI is Jetpack Compose.** No XML layouts.
@@ -244,7 +247,7 @@ iOS therefore has no counterpart to this flag and does not need one.
 ## Build and test
 
 ```bash
-./gradlew test                    # JVM unit tests (181 in :hexagon, 20 in :app) — what CI runs
+./gradlew test                    # JVM unit tests (188 in :hexagon, 20 in :app) — what CI runs
 ./gradlew :app:lintDebug          # the four gated lint checks — also what CI runs
 ./gradlew :hexagon:test           # domain only
 ./gradlew :hexagon:test --tests "com.deposplit.shamir.ShamirTest"
