@@ -28,8 +28,8 @@ interface ContactManagement {
     fun markRelinked(contactId: UUID)
     // nickname lets a nickname be set at add-time rather than only via a later
     // renameContact call; it is purely local and never transmitted anywhere. A non-null
-    // relayBaseUrl requires the Premium unlock — typing a relay by hand is the paid half of BYOR,
-    // while addFromQr's is free.
+    // relayBaseUrl is free, as it is on addFromQr: it says where this contact's mailbox is and
+    // redirects only their traffic. Premium is this device's own default relay.
     fun addManually(pseudonym: String, verifyKey: ByteArray, encKey: ByteArray, verificationLevel: VerificationLevel, relayBaseUrl: String? = null, nickname: String? = null)
     // cipherSuite is required here (unlike addManually) because the QR/link payload is exactly
     // where this self-describing fact comes from — manual entry has no wire payload to read one

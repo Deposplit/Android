@@ -58,7 +58,7 @@ class DeposplitApp : Application() {
         val secretRepository = LocalSecretRepository(this)
         val keyConflictRepository = LocalKeyConflictRepository(this)
         val retainedDepositRepository = LocalRetainedDepositRepository(this)
-        contactManagement = ContactService(contactRepository, purchases, identityStore, contactRelinkRepository)
+        contactManagement = ContactService(contactRepository, identityStore, contactRelinkRepository)
         shareManagement = ShareService(
             relayResolver = DeposplitRelayResolver(auth = identityService, relaySettings = relaySettings),
             encryption = identityService,
