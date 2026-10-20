@@ -100,9 +100,9 @@ fun HomeScreen(
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var pendingDelete by remember { mutableStateOf<HeldShareDisplay?>(null) }
     val showsWarning = if (selectedTab == 2) {
-        requestsUiState.unreachableRelays.isNotEmpty()
+        requestsUiState.unreachableRelays.isNotEmpty() || requestsUiState.refusingRelays.isNotEmpty()
     } else {
-        uiState.unreachableRelays.isNotEmpty() || uiState.syncFailed
+        uiState.unreachableRelays.isNotEmpty() || uiState.refusingRelays.isNotEmpty() || uiState.syncFailed
     }
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
@@ -200,6 +200,9 @@ fun HomeScreen(
             if (selectedTab != 2) {
                 uiState.unreachableRelays.forEach { relay ->
                     SoftWarningRow(stringResource(R.string.home_relay_unreachable, relayName(relay)))
+                }
+                uiState.refusingRelays.forEach { relay ->
+                    SoftWarningRow(stringResource(R.string.home_relay_refused, relayName(relay.baseUrl), relay.statusCode))
                 }
                 if (uiState.syncFailed) {
                     SoftWarningRow(stringResource(R.string.home_sync_failed))

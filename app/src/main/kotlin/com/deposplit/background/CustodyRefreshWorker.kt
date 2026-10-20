@@ -53,7 +53,7 @@ class CustodyRefreshWorker(
 
         // An unreachable relay is the ordinary case, not an error worth surfacing. What the others
         // answered has been handled; backoff retries the rest well inside the day this pass
-        // repeats on.
-        if (report.unreachableRelays.isEmpty()) Result.success() else Result.retry()
+        // repeats on, a relay that refused included, since its next answer may differ.
+        if (report.everyRelayAnswered) Result.success() else Result.retry()
     }
 }

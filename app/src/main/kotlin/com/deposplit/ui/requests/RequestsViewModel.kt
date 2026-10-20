@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.deposplit.R
 import com.deposplit.driving_ports.ContactManagement
 import com.deposplit.driving_ports.ShareManagement
+import com.deposplit.ui.RefusingRelay
 import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.KeyConflict
 import com.deposplit.value_objects.RelayFanOut
@@ -41,6 +42,9 @@ class RequestsViewModel(
         // others returned, and each of these is named rather than turned into an error: error is
         // kept for a failure of this device's own, which no relay line could explain.
         val unreachableRelays: List<String> = emptyList(),
+        // Every relay that answered with an error, named apart from the unreachable ones, with the
+        // status.
+        val refusingRelays: List<RefusingRelay> = emptyList(),
         // False when no relay answered, so an empty list says nothing about whether any request is
         // waiting, and the tab must not claim there is none.
         val anyRelayAnswered: Boolean = true,
@@ -76,6 +80,7 @@ class RequestsViewModel(
                             isLoading = false,
                             requests = loaded.requests.items,
                             unreachableRelays = loaded.requests.unreachableRelays.sorted(),
+                            refusingRelays = RefusingRelay.list(loaded.requests.refusingRelays),
                             anyRelayAnswered = loaded.requests.anyAnswered,
                             contacts = loaded.contacts,
                             keyConflicts = loaded.keyConflicts,

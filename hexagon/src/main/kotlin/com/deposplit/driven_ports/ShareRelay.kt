@@ -35,6 +35,11 @@ import com.deposplit.value_objects.ShareTransactionType
 import java.time.Instant
 import java.util.UUID
 
+/**
+ * An answer with an error status is thrown as [com.deposplit.value_objects.RelayRefusedException],
+ * carrying the status. Anything else thrown means the relay did not answer, and the two are
+ * reported differently.
+ */
 interface ShareRelay {
     /** The URL this relay answers at — what a warning names when it does not. */
     val baseUrl: String

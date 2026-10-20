@@ -25,6 +25,22 @@ fun relayName(baseUrl: String): String = runCatching {
     if (uri.port == -1) host else "$host:${uri.port}"
 }.getOrDefault(baseUrl)
 
+// A relay that answered with an error, and the status it gave: what its warning names.
+data class RefusingRelay(val baseUrl: String, val statusCode: Int) {
+    companion object {
+        // One per relay, in the order the warnings show them. A relay several reports name keeps
+        // the status the first of them gave.
+        fun list(vararg reports: Map<String, Int>): List<RefusingRelay> =
+            reports
+                .fold(mutableMapOf<String, Int>()) { merged, report ->
+                    report.forEach { (baseUrl, statusCode) -> merged.putIfAbsent(baseUrl, statusCode) }
+                    merged
+                }
+                .map { (baseUrl, statusCode) -> RefusingRelay(baseUrl, statusCode) }
+                .sortedBy { it.baseUrl }
+    }
+}
+
 // One soft warning line, the kind that sits over real content rather than replacing it.
 @Composable
 fun SoftWarningRow(text: String) {

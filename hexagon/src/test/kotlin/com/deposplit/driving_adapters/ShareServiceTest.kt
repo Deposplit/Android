@@ -45,6 +45,7 @@ import com.deposplit.shamir.split
 import com.deposplit.value_objects.MimeType
 import com.deposplit.value_objects.PayloadCanonical
 import com.deposplit.value_objects.ReconstructionIntegrity
+import com.deposplit.value_objects.RelayRefusedException
 import com.deposplit.value_objects.RetainedDepositBlob
 import com.deposplit.value_objects.Role
 import com.deposplit.value_objects.FreeTierLimitReachedException
@@ -244,6 +245,10 @@ private object UnopenableLabelEncryption : ShareEncryption {
 private class FakeShareRelay(
     var unreachable: Boolean = false,
     override val baseUrl: String = "http://relay.example:9000",
+    // The status this relay answers its share-request listing with, when set. Only that listing
+    // refuses, so a test can pair it with unreachable to have one relay refuse one listing and go
+    // silent on the others.
+    var refusing: Int? = null,
 ) : ShareRelay {
     data class OpenedRequest(
         val secretId: UUID,
@@ -288,6 +293,7 @@ private class FakeShareRelay(
     }
 
     override fun listShareRequests(role: Role, transactionType: ShareTransactionType?, state: ShareRequestState?): List<ShareRequest> {
+        refusing?.let { throw RelayRefusedException(it, "") }
         if (unreachable) throw RuntimeException("simulated relay outage")
         return pending.filter { (transactionType == null || it.transactionType == transactionType) && (state == null || it.state == state) }
     }
@@ -899,8 +905,45 @@ class ShareServiceTest {
     fun `both sync passes report nothing when every relay answers`() {
         val (svc, _) = newTwoRelayService(FakeShareRelay(baseUrl = defaultRelayUrl), FakeShareRelay(baseUrl = byorUrl))
 
-        assertEquals(emptySet(), svc.syncInbox().unreachableRelays)
-        assertEquals(emptySet(), svc.syncDistributed().unreachableRelays)
+        assertTrue(svc.syncInbox().everyRelayAnswered)
+        assertTrue(svc.syncDistributed().everyRelayAnswered)
+    }
+
+    /**
+     * A relay that answers with an error is there, which is not what "not reachable" says. It is
+     * reported apart, with its status, so the warning can say which of the two happened.
+     */
+    @Test
+    fun `both sync passes name a refusing relay with its status, and not as unreachable`() {
+        val (svc, _) = newTwoRelayService(
+            FakeShareRelay(baseUrl = defaultRelayUrl),
+            FakeShareRelay(baseUrl = byorUrl, refusing = 401),
+        )
+
+        val inbox = svc.syncInbox()
+        val distributed = svc.syncDistributed()
+
+        assertEquals(mapOf(byorUrl to 401), inbox.refusingRelays)
+        assertEquals(emptySet(), inbox.unreachableRelays)
+        assertEquals(mapOf(byorUrl to 401), distributed.refusingRelays)
+        assertEquals(emptySet(), distributed.unreachableRelays)
+    }
+
+    /**
+     * One warning per relay, and the refusal is the one worth having: it proves the relay is
+     * there, and its status says why the pass came back empty.
+     */
+    @Test
+    fun `a relay that refuses one listing and goes silent on another is named once, as refusing`() {
+        val (svc, _) = newTwoRelayService(
+            FakeShareRelay(baseUrl = defaultRelayUrl),
+            FakeShareRelay(unreachable = true, baseUrl = byorUrl, refusing = 503),
+        )
+
+        val report = svc.syncInbox()
+
+        assertEquals(mapOf(byorUrl to 503), report.refusingRelays)
+        assertEquals(emptySet(), report.unreachableRelays)
     }
 
     @Test
@@ -934,6 +977,41 @@ class ShareServiceTest {
 
         assertTrue(fanOut.items.isEmpty())
         assertEquals(setOf(defaultRelayUrl, byorUrl), fanOut.unreachableRelays)
+        assertFalse(fanOut.anyAnswered)
+    }
+
+    @Test
+    fun `listPendingRequests keeps the rows from the relay that answered and names the one that refused`() {
+        val defaultRelay = FakeShareRelay(baseUrl = defaultRelayUrl)
+        val (svc, bob) = newTwoRelayService(defaultRelay, FakeShareRelay(baseUrl = byorUrl, refusing = 500))
+        val id = UUID.randomUUID()
+        val unsigned = depositRow(id, aliceKeys.publicKey, bob.verifyKey()!!, ByteArray(0)).copy(transactionType = ShareTransactionType.REMOVAL)
+        defaultRelay.pending = listOf(unsigned.copy(senderSignature = signOpenAs(aliceKeys, unsigned)))
+
+        val fanOut = svc.listPendingRequests()
+
+        assertEquals(listOf(id), fanOut.items.map { it.id })
+        assertEquals(mapOf(byorUrl to 500), fanOut.refusingRelays)
+        assertEquals(emptySet(), fanOut.unreachableRelays)
+        assertTrue(fanOut.anyAnswered)
+    }
+
+    /**
+     * A refusing relay returned no rows either, so with the other one silent nobody can say
+     * whether anything is waiting — the Requests tab must not claim there is nothing.
+     */
+    @Test
+    fun `listPendingRequests says no relay answered when one refused and the other was silent`() {
+        val (svc, _) = newTwoRelayService(
+            FakeShareRelay(baseUrl = defaultRelayUrl, refusing = 401),
+            FakeShareRelay(unreachable = true, baseUrl = byorUrl),
+        )
+
+        val fanOut = svc.listPendingRequests()
+
+        assertTrue(fanOut.items.isEmpty())
+        assertEquals(mapOf(defaultRelayUrl to 401), fanOut.refusingRelays)
+        assertEquals(setOf(byorUrl), fanOut.unreachableRelays)
         assertFalse(fanOut.anyAnswered)
     }
 
@@ -1971,6 +2049,19 @@ class ShareServiceTest {
         // Reported, not dropped — but the rotation still completes: an unreachable relay must not
         // be able to block someone rotating precisely because they think the old key is
         // compromised.
+        assertFalse(result.drainSucceeded)
+        assertFalse(bob.verifyKey()!!.contentEquals(oldVerifyKey))
+    }
+
+    @Test
+    fun `regenerateIdentity reports a drain that a relay refused`() {
+        val relay = FakeShareRelay()
+        val (svc, bob, _, _, _, _, _) = newService(relay)
+        val oldVerifyKey = bob.verifyKey()!!
+        relay.refusing = 401
+
+        val result = svc.regenerateIdentity()
+
         assertFalse(result.drainSucceeded)
         assertFalse(bob.verifyKey()!!.contentEquals(oldVerifyKey))
     }

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.deposplit.R
 import com.deposplit.driving_ports.ContactManagement
 import com.deposplit.driving_ports.ShareManagement
+import com.deposplit.ui.RefusingRelay
 import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.CustodyHeartbeatTuning
 import com.deposplit.value_objects.HeldShare
@@ -192,6 +193,7 @@ private data class Phase2Result(
     val held: List<HeldShare>,
     val awaitingRelink: Int,
     val unreachableRelays: List<String>,
+    val refusingRelays: List<RefusingRelay>,
 )
 
 class HomeViewModel(
@@ -207,6 +209,9 @@ class HomeViewModel(
         // Every relay the last refresh could not reach, by base URL. Each one gets a warning of
         // its own, because with several relays a single one could not say whose data is stale.
         val unreachableRelays: List<String> = emptyList(),
+        // Every relay that answered the last refresh with an error. Named apart from the
+        // unreachable ones, with the status, and never in both lists.
+        val refusingRelays: List<RefusingRelay> = emptyList(),
         // The refresh failed for a reason of this device's own rather than a relay's.
         val syncFailed: Boolean = false,
         // How many contacts still hold a key this device no longer signs with. A standing
@@ -261,13 +266,16 @@ class HomeViewModel(
                     val inbox = shareManagement.syncInbox()
                     val distributed = shareManagement.syncDistributed()
                     val sent = shareManagement.listSentRequests()
+                    val refusing = RefusingRelay.list(inbox.refusingRelays, distributed.refusingRelays, sent.refusingRelays)
                     Phase2Result(
                         allRequests = sent.items,
                         secrets = shareManagement.listSecrets(),
                         distributed = shareManagement.listDistributed(),
                         held = shareManagement.listHeld(),
                         awaitingRelink = contactManagement.contactsAwaitingRelink().size,
-                        unreachableRelays = (inbox.unreachableRelays + distributed.unreachableRelays + sent.unreachableRelays).sorted(),
+                        unreachableRelays = (inbox.unreachableRelays + distributed.unreachableRelays + sent.unreachableRelays)
+                            .minus(refusing.map { it.baseUrl }.toSet()).sorted(),
+                        refusingRelays = refusing,
                     )
                 }
             }.onSuccess { phase2 ->
@@ -280,6 +288,7 @@ class HomeViewModel(
                         // The sync may itself be the evidence that clears someone.
                         awaitingRelinkCount = phase2.awaitingRelink,
                         unreachableRelays = phase2.unreachableRelays,
+                        refusingRelays = phase2.refusingRelays,
                         syncFailed = false,
                     )
                 }

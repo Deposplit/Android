@@ -30,6 +30,7 @@ import com.deposplit.value_objects.CipherSuite
 import com.deposplit.value_objects.CustodyHeartbeat
 import com.deposplit.value_objects.KeyRotation
 import com.deposplit.value_objects.MimeType
+import com.deposplit.value_objects.RelayRefusedException
 import com.deposplit.value_objects.Role
 import com.deposplit.value_objects.ShareRequest
 import com.deposplit.value_objects.ShareRequestState
@@ -44,8 +45,6 @@ import java.security.SecureRandom
 import java.time.Instant
 import java.util.Base64
 import java.util.UUID
-
-class ApiException(val statusCode: Int, body: String) : Exception("HTTP $statusCode: $body")
 
 class DeposplitApiAdapter(
     private val auth: Identity,
@@ -195,7 +194,7 @@ class DeposplitApiAdapter(
             return when {
                 code == 204 -> ""
                 code < 400 -> conn.inputStream.use { it.reader().readText() }
-                else -> throw ApiException(code, conn.errorStream?.use { it.reader().readText() } ?: "")
+                else -> throw RelayRefusedException(code, conn.errorStream?.use { it.reader().readText() } ?: "")
             }
         } finally {
             conn.disconnect()

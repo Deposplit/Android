@@ -80,6 +80,9 @@ fun RecipientRequestsTab(
         uiState.unreachableRelays.forEach { relay ->
             SoftWarningRow(stringResource(R.string.requests_relay_unreachable, relayName(relay)))
         }
+        uiState.refusingRelays.forEach { relay ->
+            SoftWarningRow(stringResource(R.string.requests_relay_refused, relayName(relay.baseUrl), relay.statusCode))
+        }
         when {
             uiState.isLoading -> Box(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
