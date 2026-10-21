@@ -265,6 +265,9 @@ private class FakeShareRelay(
     val respondCalls = mutableListOf<UUID>()
     val deletedRequestIds = mutableListOf<UUID>()
     val openedRequests = mutableListOf<OpenedRequest>()
+    // How many times a sync pass has asked this relay for something: every listing and every
+    // heartbeat push.
+    var asked = 0
 
     // Rotation push and withdraw tombstone
     data class WithdrawCall(val senderKey: ByteArray?, val secretId: UUID?)
@@ -293,6 +296,7 @@ private class FakeShareRelay(
     }
 
     override fun listShareRequests(role: Role, transactionType: ShareTransactionType?, state: ShareRequestState?): List<ShareRequest> {
+        asked++
         refusing?.let { throw RelayRefusedException(it, "") }
         if (unreachable) throw RuntimeException("simulated relay outage")
         return pending.filter { (transactionType == null || it.transactionType == transactionType) && (state == null || it.state == state) }
@@ -325,6 +329,7 @@ private class FakeShareRelay(
     }
 
     override fun listRotations(): List<KeyRotation> {
+        asked++
         if (unreachable) throw RuntimeException("simulated relay outage")
         return rotationsToReturn
     }
@@ -338,11 +343,13 @@ private class FakeShareRelay(
     var throwOnPushHeartbeat = false
 
     override fun pushHeartbeat(ownerKey: ByteArray, secretIds: List<UUID>, optedOut: Boolean, signature: ByteArray) {
+        asked++
         if (throwOnPushHeartbeat) throw RuntimeException("simulated push failure")
         pushedHeartbeats.add(PushedHeartbeat(ownerKey, secretIds, optedOut, signature))
     }
 
     override fun listHeartbeats(): List<CustodyHeartbeat> {
+        asked++
         if (unreachable) throw RuntimeException("simulated relay outage")
         return heartbeatsToReturn
     }
@@ -860,10 +867,25 @@ class ShareServiceTest {
 
     private val byorUrl = "http://byor.example:9000"
 
-    // Bob, with alice on this device's default relay and charlie pinned to a second one.
-    private fun newTwoRelayService(defaultRelay: FakeShareRelay, byorRelay: FakeShareRelay): Pair<ShareService, IdentityService> {
+    // Bob, with alice on this device's default relay and charlie pinned to a second one. Keeping
+    // a share for charlie means a sync pass owes charlie a heartbeat.
+    private fun newTwoRelayService(
+        defaultRelay: FakeShareRelay,
+        byorRelay: FakeShareRelay,
+        keepingForCharlie: Boolean = false,
+    ): Pair<ShareService, IdentityService> {
         val charlieKeys = TestKeyPair.generate()
         val charlieContact = aliceContact.copy(id = UUID.randomUUID(), pseudonym = "charlie", verifyKey = charlieKeys.publicKey, relayBaseUrl = byorUrl)
+        val shareRepo = FakeShareRepository()
+        if (keepingForCharlie) {
+            shareRepo.save(
+                HeldShare(
+                    id = UUID.randomUUID(), secretId = UUID.randomUUID(), label = "x", contactId = charlieContact.id,
+                    senderPseudonym = "charlie", createdAt = Instant.now(), pickedUpAt = Instant.now(),
+                    plaintextShare = byteArrayOf(1), k = 2, n = 3, mimeType = MimeType.DEFAULT,
+                )
+            )
+        }
         val identityStore = InMemoryIdentityStoreForShareServiceTest()
         val bobIdentity = IdentityService(identityStore)
         bobIdentity.register("bob")
@@ -872,7 +894,7 @@ class ShareServiceTest {
         val svc = ShareService(
             relayResolver = TwoRelayResolver(defaultRelay, defaultRelayUrl, byorUrl, byorRelay),
             encryption = NoOpShareEncryption,
-            shareRepository = FakeShareRepository(),
+            shareRepository = shareRepo,
             shareMetadataRepository = FakeShareMetadataRepository(),
             secretRepository = FakeSecretRepository(),
             contactRepository = contactRepo,
@@ -899,6 +921,39 @@ class ShareServiceTest {
 
         assertEquals(setOf(byorUrl), svc.syncInbox().unreachableRelays)
         assertEquals(setOf(byorUrl), svc.syncDistributed().unreachableRelays)
+    }
+
+    /**
+     * A relay that has gone silent is asked nothing more in the same pass, not even for the
+     * heartbeat it is owed. Each ask would wait out the same timeout, so a pass that kept asking
+     * would hold the screen up once per listing before it could say the relay is down. The next
+     * pass asks again.
+     */
+    @Test
+    fun `each sync pass asks a silent relay once, and still names it`() {
+        val byorRelay = FakeShareRelay(unreachable = true, baseUrl = byorUrl)
+        val (svc, _) = newTwoRelayService(FakeShareRelay(baseUrl = defaultRelayUrl), byorRelay, keepingForCharlie = true)
+
+        assertEquals(setOf(byorUrl), svc.syncInbox().unreachableRelays)
+        assertEquals(1, byorRelay.asked)
+        assertEquals(setOf(byorUrl), svc.syncDistributed().unreachableRelays)
+        assertEquals(2, byorRelay.asked)
+    }
+
+    /** Only the silent relay is passed over: the one that answers is asked everything it always was. */
+    @Test
+    fun `a silent relay costs the other relay none of its listings`() {
+        fun askedOfDefault(whileByorIsUnreachable: Boolean): Int {
+            val defaultRelay = FakeShareRelay(baseUrl = defaultRelayUrl)
+            val (svc, _) = newTwoRelayService(defaultRelay, FakeShareRelay(unreachable = whileByorIsUnreachable, baseUrl = byorUrl))
+            svc.syncInbox()
+            svc.syncDistributed()
+            return defaultRelay.asked
+        }
+
+        val whileSilent = askedOfDefault(whileByorIsUnreachable = true)
+        assertTrue(whileSilent > 0)
+        assertEquals(askedOfDefault(whileByorIsUnreachable = false), whileSilent)
     }
 
     @Test

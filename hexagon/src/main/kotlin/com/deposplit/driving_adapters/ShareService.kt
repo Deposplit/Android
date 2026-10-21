@@ -111,11 +111,18 @@ class ShareService(
     // failures by its base URL, which is how a sync pass or a fan-out read reports it. Only
     // listings go through here: whether a relay answers is a question about the relay, whereas a
     // failure acting on one row is about that row.
-    private fun <T> fromRelay(relay: ShareRelay, failures: RelayFailures, listing: () -> List<T>): List<T> =
-        runCatching(listing).getOrElse { e ->
+    //
+    // A relay that has already gone silent in this pass is not asked again. Every further ask would
+    // wait out the same timeout and learn nothing new, and a pass makes several, so a relay that is
+    // down would otherwise hold the whole pass up for one timeout per listing. One that refused is
+    // still asked: it answers at once, and it is there.
+    private fun <T> fromRelay(relay: ShareRelay, failures: RelayFailures, listing: () -> List<T>): List<T> {
+        if (relay.baseUrl in failures.unreachable) return emptyList()
+        return runCatching(listing).getOrElse { e ->
             if (e is RelayRefusedException) failures.noteRefused(relay.baseUrl, e.statusCode) else failures.noteSilent(relay.baseUrl)
             emptyList()
         }
+    }
 
     // Every row this device is a party to, from every relay it knows, listed once — each paired
     // with the relay it was found on, so a caller can act on it through that same one.
@@ -129,13 +136,18 @@ class ShareService(
     // This is not only about a list showing an entry twice. Reconstruct would collect each
     // approved share twice, decrypt both copies, and hand the combiner duplicate x-coordinates,
     // which it rightly refuses.
+    //
+    // silent names the relays a calling sync pass has already heard nothing from. They are not
+    // asked again, and are reported unreachable all the same.
     private fun rowsAcrossRelays(
         role: Role,
         transactionType: ShareTransactionType? = null,
         state: ShareRequestState? = null,
+        silent: Set<String> = emptySet(),
     ): RelayFanOut<Pair<ShareRelay, ShareRequest>> {
         val relays = allRelays()
         val failures = RelayFailures()
+        silent.forEach(failures::noteSilent)
         val rows = relays
             .flatMap { relay ->
                 fromRelay(relay, failures) { relay.listShareRequests(role, transactionType, state) }
@@ -295,7 +307,7 @@ class ShareService(
         val metas = shareMetadataRepository.getAll()
         if (metas.isNotEmpty()) {
             val secretIds = metas.map { it.secretId }.toSet()
-            val fanOut = rowsAcrossRelays(Role.SENDER, ShareTransactionType.REMOVAL)
+            val fanOut = rowsAcrossRelays(Role.SENDER, ShareTransactionType.REMOVAL, silent = failures.unreachable)
             failures.merge(fanOut)
             val removalRequests = fanOut.items
                 .filter { (_, request) -> request.secretId in secretIds }
@@ -524,7 +536,7 @@ class ShareService(
         }
         processRecoveryMetadata(failures)
         processRotations(failures)
-        emitHeartbeats()
+        emitHeartbeats(failures)
         return failures.report()
     }
 
@@ -533,13 +545,16 @@ class ShareService(
     // (or opt-out notice) once the per-sender emission interval has elapsed. Each push is
     // independently best-effort so one unreachable BYOR relay doesn't block heartbeating other
     // senders. lastHeartbeatSentAt only advances on a *successful* push, so a transient failure
-    // retries on the very next poll rather than waiting out the full interval again.
-    private fun emitHeartbeats() {
+    // retries on the very next poll rather than waiting out the full interval again. A sender
+    // whose relay has gone silent in this pass is not pushed to at all, for the reason fromRelay
+    // gives, and is retried on the next poll the same way.
+    private fun emitHeartbeats(failures: RelayFailures) {
         val held = shareRepository.getAll()
         val senderIds = held.map { it.contactId }.toSet()
         val now = Instant.now()
         for (contactId in senderIds) {
             val contact = contactRepository.getById(contactId) ?: continue
+            if (relayForContact(contact).baseUrl in failures.unreachable) continue
             val isDue = contact.lastHeartbeatSentAt?.let { Duration.between(it, now) >= CustodyHeartbeatTuning.emissionInterval } ?: true
             if (!isDue) continue
             val secretIds = if (contact.heartbeatEmissionOptedOut) emptyList() else held.filter { it.contactId == contactId }.map { it.secretId }
