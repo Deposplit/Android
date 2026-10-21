@@ -15,19 +15,18 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -134,14 +133,16 @@ fun HomeScreen(
 
     Scaffold(
         topBar = {
+            // No title: the tab row already names the tab, and the app's name would say nothing about
+            // where somebody is.
             TopAppBar(
-                title = { Text(stringResource(R.string.app_name)) },
+                title = {},
                 actions = {
-                    IconButton(onClick = onNavigateToQrDisplay) {
-                        Icon(painterResource(R.drawable.ic_qr_code), contentDescription = stringResource(R.string.home_action_qr_code))
-                    }
                     IconButton(onClick = onNavigateToContacts) {
                         Icon(painterResource(R.drawable.ic_group), contentDescription = stringResource(R.string.contacts_title))
+                    }
+                    IconButton(onClick = onNavigateToQrDisplay) {
+                        Icon(painterResource(R.drawable.ic_qr_code), contentDescription = stringResource(R.string.home_action_qr_code))
                     }
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(painterResource(R.drawable.ic_settings), contentDescription = stringResource(R.string.settings_title))
@@ -158,9 +159,19 @@ fun HomeScreen(
                 },
             )
         },
-        floatingActionButton = {
-            FloatingActionButton(onClick = onNavigateToDeposit) {
-                Icon(painterResource(R.drawable.ic_arrow_split), contentDescription = stringResource(R.string.home_action_new_secret))
+        // A new secret starts from the list of secrets, in the same place whether that list is empty,
+        // full or still loading, so the way in never moves.
+        bottomBar = {
+            if (selectedTab == 0) {
+                Button(
+                    onClick = onNavigateToDeposit,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(16.dp),
+                ) {
+                    Text(stringResource(R.string.home_action_split_share))
+                }
             }
         },
     ) { padding ->
@@ -195,19 +206,6 @@ fun HomeScreen(
                     )
                 }
             }
-            // The Requests tab names its own unreachable relays, in words about requests, so these
-            // two views of local data are the ones that say what they are showing instead.
-            if (selectedTab != 2) {
-                uiState.unreachableRelays.forEach { relay ->
-                    SoftWarningRow(stringResource(R.string.home_relay_unreachable, relayName(relay)))
-                }
-                uiState.refusingRelays.forEach { relay ->
-                    SoftWarningRow(stringResource(R.string.home_relay_refused, relayName(relay.baseUrl), relay.statusCode))
-                }
-                if (uiState.syncFailed) {
-                    SoftWarningRow(stringResource(R.string.home_sync_failed))
-                }
-            }
 
             SecondaryTabRow(selectedTabIndex = selectedTab) {
                 Tab(
@@ -225,6 +223,21 @@ fun HomeScreen(
                     onClick = { selectTab(2) },
                     text = { Text(stringResource(R.string.home_tab_requests)) },
                 )
+            }
+
+            // The Requests tab names its own unreachable relays, in words about requests, so these
+            // two views of local data are the ones that say what they are showing instead. Both sit
+            // below the tab row, so a warning stays where it was when the tab changes.
+            if (selectedTab != 2) {
+                uiState.unreachableRelays.forEach { relay ->
+                    SoftWarningRow(stringResource(R.string.home_relay_unreachable, relayName(relay)))
+                }
+                uiState.refusingRelays.forEach { relay ->
+                    SoftWarningRow(stringResource(R.string.home_relay_refused, relayName(relay.baseUrl), relay.statusCode))
+                }
+                if (uiState.syncFailed) {
+                    SoftWarningRow(stringResource(R.string.home_sync_failed))
+                }
             }
 
             if (selectedTab == 2) {

@@ -25,9 +25,9 @@
 
     <!-- Home -->
     <string name="home_action_qr_code">My QR code</string>
-    <string name="home_action_new_secret">New secret</string>
-    <string name="home_tab_distributed">Split &amp; shared</string>
-    <string name="home_tab_held">Keeping safe</string>
+    <string name="home_action_split_share">Split &amp; share a secret</string>
+    <string name="home_tab_distributed">My secret Shares</string>
+    <string name="home_tab_held">Their shared Secrets</string>
     <string name="home_tab_requests">Requests</string>
     <string name="home_empty_distributed">No secrets split &amp; shared yet</string>
     <string name="home_empty_held">No shares to keep safe yet</string>
