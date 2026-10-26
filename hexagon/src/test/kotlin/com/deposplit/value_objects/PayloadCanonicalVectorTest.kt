@@ -81,6 +81,30 @@ class PayloadCanonicalVectorTest {
         assertTrue(verifier.verifySignature(sigBytes))
     }
 
+    // ── forOpen for a withdrawal — every optional field absent, so four trailing empty lines.
+
+    private val expectedWithdrawalSignatureBase64Url =
+        "1WwboKOifAfmm5c851r1hX3CGjjPWidRM5yox7K5MgGx1_XKgMV23TXDBTJIud4Ob2fMLziTrqih3hsEMDyKAQ"
+
+    private fun withdrawalCanonical(): ByteArray =
+        PayloadCanonical.forOpen(secretId, ShareTransactionType.WITHDRAWAL, recipientKey, sealedLabel, secretCreatedAt, null)
+
+    @Test
+    fun `forOpen for a withdrawal produces the fixed canonical bytes`() {
+        val expected =
+            "11111111-1111-1111-1111-111111111111\nwithdrawal\nAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI\nBgcICQo=\n1767225600000\n\n\n\n"
+        assertEquals(expected, String(withdrawalCanonical(), Charsets.UTF_8))
+    }
+
+    @Test
+    fun `signing the withdrawal canonical bytes with the fixed seed reproduces the fixed signature`() {
+        val canon = withdrawalCanonical()
+        val signer = Ed25519Signer()
+        signer.init(true, Ed25519PrivateKeyParameters(privateKeySeed, 0))
+        signer.update(canon, 0, canon.size)
+        assertEquals(expectedWithdrawalSignatureBase64Url, b64url.encodeToString(signer.generateSignature()))
+    }
+
     // ── forRotation — same cross-platform-interop purpose as forOpen above, checked into
     // the relay's and iOS's PayloadCanonicalVectorTests. Uses the same fixed private key seed as
     // forOpen so both vectors are anchored to one known keypair.
@@ -136,20 +160,22 @@ class PayloadCanonicalVectorTest {
         UUID.fromString("11111111-1111-1111-1111-111111111111"),
         UUID.fromString("22222222-2222-2222-2222-222222222222"),
     )
+    // Appended as a 4th line, with milliseconds that are not zero.
+    private val heartbeatEmittedAt: Instant = Instant.parse("2026-01-02T03:04:05.678Z")
     private val expectedHeartbeatSignatureBase64Url =
-        "w6fmGn4t7y2RSNakPBzi57H40u5kJI6CZAhEGdzLBOwZd__jabsge2tEmIpczMqEd3ODpNUJ72Ww2KEe8LYQCw"
+        "KP2laDBXpS-Bp_3MzghlBsGjKKxWetsdDnzgbygTNu-A7-g9Dl4vvrsy3hnuOccsGHMTdxJtbGWKwDWuJweXBw"
 
     @Test
     fun `forHeartbeat produces the fixed canonical bytes sorted regardless of input order`() {
-        val canon = PayloadCanonical.forHeartbeat(heartbeatOwnerKey, heartbeatSecretIds, false)
+        val canon = PayloadCanonical.forHeartbeat(heartbeatOwnerKey, heartbeatSecretIds, false, heartbeatEmittedAt)
         val expected =
-            "BgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgY\n11111111-1111-1111-1111-111111111111,22222222-2222-2222-2222-222222222222,33333333-3333-3333-3333-333333333333\nfalse"
+            "BgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgY\n11111111-1111-1111-1111-111111111111,22222222-2222-2222-2222-222222222222,33333333-3333-3333-3333-333333333333\nfalse\n1767323045678"
         assertEquals(expected, String(canon, Charsets.UTF_8))
     }
 
     @Test
     fun `signing the heartbeat canonical bytes with the fixed seed reproduces the fixed signature`() {
-        val canon = PayloadCanonical.forHeartbeat(heartbeatOwnerKey, heartbeatSecretIds, false)
+        val canon = PayloadCanonical.forHeartbeat(heartbeatOwnerKey, heartbeatSecretIds, false, heartbeatEmittedAt)
         val privKey = Ed25519PrivateKeyParameters(privateKeySeed, 0)
         val signer = Ed25519Signer()
         signer.init(true, privKey)
@@ -160,7 +186,7 @@ class PayloadCanonicalVectorTest {
 
     @Test
     fun `the fixed heartbeat signature verifies against the fixed public key`() {
-        val canon = PayloadCanonical.forHeartbeat(heartbeatOwnerKey, heartbeatSecretIds, false)
+        val canon = PayloadCanonical.forHeartbeat(heartbeatOwnerKey, heartbeatSecretIds, false, heartbeatEmittedAt)
         val pubKeyBytes = Base64.getUrlDecoder().decode(expectedPublicKeyBase64Url)
         val sigBytes = Base64.getUrlDecoder().decode(expectedHeartbeatSignatureBase64Url)
         val verifier = Ed25519Signer()

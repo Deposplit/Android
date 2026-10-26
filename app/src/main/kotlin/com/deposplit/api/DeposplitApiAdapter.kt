@@ -117,21 +117,6 @@ class DeposplitApiAdapter(
         execute("DELETE", "/share-requests/$requestId")
     }
 
-    override fun withdrawShareRequests(senderKey: ByteArray?, secretId: UUID?) {
-        val query = buildString {
-            var first = true
-            if (senderKey != null) {
-                append("?senderKey=${senderKey.encodeBase64Url()}")
-                first = false
-            }
-            if (secretId != null) {
-                append(if (first) "?" else "&")
-                append("secretId=$secretId")
-            }
-        }
-        execute("POST", "/share-requests/withdraw$query")
-    }
-
     override fun pushRotation(recipientKey: ByteArray, newVerifyKey: ByteArray, newEncKey: ByteArray, newCipherSuite: CipherSuite, signature: ByteArray) {
         val body = json.encodeToString(
             PushRotationJson(
@@ -152,12 +137,13 @@ class DeposplitApiAdapter(
         execute("DELETE", "/key-rotations/$id")
     }
 
-    override fun pushHeartbeat(ownerKey: ByteArray, secretIds: List<UUID>, optedOut: Boolean, signature: ByteArray) {
+    override fun pushHeartbeat(ownerKey: ByteArray, secretIds: List<UUID>, optedOut: Boolean, emittedAt: Instant, signature: ByteArray) {
         val body = json.encodeToString(
             PushHeartbeatJson(
                 ownerKey = ownerKey.encodeBase64Url(),
                 secretIds = secretIds.map { it.toString() },
                 optedOut = optedOut,
+                emittedAt = emittedAt.toString(),
                 signature = signature.encodeBase64Url(),
             )
         )
@@ -166,6 +152,10 @@ class DeposplitApiAdapter(
 
     override fun listHeartbeats(): List<CustodyHeartbeat> =
         json.decodeFromString<List<CustodyHeartbeatJson>>(execute("GET", "/custody-heartbeats")).map { it.toDomain() }
+
+    override fun deleteHeartbeat(id: UUID) {
+        execute("DELETE", "/custody-heartbeats/$id")
+    }
 
     // ── HTTP ─────────────────────────────────────────────────────────────────
 
@@ -257,9 +247,12 @@ class DeposplitApiAdapter(
         val ownerKey: String,
         val secretIds: List<String>,
         val optedOut: Boolean,
+        val emittedAt: String,
         val signature: String,
     )
 
+    // The relay's own receipt time, createdAt, is left out on purpose: it is unsigned, and custody
+    // is dated by the holder's signed emittedAt alone.
     @Serializable
     private data class CustodyHeartbeatJson(
         val id: String,
@@ -267,8 +260,8 @@ class DeposplitApiAdapter(
         val ownerKey: String,
         val secretIds: List<String>,
         val optedOut: Boolean,
+        val emittedAt: String,
         val signature: String,
-        val createdAt: String,
     )
 
     @Serializable
@@ -305,7 +298,6 @@ class DeposplitApiAdapter(
             "pending" -> ShareRequestState.PENDING
             "approved" -> ShareRequestState.APPROVED
             "denied" -> ShareRequestState.DENIED
-            "withdrawn" -> ShareRequestState.WITHDRAWN
             else -> error("Unknown state: $state")
         },
         requestedAt = Instant.parse(requestedAt),
@@ -335,8 +327,8 @@ class DeposplitApiAdapter(
         ownerKey = ownerKey.decodeBase64Url(),
         secretIds = secretIds.map { UUID.fromString(it) },
         optedOut = optedOut,
+        emittedAt = Instant.parse(emittedAt),
         signature = signature.decodeBase64Url(),
-        createdAt = Instant.parse(createdAt),
     )
 
     companion object {

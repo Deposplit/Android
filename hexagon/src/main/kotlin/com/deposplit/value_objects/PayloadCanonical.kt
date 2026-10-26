@@ -92,10 +92,15 @@ object PayloadCanonical {
      * before joining so the signed bytes are independent of list-construction order on either
      * side. The same construction covers the opt-out notice ([optedOut] `= true`, `secretIds`
      * typically empty) — mechanically the same signed row, just a different meaning to the reader.
+     *
+     * [emittedAt] is appended at the end, as epoch milliseconds like `secretCreatedAt`. Without it
+     * the signature said *what* a holder guards but not *when*, so a relay could re-serve an old
+     * heartbeat as a new one.
      */
-    fun forHeartbeat(ownerKey: ByteArray, secretIds: List<UUID>, optedOut: Boolean): ByteArray = listOf(
+    fun forHeartbeat(ownerKey: ByteArray, secretIds: List<UUID>, optedOut: Boolean, emittedAt: Instant): ByteArray = listOf(
         base64Url.encodeToString(ownerKey),
         secretIds.map { it.toString() }.sorted().joinToString(","),
         optedOut.toString(),
+        emittedAt.toEpochMilli().toString(),
     ).joinToString("\n").toByteArray(Charsets.UTF_8)
 }

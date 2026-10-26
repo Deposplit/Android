@@ -8,10 +8,11 @@ enum class Role { SENDER, RECIPIENT }
 // The kind of thing that happened (or is being asked to happen) to a share, phrased as a neutral
 // transaction noun rather than either party's verb. Naming from a single named actor's point of
 // view (Alice's, or Bob's) breaks down because the actor genuinely alternates — Alice always
-// opens DEPOSIT/RETRIEVAL/REMOVAL, but the *holder* opens INVENTORY (holder → owner).
+// opens DEPOSIT/RETRIEVAL/REMOVAL, but the *holder* opens INVENTORY and WITHDRAWAL (holder → owner).
 //
-// INVENTORY is a holder-initiated metadata-only push during identity recovery — not
-// consent-gated, unlike the other three.
+// INVENTORY is a holder-initiated metadata-only push during identity recovery, and WITHDRAWAL
+// the holder's signed notice that they no longer hold a share — neither consent-gated, unlike
+// the other three.
 //
 // wireValue is the single source of truth for this type's wire representation — the JSON
 // transactionType value and the string PayloadCanonical signs are both the same wireValue,
@@ -21,15 +22,14 @@ enum class ShareTransactionType(val wireValue: String) {
     DEPOSIT("deposit"),
     RETRIEVAL("retrieval"),
     REMOVAL("removal"),
-    INVENTORY("inventory");
+    INVENTORY("inventory"),
+    WITHDRAWAL("withdrawal");
 
     companion object {
         fun fromWire(value: String): ShareTransactionType? = entries.find { it.wireValue == value }
     }
 }
-// WITHDRAWN is deposit-only: the recipient unilaterally stopped holding the share. A
-// best-effort tombstone, not authoritative — see ShareRelay.withdrawShareRequests.
-enum class ShareRequestState { PENDING, APPROVED, DENIED, WITHDRAWN }
+enum class ShareRequestState { PENDING, APPROVED, DENIED }
 
 // Per-share record on the sender's device — one per holder of a Secret. Normalized to reference
 // its parent Secret (by secretId) rather than duplicating label/secretCreatedAt.
@@ -64,7 +64,7 @@ data class ShareRequest(
     val respondedAt: Instant?,
     val ciphertext: ByteArray?,
     // SSS threshold/share-count and the sender's declared media type — all populated for
-    // DEPOSIT/INVENTORY, null for RETRIEVAL/REMOVAL.
+    // DEPOSIT/INVENTORY, null for RETRIEVAL/REMOVAL/WITHDRAWAL.
     val k: Int? = null,
     val n: Int? = null,
     val mimeType: MimeType? = null,

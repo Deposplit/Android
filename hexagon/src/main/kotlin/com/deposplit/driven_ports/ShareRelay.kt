@@ -64,12 +64,8 @@ interface ShareRelay {
         ciphertext: ByteArray? = null,
         recipientSignature: ByteArray,
     ): ShareRequest
+    /** Deletes a single request by id, and nothing else with it. */
     fun deleteShareRequest(requestId: UUID)
-
-    // Recipient-initiated unilateral withdrawal — flips matching approved Deposit rows
-    // to WITHDRAWN on the relay instead of deleting them, so the sender's next poll can observe
-    // the tombstone. Best-effort and fire-and-forget.
-    fun withdrawShareRequests(senderKey: ByteArray? = null, secretId: UUID? = null)
 
     // The signed rotate(K_old -> K_new) push. Grouped onto this interface rather than a
     // separate port: it's the same physical relay endpoint and the same BYOR per-contact routing
@@ -94,12 +90,14 @@ interface ShareRelay {
     // the rotation push above: one physical relay, one BYOR routing scheme.
 
     /**
-     * Pushes (upserts) a signed heartbeat for one owner, replacing any previous heartbeat this
+     * Pushes (upserts) a signed heartbeat for one owner, replacing any unread heartbeat this
      * device sent to that owner. [signature] must verify against the caller's own current
      * Ed25519 key (the relay's `holderKey`) over
-     * [com.deposplit.value_objects.PayloadCanonical.forHeartbeat].
+     * [com.deposplit.value_objects.PayloadCanonical.forHeartbeat], [emittedAt] included.
      */
-    fun pushHeartbeat(ownerKey: ByteArray, secretIds: List<UUID>, optedOut: Boolean, signature: ByteArray)
-    /** The latest heartbeat (or opt-out) from each holder addressed to this device. */
+    fun pushHeartbeat(ownerKey: ByteArray, secretIds: List<UUID>, optedOut: Boolean, emittedAt: Instant, signature: ByteArray)
+    /** The unread heartbeat (or opt-out) from each holder addressed to this device. */
     fun listHeartbeats(): List<CustodyHeartbeat>
+    /** Deletes a heartbeat once read — see [CustodyHeartbeat]. */
+    fun deleteHeartbeat(id: UUID)
 }

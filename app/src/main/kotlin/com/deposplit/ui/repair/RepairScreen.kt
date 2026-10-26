@@ -360,5 +360,4 @@ private fun ShareRequestState?.label(): String = when (this) {
     ShareRequestState.PENDING -> stringResource(R.string.share_request_state_pending)
     ShareRequestState.APPROVED -> stringResource(R.string.share_request_state_approved)
     ShareRequestState.DENIED -> stringResource(R.string.share_request_state_denied)
-    ShareRequestState.WITHDRAWN -> stringResource(R.string.share_request_state_withdrawn)
 }

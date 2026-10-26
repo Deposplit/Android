@@ -476,7 +476,6 @@ internal fun HolderRow(holder: HolderStatus, onClick: () -> Unit) {
                 ShareRequestState.PENDING -> R.string.share_request_state_pending to MaterialTheme.colorScheme.onSurfaceVariant
                 ShareRequestState.APPROVED -> R.string.share_request_state_approved to MaterialTheme.colorScheme.primary
                 ShareRequestState.DENIED -> R.string.share_request_state_denied to MaterialTheme.colorScheme.error
-                ShareRequestState.WITHDRAWN -> R.string.share_request_state_withdrawn to MaterialTheme.colorScheme.onSurfaceVariant
             }
             Text(
                 text = stringResource(labelRes),

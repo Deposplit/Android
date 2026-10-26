@@ -221,10 +221,10 @@
     <string name="share_request_retrieval">Abrufen</string>
     <string name="share_request_removal">Entfernung</string>
     <string name="share_request_inventory">Inventar</string>
+    <string name="share_request_withdrawal">Rückzug</string>
     <string name="share_request_state_pending">Offen</string>
     <string name="share_request_state_approved">Angenommen</string>
     <string name="share_request_state_denied">Abgelehnt</string>
-    <string name="share_request_state_withdrawn">Zurückgezogen</string>
 
     <!-- Share detail -->
     <string name="share_detail_title_fallback">Teil</string>

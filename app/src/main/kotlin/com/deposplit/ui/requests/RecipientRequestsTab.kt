@@ -220,6 +220,13 @@ private fun RequestItem(
                         MaterialTheme.colorScheme.secondaryContainer,
                         MaterialTheme.colorScheme.onSecondaryContainer,
                     )
+                    // Never surfaced here either — a withdrawal is a self-approved push too,
+                    // consumed silently by syncDistributed's processWithdrawals.
+                    ShareTransactionType.WITHDRAWAL -> Triple(
+                        stringResource(R.string.share_request_withdrawal),
+                        MaterialTheme.colorScheme.secondaryContainer,
+                        MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
                 }
                 Surface(color = badgeBackground, shape = MaterialTheme.shapes.small) {
                     Text(

@@ -43,6 +43,7 @@ import com.deposplit.value_objects.SyncReport
 import com.deposplit.value_objects.VerificationLevel
 import java.time.Duration
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 class ShareService(
@@ -241,13 +242,22 @@ class ShareService(
         allRelays().forEach { relay ->
             fromRelay(relay, failures) { relay.listShareRequests(Role.SENDER, ShareTransactionType.DEPOSIT) }
                 .forEach { req ->
-                    if (req.state == ShareRequestState.WITHDRAWN) {
-                        // Best-effort tombstone: the holder unilaterally stopped holding
-                        // this share. Drop the local pointer so the health count reflects it,
-                        // then clean up the relay row — it has served its purpose and needn't
-                        // linger. Row *absence* is never itself a signal; only an *observed*
-                        // withdrawn state counts, and we've just observed it.
-                        runCatching { shareMetadataRepository.delete(req.id) }
+                    if (req.state == ShareRequestState.APPROVED) {
+                        // The pickup, seen (relay-observed channel). Stamped once, while the
+                        // retained blob still marks it unconfirmed by any channel. Only a record
+                        // that exists is touched: a withdrawal may have dropped this holder since,
+                        // and a row whose deletion failed on an earlier pass must not bring them
+                        // back. Matched by id, which is the request id, so a holder who has rotated
+                        // keys since is found all the same.
+                        if (isRetentionStillPending(req.id)) {
+                            existingMetadata.find { it.id == req.id }?.let { meta ->
+                                shareMetadataRepository.save(meta.copy(lastConfirmedAt = Instant.now()))
+                            }
+                            runCatching { retainedDepositRepository.delete(req.id) }
+                        }
+                        // Then the row goes. It was a message, and it has been read: keeping it
+                        // would leave the relay holding a record of who keeps what for whom for as
+                        // long as the share is held.
                         runCatching { relay.deleteShareRequest(req.id) }
                         return@forEach
                     }
@@ -255,18 +265,7 @@ class ShareService(
                     // re-anchored to a contactId — skip rather than drop the holder's identity.
                     val contact = contactRepository.getByVerifyKey(req.recipientKey) ?: return@forEach
                     val priorConfirmedAt = existingMetadata.find { it.id == req.id }?.lastConfirmedAt
-                    if (req.state == ShareRequestState.APPROVED && isRetentionStillPending(req.id)) {
-                        // First-observed pickup confirmation (relay-observed channel):
-                        // a one-time transition, not "still approved therefore still fresh" — an
-                        // unchanging Approved row on a later poll must not keep bumping
-                        // freshness, or a long-dead holder would look perpetually confirmed. The
-                        // retained blob's continued existence is exactly the "not yet confirmed
-                        // by any channel" marker, so its presence is what gates the stamp.
-                        shareMetadataRepository.save(ShareMetadata(req.id, req.secretId, contact.id, Instant.now()))
-                        runCatching { retainedDepositRepository.delete(req.id) }
-                    } else {
-                        shareMetadataRepository.save(ShareMetadata(req.id, req.secretId, contact.id, priorConfirmedAt))
-                    }
+                    shareMetadataRepository.save(ShareMetadata(req.id, req.secretId, contact.id, priorConfirmedAt))
                 }
             // A retrieve approval is also proof-of-custody. Polled here purely for that
             // freshness side effect; the functional read path for these rows is reconstruct()/
@@ -282,6 +281,7 @@ class ShareService(
                     shareMetadataRepository.save(meta.copy(lastConfirmedAt = Instant.now()))
                 }
         }
+        processWithdrawals(failures)
         reconcileRemovals(failures)
         processHeartbeats(failures)
         return failures.report()
@@ -289,6 +289,46 @@ class ShareService(
 
     private fun isRetentionStillPending(depositId: UUID): Boolean =
         runCatching { retainedDepositRepository.getAll() }.getOrDefault(emptyList()).any { it.id == depositId }
+
+    // Drops each holder who has told this device, signed, that they stopped holding a share. Runs
+    // before reconcileRemovals, whose trailing clean-up then ends a DESTROYING secret this has
+    // emptied.
+    //
+    // Only a withdrawal that verifies against a known contact counts. The relay cannot sign one,
+    // so it cannot make this device forget a holder who still has the share — the same reason an
+    // approved removal is checked. The notice is explicit rather than read off a heartbeat that
+    // stopped naming the secret: a missing entry is no act, an opted-out holder names nothing,
+    // and a holder who drops their last share from this owner sends no heartbeat at all.
+    //
+    // Along with the record go this device's own asks to that holder about that share, answered
+    // or not, since none of them can come to anything now. An approved retrieval stays: that copy
+    // was handed back before the share was dropped, and is as good as it was.
+    private fun processWithdrawals(failures: RelayFailures) {
+        val outstanding by lazy { rowsAcrossRelays(Role.SENDER, silent = failures.unreachable).items }
+        for (relay in allRelays()) {
+            val withdrawals = fromRelay(relay, failures) {
+                relay.listShareRequests(Role.RECIPIENT, ShareTransactionType.WITHDRAWAL)
+            }
+            for (req in withdrawals.filter(::verifyOpen)) {
+                val holder = contactRepository.getByVerifyKey(req.senderKey) ?: continue
+                noteRelinked(holder)
+                shareMetadataRepository.getAll()
+                    .filter { it.secretId == req.secretId && it.contactId == holder.id }
+                    .forEach { meta ->
+                        runCatching { shareMetadataRepository.delete(meta.id) }
+                        if (isRetentionStillPending(meta.id)) runCatching { retainedDepositRepository.delete(meta.id) }
+                    }
+                outstanding
+                    .filter { (_, r) ->
+                        r.secretId == req.secretId && r.recipientKey.contentEquals(holder.verifyKey) &&
+                            (r.transactionType == ShareTransactionType.REMOVAL ||
+                                (r.transactionType == ShareTransactionType.RETRIEVAL && r.state != ShareRequestState.APPROVED))
+                    }
+                    .forEach { (on, r) -> runCatching { on.deleteShareRequest(r.id) } }
+                runCatching { relay.deleteShareRequest(req.id) }
+            }
+        }
+    }
 
     // Drops every holder whose removal request has come back approved, whatever state the secret
     // is in: one holder removed from an ACTIVE secret just as much as each holder of a DESTROYING
@@ -356,7 +396,8 @@ class ShareService(
     override fun requestAll(secretId: UUID) {
         val secret = secretRepository.getAll().find { it.id == secretId } ?: return
         val deposited = shareMetadataRepository.getAll().filter { it.secretId == secretId }
-        val existing = rowsAcrossRelays(Role.SENDER, ShareTransactionType.RETRIEVAL).items.map { it.second }
+        val existingRows = rowsAcrossRelays(Role.SENDER, ShareTransactionType.RETRIEVAL).items
+        val existing = existingRows.map { it.second }
         // Fan out to the health-informed fresh set first; widen to everyone only when
         // there aren't enough confirmed holders to reach k. A retrieval request exists solely to
         // feed an eventual reconstruct(), so this targeting applies here rather than as a
@@ -382,8 +423,24 @@ class ShareService(
                     meta.secretId, contact.verifyKey, sealedLabel, secret.secretCreatedAt, ShareTransactionType.RETRIEVAL, null,
                     senderSignature = senderSignature,
                 )
+                existingRows
+                    .filter { (_, r) ->
+                        r.secretId == meta.secretId && r.recipientKey.contentEquals(contact.verifyKey) &&
+                            r.state == ShareRequestState.DENIED
+                    }
+                    .forEach { (on, r) -> runCatching { on.deleteShareRequest(r.id) } }
             }
         }
+    }
+
+    // A denied answer has been acted on once the ask is made again: the new request replaces it,
+    // so it goes, after the new one is open. Looked for on the relay the new one went to, which is
+    // where earlier asks to this holder went.
+    private fun dropDeniedAnswers(relay: ShareRelay, secretId: UUID, holder: Contact, type: ShareTransactionType) {
+        runCatching { relay.listShareRequests(Role.SENDER, type, ShareRequestState.DENIED) }
+            .getOrDefault(emptyList())
+            .filter { it.secretId == secretId && it.recipientKey.contentEquals(holder.verifyKey) }
+            .forEach { runCatching { relay.deleteShareRequest(it.id) } }
     }
 
     override fun openRequest(shareId: UUID, type: ShareTransactionType): ShareRequest {
@@ -396,10 +453,13 @@ class ShareService(
         val sealedLabel = encryption.sealLabel(secret.label, contact.encKey)
         val canon = PayloadCanonical.forOpen(meta.secretId, type, contact.verifyKey, sealedLabel, secret.secretCreatedAt, null)
         val senderSignature = identity.sign(canon)
-        return relayForContact(contact).openShareRequest(
+        val relay = relayForContact(contact)
+        val opened = relay.openShareRequest(
             meta.secretId, contact.verifyKey, sealedLabel, secret.secretCreatedAt, type, null,
             senderSignature = senderSignature,
         )
+        dropDeniedAnswers(relay, meta.secretId, contact, type)
+        return opened
     }
 
     // Pure read: collects and decrypts k approved retrieval shares, but never tears down
@@ -558,10 +618,12 @@ class ShareService(
             val isDue = contact.lastHeartbeatSentAt?.let { Duration.between(it, now) >= CustodyHeartbeatTuning.emissionInterval } ?: true
             if (!isDue) continue
             val secretIds = if (contact.heartbeatEmissionOptedOut) emptyList() else held.filter { it.contactId == contactId }.map { it.secretId }
-            val canon = PayloadCanonical.forHeartbeat(contact.verifyKey, secretIds, contact.heartbeatEmissionOptedOut)
+            // Whole milliseconds, which is what is signed — so the time on the wire is exactly the time signed.
+            val emittedAt = now.truncatedTo(ChronoUnit.MILLIS)
+            val canon = PayloadCanonical.forHeartbeat(contact.verifyKey, secretIds, contact.heartbeatEmissionOptedOut, emittedAt)
             val signature = runCatching { identity.sign(canon) }.getOrNull() ?: continue
             val pushed = runCatching {
-                relayForContact(contact).pushHeartbeat(contact.verifyKey, secretIds, contact.heartbeatEmissionOptedOut, signature)
+                relayForContact(contact).pushHeartbeat(contact.verifyKey, secretIds, contact.heartbeatEmissionOptedOut, emittedAt, signature)
             }.isSuccess
             if (pushed) {
                 contactRepository.save(contact.copy(lastHeartbeatSentAt = now))
@@ -569,11 +631,6 @@ class ShareService(
         }
     }
 
-    // Owner side — auto-verifies each holder's latest heartbeat (or opt-out notice)
-    // against a known contact's trusted key, then updates local freshness/opt-out state. Never
-    // deletes a heartbeat row — see CustodyHeartbeat for why it's a standing status, not a
-    // one-shot delivery. Unknown senders and forged signatures are silently skipped, same
-    // posture as processRotations().
     // Anything arriving from a contact proves they hold this device's current key, because the
     // relay only ever returns rows addressed to the caller — so every inbound path notes it, and a
     // contact who has relinked drops off the awaiting-relink list without anyone tapping anything.
@@ -583,32 +640,53 @@ class ShareService(
         runCatching { contactManagement.markRelinked(contact.id) }
     }
 
+    // Owner side — auto-verifies each holder's unread heartbeat (or opt-out notice)
+    // against a known contact's trusted key, updates local freshness/opt-out state, then deletes
+    // the heartbeat: what it said is kept here, and the holder re-emits every interval. Unknown
+    // senders and forged signatures are silently skipped and left, same posture as
+    // processRotations().
+    //
+    // Dated by the holder's signed emittedAt, and never backwards: a heartbeat older than what
+    // this device already knows refreshes nothing, so a relay re-serving an old one gains
+    // nothing. Never later than this device's own clock either, so a holder whose clock runs
+    // ahead cannot date proof of custody into the owner's future. The opt-out follows the same
+    // rule, with one gap left open on purpose: a replayed old opt-out still marks a holder
+    // unmonitored, which takes them out of n_live — it can raise an alarm, never silence one.
     private fun processHeartbeats(failures: RelayFailures) {
         // Nothing here can be verified without our own key, so a device whose key storage is
         // locked does nothing and picks this up on a later pass rather than failing every notice.
         val myKey = identity.verifyKey() ?: return
         val existingMetadata = shareMetadataRepository.getAll()
+        val now = Instant.now()
         allRelays().forEach { relay ->
             val notices = fromRelay(relay, failures) { relay.listHeartbeats() }
             for (notice in notices) {
                 val contact = contactRepository.getByVerifyKey(notice.holderKey) ?: continue
                 noteRelinked(contact)
-                val canon = PayloadCanonical.forHeartbeat(myKey, notice.secretIds, notice.optedOut)
+                val canon = PayloadCanonical.forHeartbeat(myKey, notice.secretIds, notice.optedOut, notice.emittedAt)
                 if (!identity.verify(canon, notice.signature, notice.holderKey)) continue
+                val emittedAt = if (notice.emittedAt.isAfter(now)) now else notice.emittedAt
+                val optedOutAt = contact.heartbeatOptedOutAt
                 if (notice.optedOut) {
-                    contactRepository.save(contact.copy(heartbeatOptedOutAt = notice.createdAt))
-                    continue
-                }
-                if (contact.heartbeatOptedOutAt != null) {
-                    contactRepository.save(contact.copy(heartbeatOptedOutAt = null))
-                }
-                for (secretId in notice.secretIds) {
-                    val meta = existingMetadata.find { it.secretId == secretId && it.contactId == contact.id } ?: continue
-                    shareMetadataRepository.save(meta.copy(lastConfirmedAt = notice.createdAt))
-                    if (isRetentionStillPending(meta.id)) {
-                        runCatching { retainedDepositRepository.delete(meta.id) }
+                    if (optedOutAt == null || optedOutAt.isBefore(emittedAt)) {
+                        contactRepository.save(contact.copy(heartbeatOptedOutAt = emittedAt))
+                    }
+                } else {
+                    if (optedOutAt != null && optedOutAt.isBefore(emittedAt)) {
+                        contactRepository.save(contact.copy(heartbeatOptedOutAt = null))
+                    }
+                    for (secretId in notice.secretIds) {
+                        val meta = existingMetadata.find { it.secretId == secretId && it.contactId == contact.id } ?: continue
+                        val lastConfirmedAt = meta.lastConfirmedAt
+                        if (lastConfirmedAt == null || lastConfirmedAt.isBefore(emittedAt)) {
+                            shareMetadataRepository.save(meta.copy(lastConfirmedAt = emittedAt))
+                        }
+                        if (isRetentionStillPending(meta.id)) {
+                            runCatching { retainedDepositRepository.delete(meta.id) }
+                        }
                     }
                 }
+                runCatching { relay.deleteHeartbeat(notice.id) }
             }
         }
     }
@@ -794,27 +872,38 @@ class ShareService(
         }
     }
 
-    // Unilateral, no approval needed — but not purely silent: best-effort notifies
-    // the sender via a withdraw tombstone before the local record is dropped. The relay call is
-    // fire-and-forget; local deletion always proceeds regardless of its outcome.
+    // Unilateral, no approval needed — but not purely silent: best-effort tells the sender with a
+    // signed withdrawal before the local record is dropped. The push is fire-and-forget; local
+    // deletion always proceeds regardless of its outcome.
     override fun deleteHeldShare(shareId: UUID) {
         shareRepository.getAll().find { it.id == shareId }?.let { share ->
             contactRepository.getById(share.contactId)?.let { senderContact ->
-                runCatching { relayForContact(senderContact).withdrawShareRequests(secretId = share.secretId) }
+                runCatching { pushWithdrawal(share, senderContact) }
             }
         }
         shareRepository.delete(shareId)
     }
 
-    // Same best-effort withdraw-tombstone courtesy as deleteHeldShare, but scoped to every share
-    // from contactId in one relay call (senderKey) rather than one per secretId.
+    // Same best-effort withdrawal as deleteHeldShare, one per share from contactId.
     override fun deleteAllHeldFromSender(contactId: UUID) {
+        val shares = shareRepository.getAll().filter { it.contactId == contactId }
         contactRepository.getById(contactId)?.let { senderContact ->
-            runCatching { relayForContact(senderContact).withdrawShareRequests(senderKey = senderContact.verifyKey) }
+            shares.forEach { share -> runCatching { pushWithdrawal(share, senderContact) } }
         }
-        shareRepository.getAll()
-            .filter { it.contactId == contactId }
-            .forEach { shareRepository.delete(it.id) }
+        shares.forEach { shareRepository.delete(it.id) }
+    }
+
+    // The holder's signed "I no longer hold this", addressed to the share's owner — the label
+    // sealed to her like any other row, the share itself never included. Signed, so a relay cannot
+    // invent one, and addressed to her current key, so it reaches her across any rotation either
+    // side has made since the deposit.
+    private fun pushWithdrawal(share: HeldShare, owner: Contact) {
+        val sealedLabel = encryption.sealLabel(share.label, owner.encKey)
+        val canon = PayloadCanonical.forOpen(share.secretId, ShareTransactionType.WITHDRAWAL, owner.verifyKey, sealedLabel, share.createdAt, null)
+        relayForContact(owner).openShareRequest(
+            share.secretId, owner.verifyKey, sealedLabel, share.createdAt, ShareTransactionType.WITHDRAWAL, null,
+            senderSignature = identity.sign(canon),
+        )
     }
 
     // ── Key conflicts (never auto-resolved) ─────────────────────────────────────
