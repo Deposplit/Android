@@ -17,6 +17,7 @@ import com.deposplit.shamir.combineWithIntegrity
 import com.deposplit.shamir.split
 import com.deposplit.value_objects.CipherSuite
 import com.deposplit.value_objects.Contact
+import com.deposplit.value_objects.CustodyHeartbeat
 import com.deposplit.value_objects.CustodyHeartbeatTuning
 import com.deposplit.value_objects.FreeTierLimitReachedException
 import com.deposplit.value_objects.HeldShare
@@ -642,9 +643,12 @@ class ShareService(
 
     // Owner side — auto-verifies each holder's unread heartbeat (or opt-out notice)
     // against a known contact's trusted key, updates local freshness/opt-out state, then deletes
-    // the heartbeat: what it said is kept here, and the holder re-emits every interval. Unknown
-    // senders and forged signatures are silently skipped and left, same posture as
-    // processRotations().
+    // the heartbeat: what it said is kept here, and the holder re-emits every interval. One from an
+    // unknown key, or with a signature that fails, changes nothing and is deleted all the same.
+    // That is where heartbeats part from processRotations(), which leaves such a notice alone: a
+    // rotation is sent once, while a heartbeat has a newer one behind it. Left on the relay, one
+    // from a contact this device has since deleted would be refreshed by every push its holder
+    // still makes, and so never expire.
     //
     // Dated by the holder's signed emittedAt, and never backwards: a heartbeat older than what
     // this device already knows refreshes nothing, so a relay re-serving an old one gains
@@ -661,32 +665,44 @@ class ShareService(
         allRelays().forEach { relay ->
             val notices = fromRelay(relay, failures) { relay.listHeartbeats() }
             for (notice in notices) {
-                val contact = contactRepository.getByVerifyKey(notice.holderKey) ?: continue
-                noteRelinked(contact)
-                val canon = PayloadCanonical.forHeartbeat(myKey, notice.secretIds, notice.optedOut, notice.emittedAt)
-                if (!identity.verify(canon, notice.signature, notice.holderKey)) continue
-                val emittedAt = if (notice.emittedAt.isAfter(now)) now else notice.emittedAt
-                val optedOutAt = contact.heartbeatOptedOutAt
-                if (notice.optedOut) {
-                    if (optedOutAt == null || optedOutAt.isBefore(emittedAt)) {
-                        contactRepository.save(contact.copy(heartbeatOptedOutAt = emittedAt))
-                    }
-                } else {
-                    if (optedOutAt != null && optedOutAt.isBefore(emittedAt)) {
-                        contactRepository.save(contact.copy(heartbeatOptedOutAt = null))
-                    }
-                    for (secretId in notice.secretIds) {
-                        val meta = existingMetadata.find { it.secretId == secretId && it.contactId == contact.id } ?: continue
-                        val lastConfirmedAt = meta.lastConfirmedAt
-                        if (lastConfirmedAt == null || lastConfirmedAt.isBefore(emittedAt)) {
-                            shareMetadataRepository.save(meta.copy(lastConfirmedAt = emittedAt))
-                        }
-                        if (isRetentionStillPending(meta.id)) {
-                            runCatching { retainedDepositRepository.delete(meta.id) }
-                        }
+                val contact = contactRepository.getByVerifyKey(notice.holderKey)
+                if (contact != null) {
+                    noteRelinked(contact)
+                    val canon = PayloadCanonical.forHeartbeat(myKey, notice.secretIds, notice.optedOut, notice.emittedAt)
+                    if (identity.verify(canon, notice.signature, notice.holderKey)) {
+                        applyHeartbeat(notice, contact, existingMetadata, now)
                     }
                 }
                 runCatching { relay.deleteHeartbeat(notice.id) }
+            }
+        }
+    }
+
+    private fun applyHeartbeat(
+        notice: CustodyHeartbeat,
+        contact: Contact,
+        existingMetadata: List<ShareMetadata>,
+        now: Instant,
+    ) {
+        val emittedAt = if (notice.emittedAt.isAfter(now)) now else notice.emittedAt
+        val optedOutAt = contact.heartbeatOptedOutAt
+        if (notice.optedOut) {
+            if (optedOutAt == null || optedOutAt.isBefore(emittedAt)) {
+                contactRepository.save(contact.copy(heartbeatOptedOutAt = emittedAt))
+            }
+            return
+        }
+        if (optedOutAt != null && optedOutAt.isBefore(emittedAt)) {
+            contactRepository.save(contact.copy(heartbeatOptedOutAt = null))
+        }
+        for (secretId in notice.secretIds) {
+            val meta = existingMetadata.find { it.secretId == secretId && it.contactId == contact.id } ?: continue
+            val lastConfirmedAt = meta.lastConfirmedAt
+            if (lastConfirmedAt == null || lastConfirmedAt.isBefore(emittedAt)) {
+                shareMetadataRepository.save(meta.copy(lastConfirmedAt = emittedAt))
+            }
+            if (isRetentionStillPending(meta.id)) {
+                runCatching { retainedDepositRepository.delete(meta.id) }
             }
         }
     }

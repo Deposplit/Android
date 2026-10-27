@@ -1738,19 +1738,38 @@ class ShareServiceTest {
     }
 
     @Test
-    fun `syncDistributed ignores a heartbeat with a forged signature`() {
+    fun `syncDistributed ignores a heartbeat with a forged signature, and deletes it`() {
         val relay = FakeShareRelay()
         val (svc, bob, _, _, metaRepo, _, _) = newService(relay)
         val depositId = UUID.randomUUID()
         val secretId = UUID.randomUUID()
         metaRepo.save(ShareMetadata(depositId, secretId, aliceContact.id))
         // Claims to be from alice but signed by a stranger.
-        relay.heartbeatsToReturn = listOf(signedHeartbeat(aliceKeys.publicKey, bob.verifyKey()!!, strangerKeys, secretIds = listOf(secretId)))
+        val notice = signedHeartbeat(aliceKeys.publicKey, bob.verifyKey()!!, strangerKeys, secretIds = listOf(secretId))
+        relay.heartbeatsToReturn = listOf(notice)
 
         svc.syncDistributed()
 
         assertEquals(null, metaRepo.getAll().find { it.id == depositId }?.lastConfirmedAt)
-        assertTrue(relay.deletedHeartbeatIds.isEmpty())
+        assertEquals(listOf(notice.id), relay.deletedHeartbeatIds)
+    }
+
+    @Test
+    fun `syncDistributed ignores a heartbeat from an unknown key, and deletes it`() {
+        val relay = FakeShareRelay()
+        val (svc, bob, _, contactRepo, metaRepo, _, _) = newService(relay)
+        val depositId = UUID.randomUUID()
+        val secretId = UUID.randomUUID()
+        metaRepo.save(ShareMetadata(depositId, secretId, aliceContact.id))
+        // Validly signed, but by a key this device knows no contact by — say one it has deleted.
+        val notice = signedHeartbeat(strangerKeys.publicKey, bob.verifyKey()!!, strangerKeys, secretIds = listOf(secretId))
+        relay.heartbeatsToReturn = listOf(notice)
+
+        svc.syncDistributed()
+
+        assertEquals(listOf(aliceContact), contactRepo.getAll())
+        assertEquals(null, metaRepo.getAll().find { it.id == depositId }?.lastConfirmedAt)
+        assertEquals(listOf(notice.id), relay.deletedHeartbeatIds)
     }
 
     @Test
