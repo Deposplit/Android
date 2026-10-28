@@ -3,7 +3,6 @@ package com.deposplit.driving_adapters
 import com.deposplit.driven_ports.ContactRepository
 import com.deposplit.driven_ports.KeyConflictRepository
 import com.deposplit.driven_ports.PurchaseRepository
-import com.deposplit.driven_ports.RetainedDepositRepository
 import com.deposplit.driven_ports.SecretRepository
 import com.deposplit.driven_ports.ShareMetadataRepository
 import com.deposplit.driven_ports.ShareRelay
@@ -29,7 +28,6 @@ import com.deposplit.value_objects.ReconstructionResult
 import com.deposplit.value_objects.RegenerateIdentityResult
 import com.deposplit.value_objects.RelayFanOut
 import com.deposplit.value_objects.RelayRefusedException
-import com.deposplit.value_objects.RetainedDepositBlob
 import com.deposplit.value_objects.Role
 import com.deposplit.value_objects.Secret
 import com.deposplit.value_objects.SecretState
@@ -56,7 +54,6 @@ class ShareService(
     private val contactRepository: ContactRepository,
     private val contactManagement: ContactManagement,
     private val keyConflictRepository: KeyConflictRepository,
-    private val retainedDepositRepository: RetainedDepositRepository,
     private val identity: Identity,
     private val purchases: PurchaseRepository,
 ) : ShareManagement {
@@ -223,15 +220,6 @@ class ShareService(
                 k = threshold, n = contacts.size, mimeType = mimeType, senderSignature = senderSignature,
             )
             shareMetadataRepository.save(ShareMetadata(req.id, secretId, contact.id))
-            // Retained until this holder's pickup is confirmed (relay-observed or
-            // heartbeat-attested), or until this holder's record goes, then discarded. Safe to
-            // retain: the box was sealed under an ephemeral key discarded at sealing, so only the
-            // holder can open it, not this device.
-            runCatching {
-                retainedDepositRepository.save(
-                    RetainedDepositBlob(req.id, secretId, contact.id, label, createdAt, ciphertext, threshold, contacts.size, mimeType),
-                )
-            }
         }
         secretRepository.save(Secret(secretId, label, mimeType, threshold, contacts.size, createdAt, SecretState.ACTIVE))
     }
@@ -241,25 +229,21 @@ class ShareService(
     override fun syncDistributed(): SyncReport {
         val existingMetadata = shareMetadataRepository.getAll()
         val failures = RelayFailures()
+        val now = Instant.now()
         allRelays().forEach { relay ->
             fromRelay(relay, failures) { relay.listShareRequests(Role.SENDER, ShareTransactionType.DEPOSIT) }
                 .forEach { req ->
                     if (req.state == ShareRequestState.APPROVED) {
-                        // The pickup, seen (relay-observed channel). Stamped once, while the
-                        // retained blob still marks it unconfirmed by any channel. Only a record
-                        // that exists is touched: a withdrawal may have dropped this holder since,
-                        // and a row whose deletion failed on an earlier pass must not bring them
-                        // back. Matched by id, which is the request id, so a holder who has rotated
-                        // keys since is found all the same.
-                        if (isRetentionStillPending(req.id)) {
-                            existingMetadata.find { it.id == req.id }?.let { meta ->
-                                shareMetadataRepository.save(meta.copy(lastConfirmedAt = Instant.now()))
-                            }
-                            runCatching { retainedDepositRepository.delete(req.id) }
+                        // The pickup, seen (relay-observed channel). Only a record that exists is
+                        // touched: a withdrawal may have dropped this holder since, and a row whose
+                        // deletion failed on an earlier pass must not bring them back. Matched by
+                        // id, which is the request id.
+                        if (verifyRespond(req)) {
+                            existingMetadata.find { it.id == req.id }?.let { meta -> confirmFromApproval(meta.id, req, now) }
                         }
-                        // Then the row goes. It was a message, and it has been read: keeping it
-                        // would leave the relay holding a record of who keeps what for whom for as
-                        // long as the share is held.
+                        // Then the row goes, whether or not it verified. It was a message, and it
+                        // has been read: keeping it would leave the relay holding a record of who
+                        // keeps what for whom for as long as the share is held.
                         runCatching { relay.deleteShareRequest(req.id) }
                         return@forEach
                     }
@@ -273,6 +257,7 @@ class ShareService(
             // freshness side effect; the functional read path for these rows is reconstruct()/
             // listSentRequests(), unchanged.
             fromRelay(relay, failures) { relay.listShareRequests(Role.SENDER, ShareTransactionType.RETRIEVAL, ShareRequestState.APPROVED) }
+                .filter(::verifyRespond)
                 .forEach { req ->
                     // Matched on secretId plus the holder's key, the same pair requestRetrieval
                     // fans out on — the row itself carries no pointer back to this device's
@@ -280,7 +265,7 @@ class ShareService(
                     val contact = contactRepository.getByVerifyKey(req.recipientKey) ?: return@forEach
                     val meta = existingMetadata.find { it.secretId == req.secretId && it.contactId == contact.id }
                         ?: return@forEach
-                    shareMetadataRepository.save(meta.copy(lastConfirmedAt = Instant.now()))
+                    confirmFromApproval(meta.id, req, now)
                 }
         }
         processWithdrawals(failures)
@@ -289,8 +274,28 @@ class ShareService(
         return failures.report()
     }
 
-    private fun isRetentionStillPending(depositId: UUID): Boolean =
-        runCatching { retainedDepositRepository.getAll() }.getOrDefault(emptyList()).any { it.id == depositId }
+    // An approval is proof of custody only once the holder's signature on it verifies, and it is
+    // dated by when the holder answered, never by when this device happened to read it — so an
+    // approved retrieval read on every pass until its copy is cleared refreshes nothing after the
+    // first, and a row whose deletion failed changes nothing either. Like a heartbeat it only ever
+    // moves the clock forward, and never past this device's own clock.
+    //
+    // Two limits. The answer's time is the relay's, and unsigned: a relay can no longer invent an
+    // approval, but it can re-date a real one, which only a signed time would prevent. And an
+    // approval signed under a key the holder has since rotated away from no longer verifies,
+    // because a contact keeps no previous keys — their next heartbeat confirms them instead.
+    //
+    // Reads the record afresh rather than from the pass's snapshot, so two approvals for one
+    // holder in the same pass cannot undo each other.
+    private fun confirmFromApproval(metaId: UUID, approval: ShareRequest, now: Instant) {
+        val respondedAt = approval.respondedAt ?: return
+        val answeredAt = if (respondedAt.isAfter(now)) now else respondedAt
+        val meta = shareMetadataRepository.getAll().find { it.id == metaId } ?: return
+        val lastConfirmedAt = meta.lastConfirmedAt
+        if (lastConfirmedAt == null || lastConfirmedAt.isBefore(answeredAt)) {
+            runCatching { shareMetadataRepository.save(meta.copy(lastConfirmedAt = answeredAt)) }
+        }
+    }
 
     // Drops each holder who has told this device, signed, that they stopped holding a share. Runs
     // before reconcileRemovals, whose trailing clean-up then ends a DESTROYING secret this has
@@ -318,7 +323,6 @@ class ShareService(
                     .filter { it.secretId == req.secretId && it.contactId == holder.id }
                     .forEach { meta ->
                         runCatching { shareMetadataRepository.delete(meta.id) }
-                        if (isRetentionStillPending(meta.id)) runCatching { retainedDepositRepository.delete(meta.id) }
                     }
                 outstanding
                     .filter { (_, r) ->
@@ -364,7 +368,6 @@ class ShareService(
                 // acting on it would leave a holder that can never be reconciled if this device dies
                 // in between, which is the one failure this whole flow exists to avoid.
                 runCatching { shareMetadataRepository.delete(meta.id) }
-                if (isRetentionStillPending(meta.id)) runCatching { retainedDepositRepository.delete(meta.id) }
                 runCatching { approvedRemoval.first.deleteShareRequest(approvedRemoval.second.id) }
             }
         }
@@ -530,11 +533,10 @@ class ShareService(
 
     // Local-only teardown for a DESTROYING secret whose holders won't all respond (e.g. a
     // permanently dark holder) — removes the Secret and its remaining ShareMetadata rows without
-    // waiting for relay confirmation, and the retained blob of any holder who never picked up.
+    // waiting for relay confirmation.
     override fun forceForgetSecret(secretId: UUID) {
         shareMetadataRepository.getAll().filter { it.secretId == secretId }.forEach { share ->
             runCatching { shareMetadataRepository.delete(share.id) }
-            if (isRetentionStillPending(share.id)) runCatching { retainedDepositRepository.delete(share.id) }
         }
         secretRepository.delete(secretId)
     }
@@ -589,8 +591,8 @@ class ShareService(
                         }
                     }
                     // Sent even when an earlier poll already stored the share but failed to
-                    // acknowledge it: without the approval the sender never observes the pickup and
-                    // keeps her retained blob forever.
+                    // acknowledge it: without the approval the sender never observes the pickup, and
+                    // the deposit sits on the relay until it expires.
                     if (stored) {
                         val canon = PayloadCanonical.forRespond(req.id, approved = true, ciphertext = null)
                         relay.respondToShareRequest(req.id, true, recipientSignature = identity.sign(canon))
@@ -703,9 +705,6 @@ class ShareService(
             val lastConfirmedAt = meta.lastConfirmedAt
             if (lastConfirmedAt == null || lastConfirmedAt.isBefore(emittedAt)) {
                 shareMetadataRepository.save(meta.copy(lastConfirmedAt = emittedAt))
-            }
-            if (isRetentionStillPending(meta.id)) {
-                runCatching { retainedDepositRepository.delete(meta.id) }
             }
         }
     }

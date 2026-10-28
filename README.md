@@ -74,7 +74,7 @@ Packages use `snake_case` to mirror the Scala relay hexagon.
 `CatalogManagement`), `driving_adapters/` (the services implementing them, plus
 `ShareEncryption`), `driven_ports/` (ten interfaces the domain needs from the world:
 `IdentityStore`, `ContactRepository`, `ShareRepository`, `ShareMetadataRepository`,
-`SecretRepository`, `RetainedDepositRepository`, `KeyConflictRepository`, `ShareRelay`,
+`SecretRepository`, `KeyConflictRepository`, `ShareRelay`,
 `ShareRelayResolver`, `RelaySettings`), `value_objects/`, and `shamir/Shamir.kt`.
 
 **`:app`** — `api/` (relay client, resolver, defaults), `auth/` (Keystore-backed identity
