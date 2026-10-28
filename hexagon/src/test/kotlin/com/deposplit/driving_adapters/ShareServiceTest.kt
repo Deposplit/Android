@@ -2734,6 +2734,33 @@ class ShareServiceTest {
         assertTrue(relay.deletedRequestIds.contains(removals[0].id), "the answered removal was left on the relay")
     }
 
+    // A holder who never picked up still has a retained blob, and it has nothing left to mark once
+    // their record is gone — the relay expires an uncollected deposit rather than waiting on it.
+    @Test
+    fun `an approved removal discards the retained blob of a holder who never picked up`() {
+        val relay = FakeShareRelay()
+        val charlieKeys = TestKeyPair.generate()
+        val charlieContact = aliceContact.copy(id = UUID.randomUUID(), pseudonym = "charlie", verifyKey = charlieKeys.publicKey)
+        val (fixture, removals) = destroyingSecret(relay, listOf(aliceContact, charlieContact))
+
+        relay.answerRemoval(removals[0], aliceKeys)
+        fixture.svc.syncDistributed()
+
+        assertEquals(listOf(charlieContact.id), fixture.retainedRepo.getAll().map { it.contactId })
+    }
+
+    @Test
+    fun `Force Forget discards the retained blobs along with the records`() {
+        val relay = FakeShareRelay()
+        val charlieKeys = TestKeyPair.generate()
+        val charlieContact = aliceContact.copy(id = UUID.randomUUID(), pseudonym = "charlie", verifyKey = charlieKeys.publicKey)
+        val (fixture, _) = destroyingSecret(relay, listOf(aliceContact, charlieContact))
+
+        fixture.svc.forceForgetSecret(fixture.svc.listSecrets().first().id)
+
+        assertEquals(emptyList<RetainedDepositBlob>(), fixture.retainedRepo.getAll())
+    }
+
     @Test
     fun `a denied removal leaves the holder and the secret exactly where they were`() {
         val relay = FakeShareRelay()

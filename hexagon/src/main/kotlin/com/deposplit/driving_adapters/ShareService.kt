@@ -224,8 +224,9 @@ class ShareService(
             )
             shareMetadataRepository.save(ShareMetadata(req.id, secretId, contact.id))
             // Retained until this holder's pickup is confirmed (relay-observed or
-            // heartbeat-attested), then discarded. Safe to retain: the box was sealed under an
-            // ephemeral key discarded at sealing, so only the holder can open it, not this device.
+            // heartbeat-attested), or until this holder's record goes, then discarded. Safe to
+            // retain: the box was sealed under an ephemeral key discarded at sealing, so only the
+            // holder can open it, not this device.
             runCatching {
                 retainedDepositRepository.save(
                     RetainedDepositBlob(req.id, secretId, contact.id, label, createdAt, ciphertext, threshold, contacts.size, mimeType),
@@ -363,6 +364,7 @@ class ShareService(
                 // acting on it would leave a holder that can never be reconciled if this device dies
                 // in between, which is the one failure this whole flow exists to avoid.
                 runCatching { shareMetadataRepository.delete(meta.id) }
+                if (isRetentionStillPending(meta.id)) runCatching { retainedDepositRepository.delete(meta.id) }
                 runCatching { approvedRemoval.first.deleteShareRequest(approvedRemoval.second.id) }
             }
         }
@@ -528,10 +530,11 @@ class ShareService(
 
     // Local-only teardown for a DESTROYING secret whose holders won't all respond (e.g. a
     // permanently dark holder) — removes the Secret and its remaining ShareMetadata rows without
-    // waiting for relay confirmation.
+    // waiting for relay confirmation, and the retained blob of any holder who never picked up.
     override fun forceForgetSecret(secretId: UUID) {
         shareMetadataRepository.getAll().filter { it.secretId == secretId }.forEach { share ->
             runCatching { shareMetadataRepository.delete(share.id) }
+            if (isRetentionStillPending(share.id)) runCatching { retainedDepositRepository.delete(share.id) }
         }
         secretRepository.delete(secretId)
     }
