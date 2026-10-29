@@ -133,13 +133,13 @@
     <string name="settings_relay_label">Standard-Relais-URL</string>
     <string name="settings_relay_reset">Auf Standard zurücksetzen</string>
     <string name="settings_catalog_title">Katalog-Sicherung</string>
-    <string name="settings_catalog_description">Nur Kontakte, Verifizierungsstufen und Metadaten der Geheimnisse — niemals Anteile oder private Schlüssel.</string>
+    <string name="settings_catalog_description">Kontakte, Verifizierungsstufen und Metadaten der Geheimnisse, lesbar auf iPhone und Android gleichermassen — niemals Anteile oder private Schlüssel.</string>
     <string name="settings_catalog_export">Exportieren …</string>
     <string name="settings_catalog_import">Importieren …</string>
     <string name="settings_catalog_imported">%1$s neue(n) Kontakt(e) importiert.</string>
     <string name="settings_catalog_import_error">Katalog konnte nicht importiert werden</string>
     <string name="settings_backup_title">Gerätesicherung</string>
-    <string name="settings_backup_description">Die Daten von Deposplit auf diesem Telefon — Ihre Kontakte, die Angaben zu Ihren Geheimnissen und die Anteile, die Sie für andere verwahren — sind in der Gerätesicherung enthalten und überstehen so einen Telefonwechsel. Ihre privaten Schlüssel nicht: Diese können das Telefon nicht verlassen.</string>
+    <string name="settings_backup_description">Die Daten von Deposplit auf diesem Telefon — Ihre Kontakte, die Angaben zu Ihren Geheimnissen und die Anteile, die Sie für andere verwahren — sind in der Gerätesicherung enthalten und überstehen so den Wechsel auf ein neues Android-Telefon. Beim Wechsel von oder zu einem iPhone kommt nur ein Katalog-Export mit, und er enthält keinen dieser Anteile. Ihre privaten Schlüssel sind nicht enthalten: Diese können das Telefon nicht verlassen.</string>
     <string name="settings_backup_exclusion">Android verschlüsselt diese Sicherung mit Ihrer Bildschirmsperre, und Sie können Deposplit in den Sicherungseinstellungen Ihres Telefons ausschliessen. Dann startet ein neues Telefon leer — die Menschen, deren Anteile Sie verwahren, verlieren diese Redundanz, und Ihr neues Telefon weiss nichts davon, um es ihnen zu sagen.</string>
     <string name="settings_notifications_title">Benachrichtigungen</string>
     <string name="settings_notifications_description">Deposplit kann melden, wenn ein Kontakt einen Anteil benötigt, den Sie verwahren — auch bei geschlossener App. Die Meldung nennt weder Personen noch Geheimnisse, verrät auf einem gesperrten Bildschirm also nichts.</string>

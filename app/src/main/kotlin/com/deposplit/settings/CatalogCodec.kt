@@ -12,19 +12,31 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.time.Instant
+import java.time.format.DateTimeFormatterBuilder
 import java.util.Base64
 import java.util.UUID
 
 /**
  * JSON (de)serialization for [Catalog] — the optional non-secret backup export/import.
  * Lives in the app layer, not the hexagon: serialization is an adapter concern, and the hexagon
- * has no JSON dependency (see [com.deposplit.value_objects.Catalog]'s doc comment). Mirrors the
- * wire shapes already used by `LocalContactRepository`/`LocalSecretRepository`/
- * `LocalShareMetadataRepository`.
+ * has no JSON dependency (see [com.deposplit.value_objects.Catalog]'s doc comment).
+ *
+ * The format is version 1 of the one both apps read and write, specified under "The catalogue
+ * export" in deposplit.com/docs/security.md, so a catalogue exported here imports on an iPhone
+ * and back. iOS's `CatalogCodec` is the same format, and the two test suites decode one shared
+ * fixture to keep them that way.
  */
 object CatalogCodec {
 
+    private const val VERSION = 1
+
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = true }
+
+    // Exactly the milliseconds a signature covers, as iOS writes them; Instant.toString would
+    // leave the fraction out on a whole second and write six or nine digits when it has them.
+    private val catalogTime = DateTimeFormatterBuilder().appendInstant(3).toFormatter()
+
+    private fun Instant.toCatalogTime(): String = catalogTime.format(this)
 
     @Serializable
     private data class ContactWire(
@@ -76,6 +88,8 @@ object CatalogCodec {
 
     @Serializable
     private data class CatalogWire(
+        // No default: encodeDefaults is off, so a defaulted version would never be written.
+        val version: Int,
         val contacts: List<ContactWire>,
         val secrets: List<SecretWire>,
         val shareMetadata: List<ShareMetadataWire>,
@@ -83,16 +97,18 @@ object CatalogCodec {
 
     fun encode(catalog: Catalog): ByteArray = json.encodeToString(
         CatalogWire(
+            version = VERSION,
             contacts = catalog.contacts.map { it.toWire() },
             secrets = catalog.secrets.map { it.toWire() },
             shareMetadata = catalog.shareMetadata.map {
-                ShareMetadataWire(it.id.toString(), it.secretId.toString(), it.contactId.toString(), it.lastConfirmedAt?.toString())
+                ShareMetadataWire(it.id.toString(), it.secretId.toString(), it.contactId.toString(), it.lastConfirmedAt?.toCatalogTime())
             },
         )
     ).toByteArray(Charsets.UTF_8)
 
     fun decode(bytes: ByteArray): Catalog {
         val wire = json.decodeFromString<CatalogWire>(bytes.toString(Charsets.UTF_8))
+        check(wire.version == VERSION) { "Unsupported catalog version: ${wire.version}" }
         return Catalog(
             contacts = wire.contacts.map { it.toDomain() },
             secrets = wire.secrets.map { it.toDomain() },
@@ -112,16 +128,16 @@ object CatalogCodec {
         pseudonym = pseudonym,
         verifyKey = Base64.getUrlEncoder().withoutPadding().encodeToString(verifyKey),
         encKey = Base64.getUrlEncoder().withoutPadding().encodeToString(encKey),
-        verificationLevel = verificationLevel.name,
-        verifiedAt = verifiedAt?.toString(),
-        addedAt = addedAt.toString(),
+        verificationLevel = verificationLevel.catalogValue,
+        verifiedAt = verifiedAt?.toCatalogTime(),
+        addedAt = addedAt.toCatalogTime(),
         relayBaseUrl = relayBaseUrl,
         cipherSuite = cipherSuite.wireValue,
         nickname = nickname,
         revokedVerifyKeys = revokedVerifyKeys.map { Base64.getUrlEncoder().withoutPadding().encodeToString(it) },
-        keyChangedAt = keyChangedAt?.toString(),
-        heartbeatOptedOutAt = heartbeatOptedOutAt?.toString(),
-        lastHeartbeatSentAt = lastHeartbeatSentAt?.toString(),
+        keyChangedAt = keyChangedAt?.toCatalogTime(),
+        heartbeatOptedOutAt = heartbeatOptedOutAt?.toCatalogTime(),
+        lastHeartbeatSentAt = lastHeartbeatSentAt?.toCatalogTime(),
         heartbeatEmissionOptedOut = heartbeatEmissionOptedOut,
     )
 
@@ -130,7 +146,8 @@ object CatalogCodec {
         pseudonym = pseudonym,
         verifyKey = Base64.getUrlDecoder().decode(verifyKey),
         encKey = Base64.getUrlDecoder().decode(encKey),
-        verificationLevel = VerificationLevel.valueOf(verificationLevel),
+        verificationLevel = VerificationLevel.entries.find { it.catalogValue == verificationLevel }
+            ?: error("Unknown verification level in catalog: $verificationLevel"),
         verifiedAt = verifiedAt?.let { Instant.parse(it) },
         addedAt = Instant.parse(addedAt),
         relayBaseUrl = relayBaseUrl,
@@ -145,11 +162,28 @@ object CatalogCodec {
 
     private fun Secret.toWire() = SecretWire(
         id = id.toString(), label = label, mimeType = mimeType.value, k = k, n = n,
-        secretCreatedAt = secretCreatedAt.toString(), state = state.name,
+        secretCreatedAt = secretCreatedAt.toCatalogTime(), state = state.catalogValue,
     )
 
     private fun SecretWire.toDomain() = Secret(
         id = UUID.fromString(id), label = label, mimeType = MimeType(mimeType), k = k, n = n,
-        secretCreatedAt = Instant.parse(secretCreatedAt), state = SecretState.valueOf(state),
+        secretCreatedAt = Instant.parse(secretCreatedAt),
+        state = SecretState.entries.find { it.catalogValue == state } ?: error("Unknown secret state in catalog: $state"),
     )
+
+    // Spelled as iOS spells its raw values, not as Kotlin names its constants, because the file is
+    // read on both platforms.
+    private val VerificationLevel.catalogValue: String
+        get() = when (this) {
+            VerificationLevel.VERY_LOW -> "veryLow"
+            VerificationLevel.LOW -> "low"
+            VerificationLevel.HIGH -> "high"
+            VerificationLevel.VERY_HIGH -> "veryHigh"
+        }
+
+    private val SecretState.catalogValue: String
+        get() = when (this) {
+            SecretState.ACTIVE -> "active"
+            SecretState.DESTROYING -> "destroying"
+        }
 }

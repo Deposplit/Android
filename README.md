@@ -32,7 +32,7 @@ compileSdk 37, targetSdk 36, minSdk 35.
 ## Build and test
 
 ```bash
-./gradlew test                    # JVM unit tests — no device needed (136 :hexagon, 20 :app)
+./gradlew test                    # JVM unit tests — no device needed (210 :hexagon, 26 :app)
 ./gradlew :app:lintDebug          # the four gated lint checks
 ./gradlew :hexagon:test           # the domain only
 ./gradlew :hexagon:test --tests "com.deposplit.shamir.ShamirTest"
