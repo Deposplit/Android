@@ -26,12 +26,12 @@
     <!-- Home -->
     <string name="home_action_qr_code">Mein QR-Code</string>
     <string name="home_action_split_share">Geheimnis aufteilen &amp; verteilen</string>
-    <string name="home_tab_distributed">Meine secret Shares</string>
-    <string name="home_tab_held">Ihre shared Secrets</string>
+    <string name="home_tab_distributed">Meine shared Secrets</string>
+    <string name="home_tab_held">Ihre secret Shares</string>
     <string name="home_tab_requests">Anfragen</string>
     <string name="home_empty_distributed">Noch keine Geheimnisse aufgeteilt &amp; verteilt</string>
     <string name="home_empty_held">Noch keine Anteile zu verwahren</string>
-    <string name="home_request_all">Abruf anfragen</string>
+    <string name="home_request_all">Anteil-Kopien einholen</string>
     <string name="home_held_from">Von: %1$s</string>
     <string name="home_sort_date">Datum</string>
     <string name="home_sort_label">Bezeichnung</string>
@@ -147,14 +147,14 @@
     <string name="settings_notifications_disabled">Ausgeschaltet. Ohne sie erfahren Sie von einer Anfrage erst beim nächsten Öffnen von Deposplit.</string>
     <string name="settings_notifications_open">Benachrichtigungseinstellungen</string>
     <string name="settings_identity_title">Identität</string>
-    <string name="settings_regenerate_description">Erzeugt ein brandneues Schlüsselpaar für dieses Gerät und benachrichtigt automatisch alle Ihre Kontakte. Ein bereits an Sie unterwegs befindlicher Anteil kann danach weiterhin abgeholt werden, ein jetzt nicht erreichbarer Kontakt erfährt aber nichts vom neuen Schlüssel. Das lässt sich nicht rückgängig machen.</string>
+    <string name="settings_regenerate_description">Erzeugt ein brandneues Schlüsselpaar für dieses Gerät und benachrichtigt automatisch alle Ihre Kontakte. Ein bereits an Sie unterwegs befindlicher Anteil kann danach weiterhin eingesammelt werden, ein jetzt nicht erreichbarer Kontakt erfährt aber nichts vom neuen Schlüssel. Das lässt sich nicht rückgängig machen.</string>
     <string name="settings_regenerate_button">Meine Identität neu erzeugen</string>
     <string name="settings_regenerate_confirm_title">Identität neu erzeugen?</string>
-    <string name="settings_regenerate_confirm_body">Damit wird ein neues Schlüsselpaar erzeugt und %1$d Kontakt(e) benachrichtigt. Ein bereits an Sie unterwegs befindlicher Anteil kann danach weiterhin abgeholt werden; ein jetzt nicht erreichbarer Kontakt erfährt nichts vom neuen Schlüssel.</string>
+    <string name="settings_regenerate_confirm_body">Damit wird ein neues Schlüsselpaar erzeugt und %1$d Kontakt(e) benachrichtigt. Ein bereits an Sie unterwegs befindlicher Anteil kann danach weiterhin eingesammelt werden; ein jetzt nicht erreichbarer Kontakt erfährt nichts vom neuen Schlüssel.</string>
     <string name="settings_regenerate_confirm_action">Neu erzeugen</string>
     <string name="settings_regenerate_result">%1$d von %2$d Kontakt(en) benachrichtigt.</string>
     <string name="settings_regenerate_error">Identität konnte nicht neu erzeugt werden</string>
-    <string name="settings_regenerate_drain_warning">Einige Relais waren nicht erreichbar, daher wurden noch offene Übertragungen nicht vorab eingesammelt — sie kommen bei einer späteren Synchronisierung an.</string>
+    <string name="settings_regenerate_drain_warning">Einige bereits an Sie unterwegs befindliche Anteile konnten vor dem Wechsel zu den neuen Schlüsseln nicht eingesammelt werden. Diese kommen später von selbst an.</string>
 
     <!-- Deposit -->
     <string name="deposit_title">Geheimnis aufteilen &amp; verteilen</string>
@@ -207,7 +207,7 @@
 
     <!-- Schlüsselkonflikte (nie automatisch aufgelöst) und Verstärkung bei Abruf-Freigabe -->
     <string name="requests_key_conflict_title">Möglicher Identitätsdiebstahl</string>
-    <string name="requests_key_conflict_message">Der Schlüssel von %1$s hat sich geändert, aber der vorherige Schlüssel ist als kompromittiert markiert. Dies könnte ein Angreifer mit dem gestohlenen Schlüssel sein, oder ein Fehlalarm. Um die Verbindung wiederherzustellen, verifizieren Sie %1$s erneut — persönlich oder über einen vertrauenswürdigen Kanal — und nutzen Sie dann „Neu verknüpfen“ auf dem Kontakte-Bildschirm. Akzeptieren Sie dies nicht automatisch.</string>
+    <string name="requests_key_conflict_message">Der Schlüssel von %1$s hat sich geändert, aber der vorherige Schlüssel ist als kompromittiert markiert. Dies könnte ein Angreifer mit dem gestohlenen Schlüssel sein oder ein Fehlalarm. Um die Verbindung wiederherzustellen, verifizieren Sie %1$s erneut — persönlich oder über einen vertrauenswürdigen Kanal — und nutzen Sie dann „Neu verknüpfen“ auf dem Kontakte-Bildschirm. Akzeptieren Sie dies nicht automatisch.</string>
     <string name="requests_key_conflict_detected_at">Erkannt %1$s</string>
     <string name="requests_key_conflict_permanence">Das Verwerfen hinterlässt keinen Eintrag — dieser hier ist der einzige, und es lässt sich nicht rückgängig machen.</string>
     <string name="requests_key_conflict_dismiss">Verwerfen</string>
@@ -246,12 +246,12 @@
     <string name="secret_detail_retrieve_disabled_all_asked">Alle Verwahrer wurden bereits gefragt.</string>
     <string name="secret_detail_retrieve_disabled_destroying">Dieses Geheimnis wird gerade vernichtet.</string>
     <string name="secret_detail_reconstruct_button">Rekonstruieren</string>
-    <string name="secret_detail_clear_button">Gesammelte Kopien freigeben</string>
-    <string name="secret_detail_clear_title">Gesammelte Kopien freigeben?</string>
-    <string name="secret_detail_clear_confirm_unread">Das Geheimnis wurde hier noch nicht angezeigt. Werden die gesammelten Kopien freigegeben, müssen die Verwahrer erneut gefragt werden, bevor es wieder zusammengesetzt werden kann.</string>
+    <string name="secret_detail_clear_button">Eingeholte Kopien freigeben</string>
+    <string name="secret_detail_clear_title">Eingeholte Kopien freigeben?</string>
+    <string name="secret_detail_clear_confirm_unread">Das Geheimnis wurde hier noch nicht angezeigt. Werden die eingeholten Kopien freigegeben, müssen die Verwahrer erneut gefragt werden, bevor es wieder zusammengesetzt werden kann.</string>
     <string name="secret_detail_clear_confirm_after_reading">Die Verwahrer behalten ihre Teile — Kopien lassen sich jederzeit erneut anfragen.</string>
     <string name="secret_detail_clear_disabled">Bisher wurde nichts zurückgegeben.</string>
-    <string name="secret_detail_clear_reminder">Die gesammelten Kopien nach Gebrauch freigeben — die Verwahrer behalten ihre Teile in jedem Fall.</string>
+    <string name="secret_detail_clear_reminder">Die eingeholten Kopien nach Gebrauch freigeben — die Verwahrer behalten ihre Teile in jedem Fall.</string>
     <string name="secret_detail_biometric_none_enrolled">Hinterlegen Sie eine biometrische Methode (Fingerabdruck oder Gesicht) in den Geräteeinstellungen, um das Geheimnis zu rekonstruieren.</string>
     <string name="secret_detail_biometric_no_hardware">Dieses Gerät hat keinen biometrischen Sensor — Rekonstruktion nicht möglich.</string>
     <string name="secret_detail_biometric_unavailable">Biometrische Authentifizierung derzeit nicht verfügbar.</string>
@@ -263,7 +263,7 @@
 
     <!-- Integritätshinweis bei der Rekonstruktion -->
     <string name="reconstruction_advisory_no_margin">Aus genau den erforderlichen Anteilen rekonstruiert — eine Integritätsprüfung war nicht möglich.</string>
-    <string name="reconstruction_advisory_confirmed">Integrität bestätigt — alle gesammelten Anteile stimmen überein.</string>
+    <string name="reconstruction_advisory_confirmed">Integrität bestätigt — alle eingeholten Anteile stimmen überein.</string>
     <string name="reconstruction_advisory_excluded">%1$d inkonsistente(n) Anteil(e) ausgeschlossen (von: %2$s). Aus den übrigen konsistenten Anteilen rekonstruiert.</string>
 
     <!-- Darstellung des rekonstruierten Geheimnisses -->

@@ -26,12 +26,12 @@
     <!-- Home -->
     <string name="home_action_qr_code">My QR code</string>
     <string name="home_action_split_share">Split &amp; share a secret</string>
-    <string name="home_tab_distributed">My secret Shares</string>
-    <string name="home_tab_held">Their shared Secrets</string>
+    <string name="home_tab_distributed">My shared Secrets</string>
+    <string name="home_tab_held">Their secret Shares</string>
     <string name="home_tab_requests">Requests</string>
     <string name="home_empty_distributed">No secrets split &amp; shared yet</string>
     <string name="home_empty_held">No shares to keep safe yet</string>
-    <string name="home_request_all">Request Retrieval</string>
+    <string name="home_request_all">Fetch share copies</string>
     <string name="home_held_from">From: %1$s</string>
     <string name="home_sort_date">Date</string>
     <string name="home_sort_label">Label</string>
@@ -154,7 +154,7 @@
     <string name="settings_regenerate_confirm_action">Regenerate</string>
     <string name="settings_regenerate_result">Notified %1$d of %2$d contact(s).</string>
     <string name="settings_regenerate_error">Failed to regenerate identity</string>
-    <string name="settings_regenerate_drain_warning">Some relays could not be reached, so transfers still in progress were not collected first — they will arrive on a later sync.</string>
+    <string name="settings_regenerate_drain_warning">Some shares on their way to you could not be collected before the switch to the new keys. They will still arrive later, on their own.</string>
 
     <!-- Deposit -->
     <string name="deposit_title">Split &amp; Share Secret</string>
@@ -246,12 +246,12 @@
     <string name="secret_detail_retrieve_disabled_all_asked">Every holder has been asked already.</string>
     <string name="secret_detail_retrieve_disabled_destroying">This secret is being destroyed.</string>
     <string name="secret_detail_reconstruct_button">Reconstruct</string>
-    <string name="secret_detail_clear_button">Clear collected copies</string>
-    <string name="secret_detail_clear_title">Clear collected copies?</string>
-    <string name="secret_detail_clear_confirm_unread">The secret has not been shown here. Clearing the collected copies means asking the holders again before it can be put back together.</string>
+    <string name="secret_detail_clear_button">Clear fetched copies</string>
+    <string name="secret_detail_clear_title">Clear fetched copies?</string>
+    <string name="secret_detail_clear_confirm_unread">The secret has not been shown here. Clearing the fetched copies means asking the holders again before it can be put back together.</string>
     <string name="secret_detail_clear_confirm_after_reading">The holders keep their pieces — copies can be asked for again at any time.</string>
     <string name="secret_detail_clear_disabled">Nothing has been handed back yet.</string>
-    <string name="secret_detail_clear_reminder">Clear the collected copies once you are done with the secret — the holders keep their pieces either way.</string>
+    <string name="secret_detail_clear_reminder">Clear the fetched copies once you are done with the secret — the holders keep their pieces either way.</string>
     <string name="secret_detail_biometric_none_enrolled">Enrol a biometric (fingerprint or face) in device settings to reconstruct the secret.</string>
     <string name="secret_detail_biometric_no_hardware">This device has no biometric sensor — reconstruction is disabled.</string>
     <string name="secret_detail_biometric_unavailable">Biometric authentication is currently unavailable.</string>
@@ -263,7 +263,7 @@
 
     <!-- Reconstruction integrity advisory -->
     <string name="reconstruction_advisory_no_margin">Reconstructed from exactly the required shares — no integrity cross-check was possible.</string>
-    <string name="reconstruction_advisory_confirmed">Integrity confirmed — every collected share agrees.</string>
+    <string name="reconstruction_advisory_confirmed">Integrity confirmed — every fetched share agrees.</string>
     <string name="reconstruction_advisory_excluded">Excluded %1$d inconsistent share(s) (from: %2$s). Reconstructed from the remaining consistent shares.</string>
 
     <!-- Reconstructed secret rendering -->
