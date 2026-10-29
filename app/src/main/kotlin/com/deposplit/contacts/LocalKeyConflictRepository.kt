@@ -3,11 +3,11 @@ package com.deposplit.contacts
 import android.content.Context
 import com.deposplit.driven_ports.KeyConflictRepository
 import com.deposplit.value_objects.KeyConflict
+import com.deposplit.value_objects.PayloadCanonical
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
-import java.time.Instant
 import java.util.Base64
 import java.util.UUID
 
@@ -59,7 +59,7 @@ class LocalKeyConflictRepository(context: Context) : KeyConflictRepository {
         oldVerifyKey = Base64.getUrlDecoder().decode(oldVerifyKey),
         newVerifyKey = Base64.getUrlDecoder().decode(newVerifyKey),
         newEncKey = Base64.getUrlDecoder().decode(newEncKey),
-        detectedAt = Instant.parse(detectedAt),
+        detectedAt = PayloadCanonical.parseWireInstant(detectedAt),
     )
 
     private fun KeyConflict.toWire() = KeyConflictWire(
@@ -68,6 +68,6 @@ class LocalKeyConflictRepository(context: Context) : KeyConflictRepository {
         oldVerifyKey = Base64.getUrlEncoder().withoutPadding().encodeToString(oldVerifyKey),
         newVerifyKey = Base64.getUrlEncoder().withoutPadding().encodeToString(newVerifyKey),
         newEncKey = Base64.getUrlEncoder().withoutPadding().encodeToString(newEncKey),
-        detectedAt = detectedAt.toString(),
+        detectedAt = PayloadCanonical.wireInstant(detectedAt),
     )
 }

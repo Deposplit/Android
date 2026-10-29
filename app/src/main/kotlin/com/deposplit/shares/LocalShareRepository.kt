@@ -4,11 +4,11 @@ import android.content.Context
 import com.deposplit.driven_ports.ShareRepository
 import com.deposplit.value_objects.HeldShare
 import com.deposplit.value_objects.MimeType
+import com.deposplit.value_objects.PayloadCanonical
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
-import java.time.Instant
 import java.util.Base64
 import java.util.UUID
 
@@ -73,8 +73,8 @@ class LocalShareRepository(context: Context) : ShareRepository {
         label = label,
         contactId = UUID.fromString(contactId),
         senderPseudonym = senderPseudonym,
-        createdAt = Instant.parse(createdAt),
-        pickedUpAt = Instant.parse(pickedUpAt),
+        createdAt = PayloadCanonical.parseWireInstant(createdAt),
+        pickedUpAt = PayloadCanonical.parseWireInstant(pickedUpAt),
         plaintextShare = Base64.getDecoder().decode(plaintextShare),
         k = k,
         n = n,
@@ -87,8 +87,8 @@ class LocalShareRepository(context: Context) : ShareRepository {
         label = label,
         contactId = contactId.toString(),
         senderPseudonym = senderPseudonym,
-        createdAt = createdAt.toString(),
-        pickedUpAt = pickedUpAt.toString(),
+        createdAt = PayloadCanonical.wireInstant(createdAt),
+        pickedUpAt = PayloadCanonical.wireInstant(pickedUpAt),
         plaintextShare = Base64.getEncoder().encodeToString(plaintextShare),
         k = k,
         n = n,

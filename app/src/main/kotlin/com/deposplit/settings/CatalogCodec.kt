@@ -4,6 +4,7 @@ import com.deposplit.value_objects.Catalog
 import com.deposplit.value_objects.CipherSuite
 import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.MimeType
+import com.deposplit.value_objects.PayloadCanonical
 import com.deposplit.value_objects.Secret
 import com.deposplit.value_objects.SecretState
 import com.deposplit.value_objects.ShareMetadata
@@ -11,8 +12,6 @@ import com.deposplit.value_objects.VerificationLevel
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import java.time.Instant
-import java.time.format.DateTimeFormatterBuilder
 import java.util.Base64
 import java.util.UUID
 
@@ -31,12 +30,6 @@ object CatalogCodec {
     private const val VERSION = 1
 
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = true }
-
-    // Exactly the milliseconds a signature covers, as iOS writes them; Instant.toString would
-    // leave the fraction out on a whole second and write six or nine digits when it has them.
-    private val catalogTime = DateTimeFormatterBuilder().appendInstant(3).toFormatter()
-
-    private fun Instant.toCatalogTime(): String = catalogTime.format(this)
 
     @Serializable
     private data class ContactWire(
@@ -101,7 +94,7 @@ object CatalogCodec {
             contacts = catalog.contacts.map { it.toWire() },
             secrets = catalog.secrets.map { it.toWire() },
             shareMetadata = catalog.shareMetadata.map {
-                ShareMetadataWire(it.id.toString(), it.secretId.toString(), it.contactId.toString(), it.lastConfirmedAt?.toCatalogTime())
+                ShareMetadataWire(it.id.toString(), it.secretId.toString(), it.contactId.toString(), it.lastConfirmedAt?.let { PayloadCanonical.wireInstant(it) })
             },
         )
     ).toByteArray(Charsets.UTF_8)
@@ -117,7 +110,7 @@ object CatalogCodec {
                     UUID.fromString(it.id),
                     UUID.fromString(it.secretId),
                     UUID.fromString(it.contactId),
-                    it.lastConfirmedAt?.let(Instant::parse),
+                    it.lastConfirmedAt?.let { PayloadCanonical.parseWireInstant(it) },
                 )
             },
         )
@@ -129,15 +122,15 @@ object CatalogCodec {
         verifyKey = Base64.getUrlEncoder().withoutPadding().encodeToString(verifyKey),
         encKey = Base64.getUrlEncoder().withoutPadding().encodeToString(encKey),
         verificationLevel = verificationLevel.catalogValue,
-        verifiedAt = verifiedAt?.toCatalogTime(),
-        addedAt = addedAt.toCatalogTime(),
+        verifiedAt = verifiedAt?.let { PayloadCanonical.wireInstant(it) },
+        addedAt = PayloadCanonical.wireInstant(addedAt),
         relayBaseUrl = relayBaseUrl,
         cipherSuite = cipherSuite.wireValue,
         nickname = nickname,
         revokedVerifyKeys = revokedVerifyKeys.map { Base64.getUrlEncoder().withoutPadding().encodeToString(it) },
-        keyChangedAt = keyChangedAt?.toCatalogTime(),
-        heartbeatOptedOutAt = heartbeatOptedOutAt?.toCatalogTime(),
-        lastHeartbeatSentAt = lastHeartbeatSentAt?.toCatalogTime(),
+        keyChangedAt = keyChangedAt?.let { PayloadCanonical.wireInstant(it) },
+        heartbeatOptedOutAt = heartbeatOptedOutAt?.let { PayloadCanonical.wireInstant(it) },
+        lastHeartbeatSentAt = lastHeartbeatSentAt?.let { PayloadCanonical.wireInstant(it) },
         heartbeatEmissionOptedOut = heartbeatEmissionOptedOut,
     )
 
@@ -148,26 +141,26 @@ object CatalogCodec {
         encKey = Base64.getUrlDecoder().decode(encKey),
         verificationLevel = VerificationLevel.entries.find { it.catalogValue == verificationLevel }
             ?: error("Unknown verification level in catalog: $verificationLevel"),
-        verifiedAt = verifiedAt?.let { Instant.parse(it) },
-        addedAt = Instant.parse(addedAt),
+        verifiedAt = verifiedAt?.let { PayloadCanonical.parseWireInstant(it) },
+        addedAt = PayloadCanonical.parseWireInstant(addedAt),
         relayBaseUrl = relayBaseUrl,
         cipherSuite = CipherSuite.fromWire(cipherSuite) ?: error("Unknown cipher suite in catalog: $cipherSuite"),
         nickname = nickname,
         revokedVerifyKeys = revokedVerifyKeys.map { Base64.getUrlDecoder().decode(it) },
-        keyChangedAt = keyChangedAt?.let(Instant::parse),
-        heartbeatOptedOutAt = heartbeatOptedOutAt?.let(Instant::parse),
-        lastHeartbeatSentAt = lastHeartbeatSentAt?.let(Instant::parse),
+        keyChangedAt = keyChangedAt?.let { PayloadCanonical.parseWireInstant(it) },
+        heartbeatOptedOutAt = heartbeatOptedOutAt?.let { PayloadCanonical.parseWireInstant(it) },
+        lastHeartbeatSentAt = lastHeartbeatSentAt?.let { PayloadCanonical.parseWireInstant(it) },
         heartbeatEmissionOptedOut = heartbeatEmissionOptedOut,
     )
 
     private fun Secret.toWire() = SecretWire(
         id = id.toString(), label = label, mimeType = mimeType.value, k = k, n = n,
-        secretCreatedAt = secretCreatedAt.toCatalogTime(), state = state.catalogValue,
+        secretCreatedAt = PayloadCanonical.wireInstant(secretCreatedAt), state = state.catalogValue,
     )
 
     private fun SecretWire.toDomain() = Secret(
         id = UUID.fromString(id), label = label, mimeType = MimeType(mimeType), k = k, n = n,
-        secretCreatedAt = Instant.parse(secretCreatedAt),
+        secretCreatedAt = PayloadCanonical.parseWireInstant(secretCreatedAt),
         state = SecretState.entries.find { it.catalogValue == state } ?: error("Unknown secret state in catalog: $state"),
     )
 

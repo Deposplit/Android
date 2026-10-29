@@ -3,13 +3,13 @@ package com.deposplit.shares
 import android.content.Context
 import com.deposplit.driven_ports.SecretRepository
 import com.deposplit.value_objects.MimeType
+import com.deposplit.value_objects.PayloadCanonical
 import com.deposplit.value_objects.Secret
 import com.deposplit.value_objects.SecretState
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
-import java.time.Instant
 import java.util.UUID
 
 class LocalSecretRepository(context: Context) : SecretRepository {
@@ -63,7 +63,7 @@ class LocalSecretRepository(context: Context) : SecretRepository {
         mimeType = MimeType(mimeType),
         k = k,
         n = n,
-        secretCreatedAt = Instant.parse(secretCreatedAt),
+        secretCreatedAt = PayloadCanonical.parseWireInstant(secretCreatedAt),
         state = SecretState.valueOf(state),
     )
 
@@ -73,7 +73,7 @@ class LocalSecretRepository(context: Context) : SecretRepository {
         mimeType = mimeType.value,
         k = k,
         n = n,
-        secretCreatedAt = secretCreatedAt.toString(),
+        secretCreatedAt = PayloadCanonical.wireInstant(secretCreatedAt),
         state = state.name,
     )
 }

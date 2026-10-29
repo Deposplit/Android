@@ -3,11 +3,11 @@ package com.deposplit.contacts
 import android.content.Context
 import com.deposplit.driven_ports.ContactRelinkRepository
 import com.deposplit.value_objects.ContactRelink
+import com.deposplit.value_objects.PayloadCanonical
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
-import java.time.Instant
 import java.util.UUID
 
 class LocalContactRelinkRepository(context: Context) : ContactRelinkRepository {
@@ -44,7 +44,7 @@ class LocalContactRelinkRepository(context: Context) : ContactRelinkRepository {
         file.writeText(json.encodeToString(relinks))
     }
 
-    private fun ContactRelinkWire.toDomain() = ContactRelink(UUID.fromString(contactId), Instant.parse(observedAt))
+    private fun ContactRelinkWire.toDomain() = ContactRelink(UUID.fromString(contactId), PayloadCanonical.parseWireInstant(observedAt))
 
-    private fun ContactRelink.toWire() = ContactRelinkWire(contactId.toString(), observedAt.toString())
+    private fun ContactRelink.toWire() = ContactRelinkWire(contactId.toString(), PayloadCanonical.wireInstant(observedAt))
 }

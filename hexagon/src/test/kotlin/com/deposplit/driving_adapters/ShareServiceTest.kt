@@ -1675,8 +1675,9 @@ class ShareServiceTest {
         assertTrue(pushed.ownerKey.contentEquals(aliceContact.verifyKey))
         assertEquals(listOf(secretId), pushed.secretIds)
         assertEquals(false, pushed.optedOut)
-        assertEquals(0, pushed.emittedAt.nano % 1_000_000)
-        val canon = PayloadCanonical.forHeartbeat(aliceContact.verifyKey, listOf(secretId), false, pushed.emittedAt)
+        // Verified as the owner will: against the time as it arrives, written and read back as text.
+        val received = PayloadCanonical.parseWireInstant(PayloadCanonical.wireInstant(pushed.emittedAt))
+        val canon = PayloadCanonical.forHeartbeat(aliceContact.verifyKey, listOf(secretId), false, received)
         assertTrue(bob.verify(canon, pushed.signature, bob.verifyKey()!!))
     }
 

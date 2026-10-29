@@ -4,12 +4,12 @@ import android.content.Context
 import com.deposplit.driven_ports.ContactRepository
 import com.deposplit.value_objects.CipherSuite
 import com.deposplit.value_objects.Contact
+import com.deposplit.value_objects.PayloadCanonical
 import com.deposplit.value_objects.VerificationLevel
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
-import java.time.Instant
 import java.util.Base64
 import java.util.UUID
 
@@ -86,13 +86,13 @@ class LocalContactRepository(context: Context) : ContactRepository {
         verifyKey = Base64.getUrlDecoder().decode(verifyKey),
         encKey = Base64.getUrlDecoder().decode(encKey),
         verificationLevel = VerificationLevel.valueOf(verificationLevel),
-        verifiedAt = verifiedAt?.let { Instant.parse(it) },
-        addedAt = Instant.parse(addedAt),
+        verifiedAt = verifiedAt?.let { PayloadCanonical.parseWireInstant(it) },
+        addedAt = PayloadCanonical.parseWireInstant(addedAt),
         relayBaseUrl = relayBaseUrl,
         revokedVerifyKeys = revokedVerifyKeys.map { Base64.getUrlDecoder().decode(it) },
-        keyChangedAt = keyChangedAt?.let { Instant.parse(it) },
-        heartbeatOptedOutAt = heartbeatOptedOutAt?.let { Instant.parse(it) },
-        lastHeartbeatSentAt = lastHeartbeatSentAt?.let { Instant.parse(it) },
+        keyChangedAt = keyChangedAt?.let { PayloadCanonical.parseWireInstant(it) },
+        heartbeatOptedOutAt = heartbeatOptedOutAt?.let { PayloadCanonical.parseWireInstant(it) },
+        lastHeartbeatSentAt = lastHeartbeatSentAt?.let { PayloadCanonical.parseWireInstant(it) },
         heartbeatEmissionOptedOut = heartbeatEmissionOptedOut,
         cipherSuite = CipherSuite.fromWire(cipherSuite) ?: error("Unknown cipher suite in local store: $cipherSuite"),
         nickname = nickname,
@@ -104,13 +104,13 @@ class LocalContactRepository(context: Context) : ContactRepository {
         verifyKey = Base64.getUrlEncoder().withoutPadding().encodeToString(verifyKey),
         encKey = Base64.getUrlEncoder().withoutPadding().encodeToString(encKey),
         verificationLevel = verificationLevel.name,
-        verifiedAt = verifiedAt?.toString(),
-        addedAt = addedAt.toString(),
+        verifiedAt = verifiedAt?.let { PayloadCanonical.wireInstant(it) },
+        addedAt = PayloadCanonical.wireInstant(addedAt),
         relayBaseUrl = relayBaseUrl,
         revokedVerifyKeys = revokedVerifyKeys.map { Base64.getUrlEncoder().withoutPadding().encodeToString(it) },
-        keyChangedAt = keyChangedAt?.toString(),
-        heartbeatOptedOutAt = heartbeatOptedOutAt?.toString(),
-        lastHeartbeatSentAt = lastHeartbeatSentAt?.toString(),
+        keyChangedAt = keyChangedAt?.let { PayloadCanonical.wireInstant(it) },
+        heartbeatOptedOutAt = heartbeatOptedOutAt?.let { PayloadCanonical.wireInstant(it) },
+        lastHeartbeatSentAt = lastHeartbeatSentAt?.let { PayloadCanonical.wireInstant(it) },
         heartbeatEmissionOptedOut = heartbeatEmissionOptedOut,
         cipherSuite = cipherSuite.wireValue,
         nickname = nickname,

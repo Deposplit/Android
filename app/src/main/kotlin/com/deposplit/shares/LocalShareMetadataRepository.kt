@@ -2,12 +2,12 @@ package com.deposplit.shares
 
 import android.content.Context
 import com.deposplit.driven_ports.ShareMetadataRepository
+import com.deposplit.value_objects.PayloadCanonical
 import com.deposplit.value_objects.ShareMetadata
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
-import java.time.Instant
 import java.util.UUID
 
 class LocalShareMetadataRepository(context: Context) : ShareMetadataRepository {
@@ -58,13 +58,13 @@ class LocalShareMetadataRepository(context: Context) : ShareMetadataRepository {
         id = UUID.fromString(id),
         secretId = UUID.fromString(secretId),
         contactId = UUID.fromString(contactId),
-        lastConfirmedAt = lastConfirmedAt?.let { Instant.parse(it) },
+        lastConfirmedAt = lastConfirmedAt?.let { PayloadCanonical.parseWireInstant(it) },
     )
 
     private fun ShareMetadata.toWire() = ShareMetadataWire(
         id = id.toString(),
         secretId = secretId.toString(),
         contactId = contactId.toString(),
-        lastConfirmedAt = lastConfirmedAt?.toString(),
+        lastConfirmedAt = lastConfirmedAt?.let { PayloadCanonical.wireInstant(it) },
     )
 }

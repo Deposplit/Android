@@ -30,6 +30,7 @@ import com.deposplit.value_objects.CipherSuite
 import com.deposplit.value_objects.CustodyHeartbeat
 import com.deposplit.value_objects.KeyRotation
 import com.deposplit.value_objects.MimeType
+import com.deposplit.value_objects.PayloadCanonical
 import com.deposplit.value_objects.RelayRefusedException
 import com.deposplit.value_objects.Role
 import com.deposplit.value_objects.ShareRequest
@@ -70,7 +71,7 @@ class DeposplitApiAdapter(
                 secretId = secretId.toString(),
                 recipientKey = recipientKey.encodeBase64Url(),
                 sealedLabel = sealedLabel.encodeBase64(),
-                secretCreatedAt = secretCreatedAt.toString(),
+                secretCreatedAt = PayloadCanonical.wireInstant(secretCreatedAt),
                 transactionType = transactionType.wireValue,
                 ciphertext = ciphertext?.encodeBase64(),
                 k = k,
@@ -143,7 +144,7 @@ class DeposplitApiAdapter(
                 ownerKey = ownerKey.encodeBase64Url(),
                 secretIds = secretIds.map { it.toString() },
                 optedOut = optedOut,
-                emittedAt = emittedAt.toString(),
+                emittedAt = PayloadCanonical.wireInstant(emittedAt),
                 signature = signature.encodeBase64Url(),
             )
         )
@@ -292,7 +293,7 @@ class DeposplitApiAdapter(
         senderKey = senderKey.decodeBase64Url(),
         recipientKey = recipientKey.decodeBase64Url(),
         sealedLabel = sealedLabel.decodeBase64(),
-        secretCreatedAt = Instant.parse(secretCreatedAt),
+        secretCreatedAt = PayloadCanonical.parseWireInstant(secretCreatedAt),
         transactionType = ShareTransactionType.fromWire(transactionType) ?: error("Unknown transactionType: $transactionType"),
         state = when (state) {
             "pending" -> ShareRequestState.PENDING
@@ -300,8 +301,8 @@ class DeposplitApiAdapter(
             "denied" -> ShareRequestState.DENIED
             else -> error("Unknown state: $state")
         },
-        requestedAt = Instant.parse(requestedAt),
-        respondedAt = respondedAt?.let { Instant.parse(it) },
+        requestedAt = PayloadCanonical.parseWireInstant(requestedAt),
+        respondedAt = respondedAt?.let { PayloadCanonical.parseWireInstant(it) },
         ciphertext = ciphertext?.decodeBase64(),
         k = k,
         n = n,
@@ -318,7 +319,7 @@ class DeposplitApiAdapter(
         newEncKey = newEncKey.decodeBase64Url(),
         newCipherSuite = CipherSuite.fromWire(newCipherSuite) ?: error("Unknown cipher suite: $newCipherSuite"),
         signature = signature.decodeBase64Url(),
-        createdAt = Instant.parse(createdAt),
+        createdAt = PayloadCanonical.parseWireInstant(createdAt),
     )
 
     private fun CustodyHeartbeatJson.toDomain() = CustodyHeartbeat(
@@ -327,7 +328,7 @@ class DeposplitApiAdapter(
         ownerKey = ownerKey.decodeBase64Url(),
         secretIds = secretIds.map { UUID.fromString(it) },
         optedOut = optedOut,
-        emittedAt = Instant.parse(emittedAt),
+        emittedAt = PayloadCanonical.parseWireInstant(emittedAt),
         signature = signature.decodeBase64Url(),
     )
 

@@ -1,6 +1,8 @@
 package com.deposplit.value_objects
 
 import java.time.Instant
+import java.time.format.DateTimeFormatterBuilder
+import java.time.temporal.ChronoUnit
 import java.util.Base64
 import java.util.UUID
 
@@ -24,6 +26,7 @@ object PayloadCanonical {
 
     private val base64Std: Base64.Encoder = Base64.getEncoder()
     private val base64Url: Base64.Encoder = Base64.getUrlEncoder().withoutPadding()
+    private val wireFormat = DateTimeFormatterBuilder().appendInstant(3).toFormatter()
 
     /**
      * Signed by the sender when opening a share request (`senderSignature`).
@@ -103,4 +106,21 @@ object PayloadCanonical {
         optedOut.toString(),
         emittedAt.toEpochMilli().toString(),
     ).joinToString("\n").toByteArray(Charsets.UTF_8)
+
+    /**
+     * A timestamp as text, wherever one travels or rests as text — the wire, every local store,
+     * the catalogue: in UTC with exactly three fractional digits, the milliseconds a signature
+     * covers. The one format every platform writes, specified in deposplit.com/docs/protocol.md.
+     * Not `Instant.toString`, which writes no fraction on a whole second and six or nine digits
+     * when the clock has them.
+     */
+    fun wireInstant(instant: Instant): String = wireFormat.format(instant.truncatedTo(ChronoUnit.MILLIS))
+
+    /**
+     * A timestamp read from text with any number of fractional digits, none to nine, and cut to the
+     * millisecond. Cut and not rounded, because cutting is what `toEpochMilli` does when signing: a
+     * time read as `.457999999` was signed as 457, and rounded it would sign as 458 and fail to
+     * verify. Throws on text that is not an instant, like `Instant.parse`.
+     */
+    fun parseWireInstant(text: String): Instant = Instant.parse(text).truncatedTo(ChronoUnit.MILLIS)
 }

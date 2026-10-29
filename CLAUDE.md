@@ -247,7 +247,7 @@ iOS therefore has no counterpart to this flag and does not need one.
 ## Build and test
 
 ```bash
-./gradlew test                    # JVM unit tests (210 in :hexagon, 26 in :app) — what CI runs
+./gradlew test                    # JVM unit tests (213 in :hexagon, 26 in :app) — what CI runs
 ./gradlew :app:lintDebug          # the four gated lint checks — also what CI runs
 ./gradlew :hexagon:test           # domain only
 ./gradlew :hexagon:test --tests "com.deposplit.shamir.ShamirTest"

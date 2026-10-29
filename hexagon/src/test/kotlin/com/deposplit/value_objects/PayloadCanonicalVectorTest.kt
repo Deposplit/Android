@@ -4,10 +4,12 @@ import org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters
 import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters
 import org.bouncycastle.crypto.signers.Ed25519Signer
 import java.time.Instant
+import java.time.format.DateTimeParseException
 import java.util.Base64
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import kotlin.test.fail
 
@@ -193,5 +195,35 @@ class PayloadCanonicalVectorTest {
         verifier.init(false, Ed25519PublicKeyParameters(pubKeyBytes, 0))
         verifier.update(canon, 0, canon.size)
         assertTrue(verifier.verifySignature(sigBytes))
+    }
+
+    // The same table is checked into the relay's, phon's and iOS's suites, so all four read any
+    // timestamp's text to the same millisecond and write that millisecond back the same way.
+    private val wireInstants = listOf(
+        Triple("2026-10-29T07:27:35Z", 1793258855000L, "2026-10-29T07:27:35.000Z"),
+        Triple("2026-10-29T07:27:35.457Z", 1793258855457L, "2026-10-29T07:27:35.457Z"),
+        Triple("2026-10-29T07:27:35.457123Z", 1793258855457L, "2026-10-29T07:27:35.457Z"),
+        Triple("2026-10-29T07:27:35.457999999Z", 1793258855457L, "2026-10-29T07:27:35.457Z"),
+        Triple("2026-10-29T07:27:35.999999999Z", 1793258855999L, "2026-10-29T07:27:35.999Z"),
+    )
+
+    @Test
+    fun `a wire timestamp is read to the millisecond, cut and never rounded`() {
+        for ((text, epochMs, _) in wireInstants) {
+            assertEquals(Instant.ofEpochMilli(epochMs), PayloadCanonical.parseWireInstant(text), text)
+        }
+    }
+
+    @Test
+    fun `a wire timestamp is written with exactly the three fractional digits a signature covers`() {
+        for ((text, _, written) in wireInstants) {
+            assertEquals(written, PayloadCanonical.wireInstant(Instant.parse(text)), text)
+        }
+    }
+
+    @Test
+    fun `a wire timestamp that is not ISO-8601 is not read`() {
+        assertFailsWith<DateTimeParseException> { PayloadCanonical.parseWireInstant("2026-10-29 07:27:35.457") }
+        assertFailsWith<DateTimeParseException> { PayloadCanonical.parseWireInstant("") }
     }
 }

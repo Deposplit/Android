@@ -42,7 +42,6 @@ import com.deposplit.value_objects.SyncReport
 import com.deposplit.value_objects.VerificationLevel
 import java.time.Duration
 import java.time.Instant
-import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 class ShareService(
@@ -624,12 +623,11 @@ class ShareService(
             val isDue = contact.lastHeartbeatSentAt?.let { Duration.between(it, now) >= CustodyHeartbeatTuning.emissionInterval } ?: true
             if (!isDue) continue
             val secretIds = if (contact.heartbeatEmissionOptedOut) emptyList() else held.filter { it.contactId == contactId }.map { it.secretId }
-            // Whole milliseconds, which is what is signed — so the time on the wire is exactly the time signed.
-            val emittedAt = now.truncatedTo(ChronoUnit.MILLIS)
-            val canon = PayloadCanonical.forHeartbeat(contact.verifyKey, secretIds, contact.heartbeatEmissionOptedOut, emittedAt)
+            // Signed as whole milliseconds and sent as `wireInstant`, which carries exactly those.
+            val canon = PayloadCanonical.forHeartbeat(contact.verifyKey, secretIds, contact.heartbeatEmissionOptedOut, now)
             val signature = runCatching { identity.sign(canon) }.getOrNull() ?: continue
             val pushed = runCatching {
-                relayForContact(contact).pushHeartbeat(contact.verifyKey, secretIds, contact.heartbeatEmissionOptedOut, emittedAt, signature)
+                relayForContact(contact).pushHeartbeat(contact.verifyKey, secretIds, contact.heartbeatEmissionOptedOut, now, signature)
             }.isSuccess
             if (pushed) {
                 contactRepository.save(contact.copy(lastHeartbeatSentAt = now))
