@@ -12,6 +12,7 @@ import com.deposplit.driving_ports.ContactManagement
 import com.deposplit.driving_ports.ShareManagement
 import com.deposplit.settings.CatalogCodec
 import com.deposplit.value_objects.RegenerateIdentityResult
+import com.deposplit.value_objects.RelayBaseUrl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,6 +31,7 @@ class SettingsViewModel(
 
     data class UiState(
         val relayBaseUrl: String = "",
+        @StringRes val relayBaseUrlError: Int? = null,
         // A one-time unlock never lapses while the app is open, so this is read once rather than
         // observed. Coming back from the paywall recreates the screen and with it this view model.
         val isPremium: Boolean = false,
@@ -52,15 +54,31 @@ class SettingsViewModel(
     )
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
-    fun onRelayBaseUrlChange(value: String) = _uiState.update { it.copy(relayBaseUrl = value) }
+    fun onRelayBaseUrlChange(value: String) = _uiState.update { it.copy(relayBaseUrl = value, relayBaseUrlError = null) }
 
-    fun save() {
-        relaySettings.setDefaultRelayBaseUrl(_uiState.value.relayBaseUrl.trim().ifBlank { null })
+    /**
+     * False when the field names no relay, so that Save can stay on the screen and say so: this
+     * default is what every contact without an override is reached through, and what this
+     * device's QR code hands out.
+     */
+    fun save(): Boolean {
+        val typed = _uiState.value.relayBaseUrl.trim()
+        if (typed.isEmpty()) {
+            relaySettings.setDefaultRelayBaseUrl(null)
+            return true
+        }
+        val base = RelayBaseUrl.parse(typed)
+        if (base == null) {
+            _uiState.update { it.copy(relayBaseUrlError = R.string.settings_relay_error) }
+            return false
+        }
+        relaySettings.setDefaultRelayBaseUrl(base)
+        return true
     }
 
     fun resetToDefault() {
         relaySettings.setDefaultRelayBaseUrl(null)
-        _uiState.update { it.copy(relayBaseUrl = RelayDefaults.FALLBACK_BASE_URL) }
+        _uiState.update { it.copy(relayBaseUrl = RelayDefaults.FALLBACK_BASE_URL, relayBaseUrlError = null) }
     }
 
     /** Encodes the current catalog to JSON bytes for the caller to write to a SAF-picked file. */

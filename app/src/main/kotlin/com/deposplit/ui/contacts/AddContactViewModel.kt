@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deposplit.R
 import com.deposplit.driving_ports.ContactManagement
+import com.deposplit.value_objects.RelayBaseUrl
 import com.deposplit.value_objects.VerificationLevel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -35,6 +36,7 @@ class AddContactViewModel(
         @StringRes val pseudonymError: Int? = null,
         @StringRes val verifyKeyError: Int? = null,
         @StringRes val encKeyError: Int? = null,
+        @StringRes val relayBaseUrlError: Int? = null,
         val isSaving: Boolean = false,
     ) {
         val selectableLevels: List<VerificationLevel> =
@@ -54,7 +56,7 @@ class AddContactViewModel(
     fun onPseudonymChange(value: String) = _uiState.update { it.copy(pseudonym = value, pseudonymError = null) }
     fun onVerifyKeyChange(value: String) = _uiState.update { it.copy(verifyKey = value, verifyKeyError = null) }
     fun onEncKeyChange(value: String) = _uiState.update { it.copy(encKey = value, encKeyError = null) }
-    fun onRelayBaseUrlChange(value: String) = _uiState.update { it.copy(relayBaseUrl = value) }
+    fun onRelayBaseUrlChange(value: String) = _uiState.update { it.copy(relayBaseUrl = value, relayBaseUrlError = null) }
     fun onNicknameChange(value: String) = _uiState.update { it.copy(nickname = value) }
     fun onVerificationLevelChange(value: VerificationLevel) = _uiState.update { it.copy(verificationLevel = value) }
 
@@ -75,9 +77,16 @@ class AddContactViewModel(
             encKeyBytes.size != 32 -> R.string.add_contact_error_enc_key_length
             else -> null
         }
-        if (pseudonymError != null || verifyKeyError != null || encKeyError != null) {
+        val relayBaseUrlError =
+            if (state.relayBaseUrl.isNotBlank() && RelayBaseUrl.parse(state.relayBaseUrl) == null) R.string.add_contact_error_relay else null
+        if (pseudonymError != null || verifyKeyError != null || encKeyError != null || relayBaseUrlError != null) {
             _uiState.update {
-                it.copy(pseudonymError = pseudonymError, verifyKeyError = verifyKeyError, encKeyError = encKeyError)
+                it.copy(
+                    pseudonymError = pseudonymError,
+                    verifyKeyError = verifyKeyError,
+                    encKeyError = encKeyError,
+                    relayBaseUrlError = relayBaseUrlError,
+                )
             }
             return
         }

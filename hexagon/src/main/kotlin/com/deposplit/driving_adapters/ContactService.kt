@@ -7,6 +7,7 @@ import com.deposplit.driving_ports.ContactManagement
 import com.deposplit.value_objects.CipherSuite
 import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.ContactRelink
+import com.deposplit.value_objects.RelayBaseUrl
 import com.deposplit.value_objects.VerificationLevel
 import java.time.Instant
 import java.util.UUID
@@ -49,6 +50,7 @@ class ContactService(
         // Physical co-presence can't be asserted by typing a key in by hand — that's what the
         // in-person QR scan flow is for.
         require(verificationLevel != VerificationLevel.VERY_HIGH) { "Very High verification requires an in-person QR scan" }
+        val relay = normalizeRelayBaseUrl(relayBaseUrl)
         val now = Instant.now()
         contactRepository.save(
             Contact(
@@ -59,7 +61,7 @@ class ContactService(
                 verificationLevel = verificationLevel,
                 verifiedAt = now,
                 addedAt = now,
-                relayBaseUrl = relayBaseUrl,
+                relayBaseUrl = relay,
                 cipherSuite = cipherSuite,
                 nickname = normalizeNickname(nickname),
             )
@@ -70,6 +72,7 @@ class ContactService(
         require(pseudonym.isNotBlank()) { "Pseudonym must not be blank" }
         require(verifyKey.size == cipherSuite.verifyKeyLength) { "Verify key must be ${cipherSuite.verifyKeyLength} bytes for $cipherSuite" }
         require(encKey.size == cipherSuite.encKeyLength) { "Enc key must be ${cipherSuite.encKeyLength} bytes for $cipherSuite" }
+        val relay = normalizeRelayBaseUrl(relayBaseUrl)
         val now = Instant.now()
         contactRepository.save(
             Contact(
@@ -80,7 +83,7 @@ class ContactService(
                 verificationLevel = verificationLevel,
                 verifiedAt = now,
                 addedAt = now,
-                relayBaseUrl = relayBaseUrl,
+                relayBaseUrl = relay,
                 cipherSuite = cipherSuite,
                 nickname = normalizeNickname(nickname),
             )
@@ -131,4 +134,9 @@ class ContactService(
     // Trim, then collapse blank to absent. Lives here (not the UI layer) so every
     // caller — UI, tests, a future relink flow — gets consistent normalization for free.
     private fun normalizeNickname(nickname: String?): String? = nickname?.trim()?.ifBlank { null }
+
+    // Absent stays absent, meaning this device's own default relay; anything else has to name one.
+    // The screens check first so they can say so in the user's language — this is the backstop.
+    private fun normalizeRelayBaseUrl(relayBaseUrl: String?): String? =
+        relayBaseUrl?.let { requireNotNull(RelayBaseUrl.parse(it)) { "A relay must be an http:// or https:// address" } }
 }

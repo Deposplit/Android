@@ -121,6 +121,7 @@
     <string name="add_contact_error_invalid_base64url">Invalid base64url</string>
     <string name="add_contact_error_verify_key_length">Must be 32 bytes (verification key)</string>
     <string name="add_contact_error_enc_key_length">Must be 32 bytes (encryption key)</string>
+    <string name="add_contact_error_relay">Must start with http:// or https://</string>
     <string name="add_contact_error_save">Failed to save</string>
     <string name="add_contact_relay_label">Relay override (optional, BYOR)</string>
     <string name="add_contact_nickname_label">Nickname (optional)</string>
@@ -132,6 +133,7 @@
     <string name="settings_relay_description">Default relay used for contacts without a BYOR override, and advertised in your own QR code.</string>
     <string name="settings_relay_label">Default relay URL</string>
     <string name="settings_relay_reset">Reset to default</string>
+    <string name="settings_relay_error">Must start with http:// or https://</string>
     <string name="settings_catalog_title">Catalog Backup</string>
     <string name="settings_catalog_description">Contacts, verification levels and secret metadata, readable on iPhone and Android alike — never shares or private keys.</string>
     <string name="settings_catalog_export">Export…</string>
@@ -301,6 +303,7 @@
     <string name="qr_scan_permission_required">Camera permission is required to scan QR codes.</string>
     <string name="qr_scan_grant_permission">Grant Permission</string>
     <string name="qr_scan_error_fallback">Failed to read QR code</string>
+    <string name="qr_scan_error_relay">This QR code names a relay whose address is not valid</string>
 
     <!-- Premium -->
     <string name="paywall_title">Deposplit Premium</string>

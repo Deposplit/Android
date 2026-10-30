@@ -121,6 +121,7 @@
     <string name="add_contact_error_invalid_base64url">Ungültiges base64url</string>
     <string name="add_contact_error_verify_key_length">Muss 32 Bytes lang sein (Verifizierungsschlüssel)</string>
     <string name="add_contact_error_enc_key_length">Muss 32 Bytes lang sein (Verschlüsselungsschlüssel)</string>
+    <string name="add_contact_error_relay">Muss mit http:// oder https:// beginnen</string>
     <string name="add_contact_error_save">Speichern fehlgeschlagen</string>
     <string name="add_contact_relay_label">Abweichendes Relais (optional, BYOR)</string>
     <string name="add_contact_nickname_label">Spitzname (optional)</string>
@@ -132,6 +133,7 @@
     <string name="settings_relay_description">Standard-Relais für Kontakte ohne eigenes BYOR-Relais; wird auch in Ihrem QR-Code mitgeteilt.</string>
     <string name="settings_relay_label">Standard-Relais-URL</string>
     <string name="settings_relay_reset">Auf Standard zurücksetzen</string>
+    <string name="settings_relay_error">Muss mit http:// oder https:// beginnen</string>
     <string name="settings_catalog_title">Katalog-Sicherung</string>
     <string name="settings_catalog_description">Kontakte, Verifizierungsstufen und Metadaten der Geheimnisse, lesbar auf iPhone und Android gleichermassen — niemals Anteile oder private Schlüssel.</string>
     <string name="settings_catalog_export">Exportieren …</string>
@@ -301,6 +303,7 @@
     <string name="qr_scan_permission_required">Die Kamerafreigabe wird zum Scannen von QR-Codes benötigt.</string>
     <string name="qr_scan_grant_permission">Freigabe erteilen</string>
     <string name="qr_scan_error_fallback">QR-Code konnte nicht gelesen werden</string>
+    <string name="qr_scan_error_relay">Dieser QR-Code nennt ein Relais mit ungültiger Adresse</string>
 
     <!-- Premium -->
     <string name="paywall_title">Deposplit Premium</string>

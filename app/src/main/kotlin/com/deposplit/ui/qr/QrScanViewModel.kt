@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.deposplit.R
 import com.deposplit.driving_ports.ContactManagement
 import com.deposplit.value_objects.CipherSuite
+import com.deposplit.value_objects.RelayBaseUrl
 import com.deposplit.value_objects.VerificationLevel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,6 +44,13 @@ class QrScanViewModel(private val contactManagement: ContactManagement) : ViewMo
                 val encKey = decoder.decode(payload.encKey)
                 val cipherSuite = CipherSuite.fromWire(payload.cipherSuite)
                     ?: error("Unknown cipher suite in QR payload: ${payload.cipherSuite}")
+                // Said apart from the fallback, because the relay is the other device's default: a
+                // bad one is fixed there, in its Settings, and scanning again here cannot help.
+                if (payload.relay?.let { RelayBaseUrl.parse(it) == null } == true) {
+                    hasScanned.set(false)
+                    _uiState.update { it.copy(error = R.string.qr_scan_error_relay) }
+                    return@launch
+                }
                 // A QR scan defaults to in-person co-presence, the strongest assurance the current
                 // scan flow can claim. A remote/video-call scan is a weaker
                 // claim, but there's no UI step here to downgrade it yet.

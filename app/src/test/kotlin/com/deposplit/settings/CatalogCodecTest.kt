@@ -106,6 +106,14 @@ class CatalogCodecTest {
         )
     }
 
+    // The catalogue is one more way a relay reaches a contact, so it is held to the same rule as a
+    // scan or a typed one, and one that is not a relay refuses the import like any other bad field.
+    @Test(expected = IllegalStateException::class)
+    fun `decoding a contact whose relay is not an http URL fails`() {
+        val withRelay = contactJson().replace("\"pseudonym\":\"bob\",", "\"pseudonym\":\"bob\",\"relayBaseUrl\":\"172.22.114.13:9000\",")
+        CatalogCodec.decode(withRelay.toByteArray(Charsets.UTF_8))
+    }
+
     @Test(expected = SerializationException::class)
     fun `decoding a contact with a missing required field fails`() {
         val withoutPseudonym = contactJson().replace("\"pseudonym\":\"bob\",", "")

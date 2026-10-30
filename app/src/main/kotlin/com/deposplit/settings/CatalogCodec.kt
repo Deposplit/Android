@@ -5,6 +5,7 @@ import com.deposplit.value_objects.CipherSuite
 import com.deposplit.value_objects.Contact
 import com.deposplit.value_objects.MimeType
 import com.deposplit.value_objects.PayloadCanonical
+import com.deposplit.value_objects.RelayBaseUrl
 import com.deposplit.value_objects.Secret
 import com.deposplit.value_objects.SecretState
 import com.deposplit.value_objects.ShareMetadata
@@ -143,7 +144,7 @@ object CatalogCodec {
             ?: error("Unknown verification level in catalog: $verificationLevel"),
         verifiedAt = verifiedAt?.let { PayloadCanonical.parseWireInstant(it) },
         addedAt = PayloadCanonical.parseWireInstant(addedAt),
-        relayBaseUrl = relayBaseUrl,
+        relayBaseUrl = relayBaseUrl?.let { RelayBaseUrl.parse(it) ?: error("Not a relay in catalog: $it") },
         cipherSuite = CipherSuite.fromWire(cipherSuite) ?: error("Unknown cipher suite in catalog: $cipherSuite"),
         nickname = nickname,
         revokedVerifyKeys = revokedVerifyKeys.map { Base64.getUrlDecoder().decode(it) },

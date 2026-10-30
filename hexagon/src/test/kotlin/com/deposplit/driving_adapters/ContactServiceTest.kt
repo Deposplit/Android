@@ -352,6 +352,35 @@ class ContactServiceTest {
         assertEquals("https://relay.example", repo.getAll().single().relayBaseUrl)
     }
 
+    /**
+     * Stored, a relay that is not one fails on every sync for as long as the contact exists, so it
+     * is refused on the way in, by either door.
+     */
+    @Test
+    fun `addManually and addFromQr refuse a relay that is not an http URL`() {
+        val repo = InMemoryContactRepositoryForContactServiceTest()
+        val svc = ContactService(repo, FakeIdentityStoreForContactServiceTest(), InMemoryContactRelinkRepositoryForContactServiceTest())
+
+        assertFailsWith<IllegalArgumentException> {
+            svc.addManually("bob", ByteArray(32) { 0x01 }, ByteArray(32) { 0x02 }, VerificationLevel.LOW, relayBaseUrl = "172.22.114.13:9000")
+        }
+        assertFailsWith<IllegalArgumentException> {
+            svc.addFromQr("carol", ByteArray(32) { 0x03 }, ByteArray(32) { 0x04 }, CipherSuite.current, VerificationLevel.VERY_HIGH, relayBaseUrl = "file:///etc/hosts")
+        }
+        assertTrue(repo.getAll().isEmpty())
+    }
+
+    @Test
+    fun `addManually and addFromQr store the relay trimmed and without a trailing slash`() {
+        val repo = InMemoryContactRepositoryForContactServiceTest()
+        val svc = ContactService(repo, FakeIdentityStoreForContactServiceTest(), InMemoryContactRelinkRepositoryForContactServiceTest())
+
+        svc.addManually("bob", ByteArray(32) { 0x01 }, ByteArray(32) { 0x02 }, VerificationLevel.LOW, relayBaseUrl = " https://relay.example/ ")
+        svc.addFromQr("carol", ByteArray(32) { 0x03 }, ByteArray(32) { 0x04 }, CipherSuite.current, VerificationLevel.VERY_HIGH, relayBaseUrl = "http://172.22.114.13:9000/")
+
+        assertEquals(listOf("https://relay.example", "http://172.22.114.13:9000"), repo.getAll().map { it.relayBaseUrl })
+    }
+
     // -------------------------------------------------------------------------
     // contactsAwaitingRelink() — who still holds a key this device no longer signs with
     // -------------------------------------------------------------------------

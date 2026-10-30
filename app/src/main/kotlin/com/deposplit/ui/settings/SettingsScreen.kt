@@ -106,6 +106,8 @@ fun SettingsScreen(onNavigateBack: () -> Unit, onNavigateToPaywall: () -> Unit) 
                     value = uiState.relayBaseUrl,
                     onValueChange = viewModel::onRelayBaseUrlChange,
                     label = { Text(stringResource(R.string.settings_relay_label)) },
+                    isError = uiState.relayBaseUrlError != null,
+                    supportingText = uiState.relayBaseUrlError?.let { resId -> { Text(stringResource(resId)) } },
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.None,
                         autoCorrectEnabled = false,
@@ -116,7 +118,7 @@ fun SettingsScreen(onNavigateBack: () -> Unit, onNavigateToPaywall: () -> Unit) 
                 )
                 Spacer(Modifier.height(16.dp))
                 Row {
-                    Button(onClick = { viewModel.save(); onNavigateBack() }) {
+                    Button(onClick = { if (viewModel.save()) onNavigateBack() }) {
                         Text(stringResource(R.string.action_save))
                     }
                     Spacer(Modifier.height(0.dp))

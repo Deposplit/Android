@@ -130,6 +130,8 @@ fun AddContactScreen(onNavigateBack: () -> Unit) {
                 value = uiState.relayBaseUrl,
                 onValueChange = viewModel::onRelayBaseUrlChange,
                 label = { Text(stringResource(R.string.add_contact_relay_label)) },
+                isError = uiState.relayBaseUrlError != null,
+                supportingText = uiState.relayBaseUrlError?.let { resId -> { Text(stringResource(resId)) } },
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.None,
                     autoCorrectEnabled = false,
