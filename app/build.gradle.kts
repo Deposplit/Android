@@ -13,7 +13,9 @@ val localProps = Properties().apply {
 android {
     namespace = "com.deposplit"
     compileSdk {
-        version = release(37)
+        version = release(37) {
+            minorApiLevel = 2
+        }
     }
 
     defaultConfig {
