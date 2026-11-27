@@ -5,12 +5,18 @@ on:
     branches: [ '**' ]
   pull_request:
     branches: [ main ]
+  # Weekly as well, so a change to the runner image or the toolchain shows up on a Monday rather
+  # than on whichever push comes next.
+  schedule:
+    - cron: '23 5 * * 1'
 
 permissions:
   contents: read
 
 concurrency:
-  group: test-${{ github.head_ref || github.ref }}
+  # The event is part of the group so that the Monday run and a push to main never cancel each
+  # other.
+  group: test-${{ github.event_name }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:

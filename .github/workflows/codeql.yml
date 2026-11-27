@@ -1,0 +1,63 @@
+name: CodeQL
+
+# Advanced setup rather than CodeQL's default setup, whose autobuild failed here: it picks the
+# lowest JDK the Android Gradle plugin accepts (17) and runs `assemble`, and lint then refuses to
+# run on a JVM older than the bytecode target (21). This builds on the 25 that test.yml uses, and
+# compiles only, so lint never runs. Default setup and this workflow cannot both upload, so
+# default setup stays off in the repository settings.
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  # Weekly as well, so a new CodeQL query reaches code that has not changed.
+  schedule:
+    - cron: '41 5 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.event_name }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # to upload the results to code scanning
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - language: java-kotlin
+          build-mode: manual
+        - language: actions
+          build-mode: none
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+    - name: Set up JDK 25
+      if: matrix.language == 'java-kotlin'
+      uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+      with:
+        distribution: 'temurin'
+        java-version: '25'
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
+      with:
+        languages: ${{ matrix.language }}
+        build-mode: ${{ matrix.build-mode }}
+    - name: Compile the Kotlin
+      # CodeQL sees only the Kotlin that is compiled while it watches this step. So nothing here
+      # restores a Gradle cache (no setup-gradle, unlike test.yml), Gradle runs without its
+      # daemon, and the Kotlin compiler runs inside Gradle's own process instead of a daemon of
+      # its own. Main sources only: the tests would add nothing worth an alert.
+      if: matrix.build-mode == 'manual'
+      run: ./gradlew --no-daemon -Pkotlin.compiler.execution.strategy=in-process :hexagon:compileKotlin :app:compileDebugKotlin
+    - name: Perform CodeQL analysis
+      uses: github/codeql-action/analyze@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
+      with:
+        category: '/language:${{ matrix.language }}'

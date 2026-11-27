@@ -131,8 +131,8 @@ kept in sync.
 ## Continuous integration
 
 `.github/workflows/test.yml` runs `./gradlew test` and then `./gradlew :app:lintDebug` on every
-push and on pull requests targeting `main`. No emulator or device is involved. Dependabot updates
-Gradle dependencies and pinned action SHAs weekly.
+push, on pull requests targeting `main`, and weekly. No emulator or device is involved.
+Dependabot updates Gradle dependencies and pinned action SHAs weekly.
 
 Lint runs `checkOnly`, not the full set: `MissingTranslation`, `NewApi`, `ObsoleteSdkInt` and
 `PermissionImpliesUnsupportedChromeOsHardware`, all as errors. A check outside that set cannot
@@ -140,6 +140,12 @@ fail the build, which is what keeps an AGP bump from reddening a pull request ov
 change did not touch — the reason a blanket `lintDebug` stayed out of CI for so long. The
 standing advisory warnings (`PluralsCandidate`, `UnusedResources`, `UseKtx`, `GradleDependency`,
 `OldTargetApi`) are deliberately outside it.
+
+`.github/workflows/codeql.yml` runs CodeQL code scanning on the Kotlin and on the workflows, on
+pushes and pull requests to `main` and weekly. It is CodeQL's *advanced setup*, because the
+*default setup* could not build the app: it runs Gradle on JDK 17, the lowest the Android
+Gradle plugin accepts, and lint refuses to run on a JVM older than the JVM 21 target. The two
+cannot run side by side, so default setup stays off in the repository settings.
 
 ## Licence
 
